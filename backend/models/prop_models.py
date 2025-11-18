@@ -9,6 +9,7 @@ from backend.features import FeatureExtractor, FeatureSmoother, PlayerFeatures
 from backend.features.smoothing import SmoothedFeatures
 from backend.roster_injury import RosterInjuryService
 from backend.redistribution import VolumeRedistributor
+from backend.scoring import ProjectionScorer, TierAssigner
 from backend.database.session import get_db
 from backend.database.models import Projection, Player, Game
 from .distributions import (
@@ -44,6 +45,10 @@ class PropProjection:
     usage_norm: Optional[float] = None
     model_version: str = "v1"
 
+    # Scoring and ranking (set after initial generation)
+    score: Optional[float] = None
+    tier: Optional[str] = None  # core, mid, lotto
+
     def to_dict(self) -> Dict:
         return asdict(self)
 
@@ -65,6 +70,8 @@ class PropModelRunner:
         self.feature_smoother = FeatureSmoother()
         self.roster_service = RosterInjuryService(use_cache=True)
         self.redistributor = VolumeRedistributor()
+        self.scorer = ProjectionScorer()
+        self.tier_assigner = TierAssigner()
 
         # Distribution models
         self.poisson_model = PoissonModel()
@@ -165,6 +172,20 @@ class PropModelRunner:
         if redistribution_results:
             summary = self.redistributor.get_redistribution_summary(redistribution_results)
             logger.info("redistribution_summary", **summary)
+
+        # Score and tier projections
+        scored_projections = self.scorer.score_batch(projections)
+        tier_assignment = self.tier_assigner.assign_tiers(scored_projections, strategy="hybrid")
+
+        # Apply tiers and scores back to projections
+        for sp in scored_projections:
+            sp.projection.score = sp.score
+
+        self.tier_assigner.apply_tiers_to_projections(tier_assignment, update_db=False)
+
+        # Log tier summary
+        tier_summary = self.tier_assigner.get_tier_summary(tier_assignment)
+        logger.info("tier_summary", **tier_summary)
 
         # Save to database
         if save_to_db:
