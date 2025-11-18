@@ -1,4 +1,47 @@
+# Web framework & API
 fastapi
 uvicorn[standard]
-pydantic
+pydantic>=2.0
+pydantic-settings
+
+# Database & caching
+sqlalchemy>=2.0
+alembic
+psycopg2-binary
+redis
+
+# Data processing
+pandas
+numpy
+scipy
+
+# Machine learning
+scikit-learn
+xgboost
+lightgbm
+
+# Fuzzy matching & text processing
+rapidfuzz
+python-Levenshtein
+
+# HTTP clients
+httpx
+requests
+
+# Logging & monitoring
+structlog
+python-json-logger
+
+# Configuration
+python-dotenv
+pyyaml
+
+# Testing
 pytest
+pytest-asyncio
+pytest-cov
+pytest-mock
+
+# Utilities
+python-dateutil
+pytz
