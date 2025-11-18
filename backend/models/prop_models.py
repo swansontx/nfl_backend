@@ -18,6 +18,7 @@ from .distributions import (
     BernoulliModel,
     DistributionParams
 )
+from .distribution_fitter import DistributionFitter
 
 logger = get_logger(__name__)
 
@@ -77,6 +78,9 @@ class PropModelRunner:
         self.poisson_model = PoissonModel()
         self.lognormal_model = LognormalModel()
         self.bernoulli_model = BernoulliModel()
+
+        # Distribution fitter for player-specific parameters
+        self.dist_fitter = DistributionFitter()
 
     def generate_projections(
         self,
@@ -316,19 +320,29 @@ class PropModelRunner:
         game_id: str,
         features: SmoothedFeatures
     ) -> PropProjection:
-        """Project receiving yards using lognormal"""
+        """Project receiving yards with fitted player-specific distribution"""
         mu_yards = features.receiving_yards_per_game
 
-        # Estimate sigma from historical variance (simplified)
-        # In production, fit actual lognormal from historical data
-        sigma_estimate = np.log(1 + (0.5 ** 2))  # CV of 0.5
+        # Try to fit player-specific distribution
+        fitted = self.dist_fitter.fit_receiving_yards(
+            player_id=player.player_id,
+            n_games=settings.lookback_games
+        )
 
-        params = {
-            'dist_type': 'lognormal',
-            'mu': np.log(max(mu_yards, 1)),  # Log of expected
-            'sigma': sigma_estimate,
-            'zero_prob': 0.1 if mu_yards < 10 else 0.0
-        }
+        if fitted and fitted.confidence > 0.5:
+            # Use fitted parameters
+            params = fitted.params.copy()
+            confidence = features.confidence * fitted.confidence
+        else:
+            # Fallback to assumed CV
+            sigma_estimate = np.log(1 + (0.5 ** 2))
+            params = {
+                'dist_type': 'lognormal',
+                'mu': np.log(max(mu_yards, 1)),
+                'sigma': sigma_estimate,
+                'zero_prob': 0.1 if mu_yards < 10 else 0.0
+            }
+            confidence = features.confidence * 0.7
 
         dist_params = self.lognormal_model.predict(params)
 
@@ -342,7 +356,7 @@ class PropModelRunner:
             mu=dist_params.mu,
             sigma=dist_params.sigma,
             dist_params=dist_params.params,
-            confidence=features.confidence,
+            confidence=confidence,
             usage_norm=features.target_share
         )
 
@@ -352,17 +366,29 @@ class PropModelRunner:
         game_id: str,
         features: SmoothedFeatures
     ) -> PropProjection:
-        """Project rushing yards using lognormal"""
+        """Project rushing yards with fitted player-specific distribution"""
         mu_yards = features.rushing_yards_per_game
 
-        sigma_estimate = np.log(1 + (0.6 ** 2))  # Higher variance for rushing
+        # Try to fit player-specific distribution
+        fitted = self.dist_fitter.fit_rushing_yards(
+            player_id=player.player_id,
+            n_games=settings.lookback_games
+        )
 
-        params = {
-            'dist_type': 'lognormal',
-            'mu': np.log(max(mu_yards, 1)),
-            'sigma': sigma_estimate,
-            'zero_prob': 0.1 if mu_yards < 10 else 0.0
-        }
+        if fitted and fitted.confidence > 0.5:
+            # Use fitted parameters
+            params = fitted.params.copy()
+            confidence = features.confidence * fitted.confidence
+        else:
+            # Fallback to assumed CV
+            sigma_estimate = np.log(1 + (0.6 ** 2))
+            params = {
+                'dist_type': 'lognormal',
+                'mu': np.log(max(mu_yards, 1)),
+                'sigma': sigma_estimate,
+                'zero_prob': 0.1 if mu_yards < 10 else 0.0
+            }
+            confidence = features.confidence * 0.7
 
         dist_params = self.lognormal_model.predict(params)
 
@@ -376,7 +402,7 @@ class PropModelRunner:
             mu=dist_params.mu,
             sigma=dist_params.sigma,
             dist_params=dist_params.params,
-            confidence=features.confidence,
+            confidence=confidence,
             usage_norm=features.rush_share
         )
 
@@ -448,17 +474,29 @@ class PropModelRunner:
         game_id: str,
         features: SmoothedFeatures
     ) -> PropProjection:
-        """Project passing yards"""
+        """Project passing yards with fitted player-specific distribution"""
         mu_yards = features.passing_yards_per_game
 
-        sigma_estimate = np.log(1 + (0.3 ** 2))  # Lower variance for passing
+        # Try to fit player-specific distribution
+        fitted = self.dist_fitter.fit_passing_yards(
+            player_id=player.player_id,
+            n_games=settings.lookback_games
+        )
 
-        params = {
-            'dist_type': 'lognormal',
-            'mu': np.log(max(mu_yards, 1)),
-            'sigma': sigma_estimate,
-            'zero_prob': 0.0
-        }
+        if fitted and fitted.confidence > 0.5:
+            # Use fitted parameters
+            params = fitted.params.copy()
+            confidence = features.confidence * fitted.confidence
+        else:
+            # Fallback to assumed CV
+            sigma_estimate = np.log(1 + (0.3 ** 2))
+            params = {
+                'dist_type': 'lognormal',
+                'mu': np.log(max(mu_yards, 1)),
+                'sigma': sigma_estimate,
+                'zero_prob': 0.0
+            }
+            confidence = features.confidence * 0.7
 
         dist_params = self.lognormal_model.predict(params)
 
@@ -472,7 +510,7 @@ class PropModelRunner:
             mu=dist_params.mu,
             sigma=dist_params.sigma,
             dist_params=dist_params.params,
-            confidence=features.confidence,
+            confidence=confidence,
             usage_norm=1.0 if player.position == 'QB' else 0.0
         )
 
@@ -509,12 +547,25 @@ class PropModelRunner:
         game_id: str,
         features: SmoothedFeatures
     ) -> PropProjection:
-        """Project pass completions using Poisson"""
-        # Estimate completions from pass attempts and completion rate
-        # In production, extract actual completion rate from features
-        pass_attempts = features.passing_yards_per_game / 7.5  # Rough YPA estimate
-        completion_rate = 0.65  # Average completion rate
-        lambda_completions = pass_attempts * completion_rate
+        """Project pass completions using Poisson with fitted player-specific rate"""
+        # Try to fit player-specific completion distribution
+        fitted = self.dist_fitter.fit_passing_completions(
+            player_id=player.player_id,
+            n_games=settings.lookback_games
+        )
+
+        if fitted and fitted.confidence > 0.5:
+            # Use fitted distribution
+            lambda_completions = fitted.mean
+            completion_rate = fitted.params.get('completion_rate', 0.65)
+            confidence = features.confidence * fitted.confidence
+        else:
+            # Fallback to estimate from yards and average rate
+            ypa = self.dist_fitter.fit_yards_per_attempt(player.player_id) or 7.5
+            pass_attempts = features.passing_yards_per_game / ypa
+            completion_rate = 0.65  # Fallback
+            lambda_completions = pass_attempts * completion_rate
+            confidence = features.confidence * 0.7  # Lower confidence
 
         params = {'dist_type': 'poisson', 'lambda': lambda_completions}
         dist_params = self.poisson_model.predict(params)
@@ -529,7 +580,7 @@ class PropModelRunner:
             mu=dist_params.mu,
             sigma=dist_params.sigma,
             dist_params=dist_params.params,
-            confidence=features.confidence,
+            confidence=confidence,
             usage_norm=1.0 if player.position == 'QB' else 0.0
         )
 
@@ -539,8 +590,10 @@ class PropModelRunner:
         game_id: str,
         features: SmoothedFeatures
     ) -> PropProjection:
-        """Project pass attempts using Poisson"""
-        lambda_attempts = features.passing_yards_per_game / 7.5  # Rough YPA estimate
+        """Project pass attempts using Poisson with fitted YPA"""
+        # Use player-specific yards per attempt
+        ypa = self.dist_fitter.fit_yards_per_attempt(player.player_id) or 7.5
+        lambda_attempts = features.passing_yards_per_game / ypa
 
         params = {'dist_type': 'poisson', 'lambda': lambda_attempts}
         dist_params = self.poisson_model.predict(params)
@@ -565,10 +618,14 @@ class PropModelRunner:
         game_id: str,
         features: SmoothedFeatures
     ) -> PropProjection:
-        """Project interceptions using Poisson"""
-        # Typical INT rate ~2% of attempts
-        pass_attempts = features.passing_yards_per_game / 7.5
-        int_rate = 0.02
+        """Project interceptions using Poisson with fitted player-specific INT rate"""
+        # Use player-specific INT rate
+        int_rate = self.dist_fitter.fit_interception_rate(player.player_id) or 0.02
+
+        # Use player-specific YPA for attempts estimate
+        ypa = self.dist_fitter.fit_yards_per_attempt(player.player_id) or 7.5
+        pass_attempts = features.passing_yards_per_game / ypa
+
         lambda_ints = pass_attempts * int_rate
 
         params = {'dist_type': 'poisson', 'lambda': lambda_ints}
