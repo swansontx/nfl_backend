@@ -8,6 +8,7 @@ from backend.config.logging_config import get_logger
 from backend.features import FeatureExtractor, FeatureSmoother, PlayerFeatures
 from backend.features.smoothing import SmoothedFeatures
 from backend.roster_injury import RosterInjuryService
+from backend.redistribution import VolumeRedistributor
 from backend.database.session import get_db
 from backend.database.models import Projection, Player, Game
 from .distributions import (
@@ -63,6 +64,7 @@ class PropModelRunner:
         self.feature_extractor = FeatureExtractor()
         self.feature_smoother = FeatureSmoother()
         self.roster_service = RosterInjuryService(use_cache=True)
+        self.redistributor = VolumeRedistributor()
 
         # Distribution models
         self.poisson_model = PoissonModel()
@@ -114,10 +116,7 @@ class PropModelRunner:
         for player in players:
             status = player_statuses.get((player.player_id, game_id))
 
-            # Skip if player is not active
-            if not status or not status.is_active:
-                continue
-
+            # Generate projections even for inactive (for redistribution)
             # Get historical features
             historical = self.feature_extractor.get_historical_features(
                 player_id=player.player_id,
@@ -137,8 +136,9 @@ class PropModelRunner:
                 target_game_id=game_id
             )
 
-            # Apply injury adjustment
-            smoothed = self._apply_injury_adjustment(smoothed, status)
+            # Apply injury adjustment (sets confidence multiplier)
+            if status:
+                smoothed = self._apply_injury_adjustment(smoothed, status)
 
             # Generate projections for each market
             for market in markets:
@@ -151,6 +151,20 @@ class PropModelRunner:
 
                 if proj:
                     projections.append(proj)
+
+        logger.info("initial_projections_generated", count=len(projections))
+
+        # Redistribute volume from inactive to active players
+        projections, redistribution_results = self.redistributor.redistribute_game_projections(
+            game_id=game_id,
+            projections=projections,
+            save_updates=False
+        )
+
+        # Log redistribution summary
+        if redistribution_results:
+            summary = self.redistributor.get_redistribution_summary(redistribution_results)
+            logger.info("redistribution_summary", **summary)
 
         # Save to database
         if save_to_db:
