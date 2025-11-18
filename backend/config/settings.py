@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     inputs_dir: Path = Field(default_factory=lambda: Path("inputs"))
     outputs_dir: Path = Field(default_factory=lambda: Path("outputs"))
     cache_dir: Path = Field(default_factory=lambda: Path("cache"))
+    data_cache_dir: Path = Field(default_factory=lambda: Path("data/cache"))
 
     # Database
     postgres_host: str = "localhost"
@@ -165,6 +166,7 @@ class Settings(BaseSettings):
             self.inputs_dir,
             self.outputs_dir,
             self.cache_dir,
+            self.data_cache_dir,
         ]:
             Path(directory).mkdir(parents=True, exist_ok=True)
 
