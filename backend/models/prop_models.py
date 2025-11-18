@@ -204,21 +204,80 @@ class PropModelRunner:
     ) -> Optional[PropProjection]:
         """Generate projection for a specific market"""
 
-        # Route to appropriate model based on market
-        if market == 'player_receptions':
-            return self._project_receptions(player, game_id, smoothed_features)
-        elif market == 'player_rec_yds':
-            return self._project_receiving_yards(player, game_id, smoothed_features)
+        # Passing markets
+        if market == 'player_pass_yds':
+            return self._project_passing_yards(player, game_id, smoothed_features)
+        elif market == 'player_pass_tds':
+            return self._project_passing_tds(player, game_id, smoothed_features)
+        elif market == 'player_pass_completions':
+            return self._project_pass_completions(player, game_id, smoothed_features)
+        elif market == 'player_pass_attempts':
+            return self._project_pass_attempts(player, game_id, smoothed_features)
+        elif market == 'player_interceptions':
+            return self._project_interceptions(player, game_id, smoothed_features)
+        elif market == 'player_pass_longest':
+            return self._project_pass_longest(player, game_id, smoothed_features)
+        elif market == 'player_300_pass_yds':
+            return self._project_milestone(player, game_id, smoothed_features, 'passing', 300)
+
+        # Rushing markets
         elif market == 'player_rush_yds':
             return self._project_rushing_yards(player, game_id, smoothed_features)
         elif market == 'player_rush_attempts':
             return self._project_rush_attempts(player, game_id, smoothed_features)
+        elif market == 'player_rush_tds':
+            return self._project_rushing_tds(player, game_id, smoothed_features)
+        elif market == 'player_rush_longest':
+            return self._project_rush_longest(player, game_id, smoothed_features)
+        elif market == 'player_100_rush_yds':
+            return self._project_milestone(player, game_id, smoothed_features, 'rushing', 100)
+
+        # Receiving markets
+        elif market == 'player_rec_yds':
+            return self._project_receiving_yards(player, game_id, smoothed_features)
+        elif market == 'player_receptions':
+            return self._project_receptions(player, game_id, smoothed_features)
+        elif market == 'player_rec_tds':
+            return self._project_receiving_tds(player, game_id, smoothed_features)
+        elif market == 'player_rec_longest':
+            return self._project_rec_longest(player, game_id, smoothed_features)
+        elif market == 'player_100_rec_yds':
+            return self._project_milestone(player, game_id, smoothed_features, 'receiving', 100)
+
+        # TD markets
         elif market == 'player_anytime_td':
             return self._project_anytime_td(player, game_id, smoothed_features)
-        elif market == 'player_pass_yds':
-            return self._project_passing_yards(player, game_id, smoothed_features)
-        elif market == 'player_pass_tds':
-            return self._project_passing_tds(player, game_id, smoothed_features)
+        elif market == 'player_first_td':
+            return self._project_first_td(player, game_id, smoothed_features)
+        elif market == 'player_last_td':
+            return self._project_last_td(player, game_id, smoothed_features)
+        elif market == 'player_total_tds':
+            return self._project_total_tds(player, game_id, smoothed_features)
+        elif market == 'player_2plus_tds':
+            return self._project_2plus_tds(player, game_id, smoothed_features)
+
+        # Combo markets
+        elif market == 'player_pass_rush_yds':
+            return self._project_pass_rush_yds(player, game_id, smoothed_features)
+        elif market == 'player_rec_rush_yds':
+            return self._project_rec_rush_yds(player, game_id, smoothed_features)
+
+        # Kicking markets
+        elif market == 'player_fg_made':
+            return self._project_fg_made(player, game_id, smoothed_features)
+        elif market == 'player_fg_longest':
+            return self._project_fg_longest(player, game_id, smoothed_features)
+        elif market == 'player_extra_points':
+            return self._project_extra_points(player, game_id, smoothed_features)
+
+        # Defense markets
+        elif market == 'player_tackles_assists':
+            return self._project_tackles_assists(player, game_id, smoothed_features)
+        elif market == 'player_sacks':
+            return self._project_sacks(player, game_id, smoothed_features)
+        elif market == 'player_def_interceptions':
+            return self._project_def_interceptions(player, game_id, smoothed_features)
+
         else:
             logger.warning("unsupported_market", market=market)
             return None
@@ -441,6 +500,617 @@ class PropModelRunner:
             dist_params=dist_params.params,
             confidence=features.confidence,
             usage_norm=1.0 if player.position == 'QB' else 0.0
+        )
+
+    # Additional Passing Projections
+    def _project_pass_completions(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project pass completions using Poisson"""
+        # Estimate completions from pass attempts and completion rate
+        # In production, extract actual completion rate from features
+        pass_attempts = features.passing_yards_per_game / 7.5  # Rough YPA estimate
+        completion_rate = 0.65  # Average completion rate
+        lambda_completions = pass_attempts * completion_rate
+
+        params = {'dist_type': 'poisson', 'lambda': lambda_completions}
+        dist_params = self.poisson_model.predict(params)
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_pass_completions',
+            team=player.team,
+            position=player.position,
+            mu=dist_params.mu,
+            sigma=dist_params.sigma,
+            dist_params=dist_params.params,
+            confidence=features.confidence,
+            usage_norm=1.0 if player.position == 'QB' else 0.0
+        )
+
+    def _project_pass_attempts(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project pass attempts using Poisson"""
+        lambda_attempts = features.passing_yards_per_game / 7.5  # Rough YPA estimate
+
+        params = {'dist_type': 'poisson', 'lambda': lambda_attempts}
+        dist_params = self.poisson_model.predict(params)
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_pass_attempts',
+            team=player.team,
+            position=player.position,
+            mu=dist_params.mu,
+            sigma=dist_params.sigma,
+            dist_params=dist_params.params,
+            confidence=features.confidence,
+            usage_norm=1.0 if player.position == 'QB' else 0.0
+        )
+
+    def _project_interceptions(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project interceptions using Poisson"""
+        # Typical INT rate ~2% of attempts
+        pass_attempts = features.passing_yards_per_game / 7.5
+        int_rate = 0.02
+        lambda_ints = pass_attempts * int_rate
+
+        params = {'dist_type': 'poisson', 'lambda': lambda_ints}
+        dist_params = self.poisson_model.predict(params)
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_interceptions',
+            team=player.team,
+            position=player.position,
+            mu=dist_params.mu,
+            sigma=dist_params.sigma,
+            dist_params=dist_params.params,
+            confidence=features.confidence,
+            usage_norm=1.0 if player.position == 'QB' else 0.0
+        )
+
+    def _project_pass_longest(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project longest pass completion"""
+        # Model longest as extreme value distribution
+        # Simplified: use empirical rule based on pass yards
+        avg_longest = 20 + (features.passing_yards_per_game / 15)  # Rough heuristic
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_pass_longest',
+            team=player.team,
+            position=player.position,
+            mu=avg_longest,
+            sigma=avg_longest * 0.3,  # 30% CV
+            dist_params={'expected_longest': avg_longest},
+            confidence=features.confidence * 0.7,  # Lower confidence for max stats
+            usage_norm=1.0 if player.position == 'QB' else 0.0
+        )
+
+    # Rushing TD Projections
+    def _project_rushing_tds(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project rushing TDs using Poisson"""
+        expected_tds = features.rushing_td_rate * features.rush_attempts_per_game
+
+        params = {'dist_type': 'poisson', 'lambda': expected_tds}
+        dist_params = self.poisson_model.predict(params)
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_rush_tds',
+            team=player.team,
+            position=player.position,
+            mu=dist_params.mu,
+            sigma=dist_params.sigma,
+            dist_params=dist_params.params,
+            confidence=features.confidence,
+            usage_norm=features.rush_share
+        )
+
+    def _project_rush_longest(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project longest rush"""
+        avg_longest = 10 + (features.rushing_yards_per_game / 5)  # Rough heuristic
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_rush_longest',
+            team=player.team,
+            position=player.position,
+            mu=avg_longest,
+            sigma=avg_longest * 0.4,  # Higher variance for rushing
+            dist_params={'expected_longest': avg_longest},
+            confidence=features.confidence * 0.7,
+            usage_norm=features.rush_share
+        )
+
+    # Receiving TD Projections
+    def _project_receiving_tds(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project receiving TDs using Poisson"""
+        expected_tds = features.receiving_td_rate * features.targets_per_game
+
+        params = {'dist_type': 'poisson', 'lambda': expected_tds}
+        dist_params = self.poisson_model.predict(params)
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_rec_tds',
+            team=player.team,
+            position=player.position,
+            mu=dist_params.mu,
+            sigma=dist_params.sigma,
+            dist_params=dist_params.params,
+            confidence=features.confidence,
+            usage_norm=features.target_share
+        )
+
+    def _project_rec_longest(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project longest reception"""
+        avg_longest = 15 + (features.receiving_yards_per_game / 6)
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_rec_longest',
+            team=player.team,
+            position=player.position,
+            mu=avg_longest,
+            sigma=avg_longest * 0.35,
+            dist_params={'expected_longest': avg_longest},
+            confidence=features.confidence * 0.7,
+            usage_norm=features.target_share
+        )
+
+    # Milestone Projections (300 pass yds, 100 rush/rec yds)
+    def _project_milestone(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures,
+        stat_type: str,
+        threshold: int
+    ) -> PropProjection:
+        """Project probability of hitting milestone yardage"""
+        # Get base yards projection
+        if stat_type == 'passing':
+            mu_yards = features.passing_yards_per_game
+            sigma_estimate = np.log(1 + (0.3 ** 2))
+            market = f'player_{threshold}_pass_yds'
+            usage = 1.0 if player.position == 'QB' else 0.0
+        elif stat_type == 'rushing':
+            mu_yards = features.rushing_yards_per_game
+            sigma_estimate = np.log(1 + (0.6 ** 2))
+            market = f'player_{threshold}_rush_yds'
+            usage = features.rush_share
+        elif stat_type == 'receiving':
+            mu_yards = features.receiving_yards_per_game
+            sigma_estimate = np.log(1 + (0.5 ** 2))
+            market = f'player_{threshold}_rec_yds'
+            usage = features.target_share
+        else:
+            raise ValueError(f"Unknown stat_type: {stat_type}")
+
+        # Calculate P(X > threshold) using lognormal CDF
+        from scipy.stats import lognorm
+        mu_log = np.log(max(mu_yards, 1))
+        prob_milestone = 1 - lognorm.cdf(threshold, s=sigma_estimate, scale=np.exp(mu_log))
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market=market,
+            team=player.team,
+            position=player.position,
+            mu=prob_milestone,
+            sigma=np.sqrt(prob_milestone * (1 - prob_milestone)),
+            dist_params={'threshold': threshold, 'prob': prob_milestone},
+            confidence=features.confidence,
+            usage_norm=usage
+        )
+
+    # TD-specific markets
+    def _project_first_td(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project first TD scorer probability"""
+        # First TD is harder - need to account for game script
+        # Approximate as anytime TD probability discounted
+        rec_td_contribution = features.receiving_td_rate * features.targets_per_game
+        rush_td_contribution = features.rushing_td_rate * features.rush_attempts_per_game
+        expected_tds = rec_td_contribution + rush_td_contribution
+
+        # Discount by ~70% for first TD (very rough heuristic)
+        prob_first_td = (1 - np.exp(-expected_tds)) * 0.15
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_first_td',
+            team=player.team,
+            position=player.position,
+            mu=prob_first_td,
+            sigma=np.sqrt(prob_first_td * (1 - prob_first_td)),
+            dist_params={'p': prob_first_td},
+            confidence=features.confidence * 0.6,  # Lower confidence
+            usage_norm=(features.target_share or 0) + (features.rush_share or 0)
+        )
+
+    def _project_last_td(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project last TD scorer probability"""
+        # Similar to first TD
+        rec_td_contribution = features.receiving_td_rate * features.targets_per_game
+        rush_td_contribution = features.rushing_td_rate * features.rush_attempts_per_game
+        expected_tds = rec_td_contribution + rush_td_contribution
+
+        prob_last_td = (1 - np.exp(-expected_tds)) * 0.15
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_last_td',
+            team=player.team,
+            position=player.position,
+            mu=prob_last_td,
+            sigma=np.sqrt(prob_last_td * (1 - prob_last_td)),
+            dist_params={'p': prob_last_td},
+            confidence=features.confidence * 0.6,
+            usage_norm=(features.target_share or 0) + (features.rush_share or 0)
+        )
+
+    def _project_total_tds(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project total TDs (passing + rushing + receiving)"""
+        # Combine all TD sources
+        expected_tds = (
+            features.passing_td_rate * features.passing_yards_per_game / 100 +
+            features.rushing_td_rate * features.rush_attempts_per_game +
+            features.receiving_td_rate * features.targets_per_game
+        )
+
+        params = {'dist_type': 'poisson', 'lambda': expected_tds}
+        dist_params = self.poisson_model.predict(params)
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_total_tds',
+            team=player.team,
+            position=player.position,
+            mu=dist_params.mu,
+            sigma=dist_params.sigma,
+            dist_params=dist_params.params,
+            confidence=features.confidence,
+            usage_norm=1.0  # Everyone can score TDs
+        )
+
+    def _project_2plus_tds(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project probability of 2+ TDs"""
+        expected_tds = (
+            features.rushing_td_rate * features.rush_attempts_per_game +
+            features.receiving_td_rate * features.targets_per_game
+        )
+
+        # P(X >= 2) = 1 - P(X = 0) - P(X = 1)
+        # For Poisson: P(X >= 2) = 1 - exp(-λ) - λ*exp(-λ)
+        prob_2plus = 1 - np.exp(-expected_tds) * (1 + expected_tds)
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_2plus_tds',
+            team=player.team,
+            position=player.position,
+            mu=prob_2plus,
+            sigma=np.sqrt(prob_2plus * (1 - prob_2plus)),
+            dist_params={'p': prob_2plus, 'lambda': expected_tds},
+            confidence=features.confidence,
+            usage_norm=(features.target_share or 0) + (features.rush_share or 0)
+        )
+
+    # Combo markets
+    def _project_pass_rush_yds(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project combined passing + rushing yards"""
+        # Sum of two lognormals is approximately lognormal
+        combined_mu = features.passing_yards_per_game + features.rushing_yards_per_game
+
+        # Simplified: treat as single lognormal
+        sigma_estimate = np.log(1 + (0.35 ** 2))
+
+        params = {
+            'dist_type': 'lognormal',
+            'mu': np.log(max(combined_mu, 1)),
+            'sigma': sigma_estimate,
+            'zero_prob': 0.0
+        }
+
+        dist_params = self.lognormal_model.predict(params)
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_pass_rush_yds',
+            team=player.team,
+            position=player.position,
+            mu=dist_params.mu,
+            sigma=dist_params.sigma,
+            dist_params=dist_params.params,
+            confidence=features.confidence,
+            usage_norm=1.0 if player.position == 'QB' else features.rush_share
+        )
+
+    def _project_rec_rush_yds(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project combined receiving + rushing yards"""
+        combined_mu = features.receiving_yards_per_game + features.rushing_yards_per_game
+
+        sigma_estimate = np.log(1 + (0.45 ** 2))
+
+        params = {
+            'dist_type': 'lognormal',
+            'mu': np.log(max(combined_mu, 1)),
+            'sigma': sigma_estimate,
+            'zero_prob': 0.05 if combined_mu < 20 else 0.0
+        }
+
+        dist_params = self.lognormal_model.predict(params)
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_rec_rush_yds',
+            team=player.team,
+            position=player.position,
+            mu=dist_params.mu,
+            sigma=dist_params.sigma,
+            dist_params=dist_params.params,
+            confidence=features.confidence,
+            usage_norm=(features.target_share or 0) + (features.rush_share or 0)
+        )
+
+    # Kicking markets
+    def _project_fg_made(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project field goals made"""
+        # Kickers average ~2 FG attempts per game
+        lambda_fg = 1.8
+
+        params = {'dist_type': 'poisson', 'lambda': lambda_fg}
+        dist_params = self.poisson_model.predict(params)
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_fg_made',
+            team=player.team,
+            position=player.position,
+            mu=dist_params.mu,
+            sigma=dist_params.sigma,
+            dist_params=dist_params.params,
+            confidence=0.8,  # Medium confidence for kickers
+            usage_norm=1.0 if player.position == 'K' else 0.0
+        )
+
+    def _project_fg_longest(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project longest field goal"""
+        # Most kickers average 40-45 yard longest FG
+        avg_longest = 42.0
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_fg_longest',
+            team=player.team,
+            position=player.position,
+            mu=avg_longest,
+            sigma=avg_longest * 0.15,
+            dist_params={'expected_longest': avg_longest},
+            confidence=0.6,  # Lower confidence for max stats
+            usage_norm=1.0 if player.position == 'K' else 0.0
+        )
+
+    def _project_extra_points(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project extra points made"""
+        # Average ~2.5 XPs per game
+        lambda_xp = 2.5
+
+        params = {'dist_type': 'poisson', 'lambda': lambda_xp}
+        dist_params = self.poisson_model.predict(params)
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_extra_points',
+            team=player.team,
+            position=player.position,
+            mu=dist_params.mu,
+            sigma=dist_params.sigma,
+            dist_params=dist_params.params,
+            confidence=0.8,
+            usage_norm=1.0 if player.position == 'K' else 0.0
+        )
+
+    # Defense markets
+    def _project_tackles_assists(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project tackles + assists"""
+        # Defensive players average 5-8 combined tackles
+        lambda_tackles = 6.5 if player.position in ['LB', 'SS', 'FS'] else 4.0
+
+        params = {'dist_type': 'poisson', 'lambda': lambda_tackles}
+        dist_params = self.poisson_model.predict(params)
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_tackles_assists',
+            team=player.team,
+            position=player.position,
+            mu=dist_params.mu,
+            sigma=dist_params.sigma,
+            dist_params=dist_params.params,
+            confidence=0.7,
+            usage_norm=1.0 if player.position in ['LB', 'SS', 'FS', 'CB', 'DE', 'DT'] else 0.0
+        )
+
+    def _project_sacks(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project sacks"""
+        # Pass rushers average 0.5-1.0 sacks per game
+        lambda_sacks = 0.7 if player.position in ['DE', 'LB'] else 0.3
+
+        params = {'dist_type': 'poisson', 'lambda': lambda_sacks}
+        dist_params = self.poisson_model.predict(params)
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_sacks',
+            team=player.team,
+            position=player.position,
+            mu=dist_params.mu,
+            sigma=dist_params.sigma,
+            dist_params=dist_params.params,
+            confidence=0.7,
+            usage_norm=1.0 if player.position in ['DE', 'LB', 'DT'] else 0.0
+        )
+
+    def _project_def_interceptions(
+        self,
+        player: Player,
+        game_id: str,
+        features: SmoothedFeatures
+    ) -> PropProjection:
+        """Project defensive interceptions"""
+        # DBs average ~0.15 INTs per game
+        lambda_ints = 0.15 if player.position in ['CB', 'SS', 'FS'] else 0.05
+
+        params = {'dist_type': 'poisson', 'lambda': lambda_ints}
+        dist_params = self.poisson_model.predict(params)
+
+        return PropProjection(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            game_id=game_id,
+            market='player_def_interceptions',
+            team=player.team,
+            position=player.position,
+            mu=dist_params.mu,
+            sigma=dist_params.sigma,
+            dist_params=dist_params.params,
+            confidence=0.6,  # Lower confidence for rare events
+            usage_norm=1.0 if player.position in ['CB', 'SS', 'FS'] else 0.0
         )
 
     def _apply_injury_adjustment(

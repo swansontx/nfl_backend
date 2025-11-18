@@ -85,13 +85,49 @@ class Settings(BaseSettings):
     # Markets to support
     supported_markets: List[str] = Field(
         default_factory=lambda: [
-            "player_anytime_td",
-            "player_rec_yds",
-            "player_rush_yds",
-            "player_receptions",
+            # Passing (QB)
             "player_pass_yds",
             "player_pass_tds",
+            "player_pass_completions",
+            "player_pass_attempts",
+            "player_interceptions",
+            "player_pass_longest",
+            "player_300_pass_yds",
+
+            # Rushing
+            "player_rush_yds",
             "player_rush_attempts",
+            "player_rush_tds",
+            "player_rush_longest",
+            "player_100_rush_yds",
+
+            # Receiving
+            "player_rec_yds",
+            "player_receptions",
+            "player_rec_tds",
+            "player_rec_longest",
+            "player_100_rec_yds",
+
+            # Touchdowns
+            "player_anytime_td",
+            "player_first_td",
+            "player_last_td",
+            "player_total_tds",
+            "player_2plus_tds",
+
+            # Combo Markets
+            "player_pass_rush_yds",
+            "player_rec_rush_yds",
+
+            # Kicking
+            "player_fg_made",
+            "player_fg_longest",
+            "player_extra_points",
+
+            # Defense
+            "player_tackles_assists",
+            "player_sacks",
+            "player_def_interceptions",
         ]
     )
 
