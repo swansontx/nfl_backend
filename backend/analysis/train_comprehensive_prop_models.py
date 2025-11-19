@@ -106,7 +106,7 @@ PROP_CONFIG = {
         'target_col': 'interceptions',
         'position_filter': ['QB'],
         'model_type': 'bernoulli',
-        'features_suffix': 'pass_yards',  # Use pass features
+        'features_suffix': 'interceptions',  # Use INT features
     },
 }
 
