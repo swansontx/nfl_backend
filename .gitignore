@@ -6,3 +6,12 @@ __pycache__/
 venv/
 .Python
 .DS_Store
+
+# Data directories
+inputs/
+outputs/*.csv
+outputs/*.parquet
+outputs/models/
+outputs/odds/
+outputs/predictions/
+outputs/reports/
