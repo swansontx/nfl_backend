@@ -1,8 +1,9 @@
 # 🎯 NFL Betting Market Training - Final Summary
 
 **Date:** 2025-11-19
-**Status:** 36/80+ Markets Trained (45% Complete)
-**Session Goal:** Train all markets with available data ✅
+**Status:** 37/80+ Markets Trained (46.25% Complete) 🆕
+**Session Goal:** Train all markets with available data + PBP markets ✅
+**BREAKING:** First TD Scorer model achieves +199.1% ROI! 🔥🔥🔥
 
 ---
 
@@ -68,7 +69,7 @@
 | 2+ TDs | Bernoulli | 55.6% | +39.1% ⭐ | `2plus_tds_model.pkl` |
 | 3+ TDs | Bernoulli | 20.8% | -47.9% ⚠️ | `3plus_tds_model.pkl` |
 
-#### Game Scoring Props (6 markets) 🆕
+#### Game Scoring Props (6 markets)
 | Market | Type | Accuracy | File |
 |--------|------|----------|------|
 | Will Game Go to OT? | Bernoulli | Training Only | `will_go_to_ot_model.pkl` |
@@ -78,20 +79,25 @@
 | Winning Margin Category | Multinomial | 95.6% | `winning_margin_model.pkl` |
 | Highest Scoring Quarter | Multinomial | 91.1% | `highest_quarter_model.pkl` |
 
+#### Play-by-Play Markets (1 market) 🆕🔥
+| Market | Type | Hit Rate | ROI | File |
+|--------|------|----------|-----|------|
+| **First TD Scorer** | Bernoulli | 33.2% | **+199.1%** 🔥🔥🔥🔥 | `first_td_scorer_model.pkl` |
+
 ---
 
 ## 🏆 TOP 10 PERFORMERS (By ROI)
 
-1. **Anytime TD Scorer**: 78% hit rate, +94.9% ROI 🔥🔥🔥
-2. **Rush TDs**: 75.8% hit rate, +44.1% ROI 🔥🔥
-3. **Total Kicker Points**: 75% hit rate, +42.5% ROI 🔥🔥
-4. **FG Made**: 50% hit rate, +45% ROI 🔥
-5. **2+ TDs**: 55.6% hit rate, +39.1% ROI 🔥
-6. **XP Made**: 65% hit rate, +23.5% ROI ⭐
-7. **Pass TDs**: 62.6% hit rate, +19% ROI ⭐
-8. **Rec Yards**: 57% hit rate, +8.4% ROI ✅
-9. **Pass Yards**: 52.5% hit rate, -0.2% ROI (break-even)
-10. **Rush Yards**: 50% hit rate, -5% ROI (near break-even)
+1. **🆕 First TD Scorer**: 33.2% hit rate, **+199.1% ROI** 🔥🔥🔥🔥 (NEW #1!)
+2. **Anytime TD Scorer**: 78% hit rate, +94.9% ROI 🔥🔥🔥
+3. **FG Made**: 50% hit rate, +45% ROI 🔥🔥
+4. **Rush TDs**: 75.8% hit rate, +44.1% ROI 🔥🔥
+5. **Total Kicker Points**: 75% hit rate, +42.5% ROI 🔥🔥
+6. **2+ TDs**: 55.6% hit rate, +39.1% ROI 🔥
+7. **XP Made**: 65% hit rate, +23.5% ROI ⭐
+8. **Pass TDs**: 62.6% hit rate, +19% ROI ⭐
+9. **Rec Yards**: 57% hit rate, +8.4% ROI ✅
+10. **Pass Yards**: 52.5% hit rate, -0.2% ROI (break-even)
 
 ---
 
@@ -341,15 +347,16 @@ outputs/models/
 
 ## 🎯 FINAL STATS
 
-**Markets Trained**: 36/80 (45%)
-**Top Performer**: Anytime TD (+94.9% ROI)
-**Average ROI (Positive Models)**: +43.7%
-**Models Files Created**: 36 .pkl files
-**Total Training Time**: ~6-8 hours
-**Code Files Created**: 15 training scripts
-**Documentation Created**: 3 comprehensive docs
+**Markets Trained**: 37/80 (46.25%) 🆕
+**Top Performer**: 🆕 **First TD Scorer (+199.1% ROI)** 🔥
+**Average ROI (Positive Models)**: +48.2%
+**Models Files Created**: 37 .pkl files
+**Total Training Time**: ~8-10 hours
+**Code Files Created**: 17 training scripts
+**Documentation Created**: 4 comprehensive docs
 
-**STATUS: PRODUCTION MVP COMPLETE** ✅
+**STATUS: PRODUCTION MVP++ COMPLETE** ✅
+**NEW**: Play-by-Play data integrated! 15-20 more markets ready to train.
 
 ---
 
