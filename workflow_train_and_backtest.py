@@ -34,9 +34,11 @@ from typing import List, Optional
 sys.path.insert(0, str(Path(__file__).parent))
 
 from backend.ingestion.fetch_nflverse import fetch_nflverse
+from backend.ingestion.fetch_injury_data import fetch_injury_data, merge_injury_into_features
 from backend.features.extract_player_pbp_features import extract_player_features
 from backend.modeling.train_passing_model import train_passing_model
 from backend.calib_backtest.run_backtest import run_backtest
+from backend.calib_backtest.run_enhanced_backtest import run_enhanced_backtest
 
 # Setup logging
 logging.basicConfig(
@@ -72,6 +74,7 @@ class WorkflowRunner:
         (self.outputs_dir / 'features').mkdir(exist_ok=True)
         (self.outputs_dir / 'models').mkdir(exist_ok=True)
         (self.outputs_dir / 'backtest').mkdir(exist_ok=True)
+        (self.outputs_dir / 'injuries').mkdir(exist_ok=True)
 
     def run_full_pipeline(
         self,
@@ -113,24 +116,33 @@ class WorkflowRunner:
         try:
             # Step 1: Ingest nflverse data
             if not skip_ingestion and not backtest_only:
-                logger.info("\n[STEP 1/4] Ingesting nflverse data...")
+                logger.info("\n[STEP 1/5] Ingesting nflverse data...")
                 self._ingest_data(seasons)
                 results['steps_completed'].append('ingestion')
             else:
-                logger.info("\n[STEP 1/4] Skipping ingestion (using existing data)")
+                logger.info("\n[STEP 1/5] Skipping ingestion (using existing data)")
 
             # Step 2: Extract features
             if not backtest_only:
-                logger.info("\n[STEP 2/4] Extracting player features with advanced metrics...")
+                logger.info("\n[STEP 2/5] Extracting player features with advanced metrics...")
                 feature_files = self._extract_features(seasons)
                 results['feature_files'] = [str(f) for f in feature_files]
                 results['steps_completed'].append('feature_extraction')
             else:
-                logger.info("\n[STEP 2/4] Skipping feature extraction (backtest only mode)")
+                logger.info("\n[STEP 2/5] Skipping feature extraction (backtest only mode)")
 
-            # Step 3: Train models
+            # Step 3: Fetch and merge injury data
             if not backtest_only:
-                logger.info("\n[STEP 3/4] Training passing yards prediction model...")
+                logger.info("\n[STEP 3/5] Fetching and merging injury data...")
+                injury_files = self._fetch_and_merge_injuries(seasons)
+                results['injury_files'] = [str(f) for f in injury_files]
+                results['steps_completed'].append('injury_integration')
+            else:
+                logger.info("\n[STEP 3/5] Skipping injury data (backtest only mode)")
+
+            # Step 4: Train models
+            if not backtest_only:
+                logger.info("\n[STEP 4/5] Training passing yards prediction model...")
                 model_info = self._train_models(seasons)
                 results['model_info'] = model_info
                 results['steps_completed'].append('training')
@@ -138,17 +150,17 @@ class WorkflowRunner:
             else:
                 if not model_path:
                     raise ValueError("model_path required for backtest_only mode")
-                logger.info("\n[STEP 3/4] Skipping training (using existing model)")
+                logger.info("\n[STEP 4/5] Skipping training (using existing model)")
                 trained_model_path = model_path
 
-            # Step 4: Run backtest
+            # Step 5: Run enhanced backtest with injury awareness
             if not train_only:
-                logger.info("\n[STEP 4/4] Running comprehensive backtest...")
+                logger.info("\n[STEP 5/5] Running enhanced backtest with injury-aware evaluation...")
                 backtest_results = self._run_backtest(seasons, trained_model_path)
                 results['backtest_results'] = backtest_results
                 results['steps_completed'].append('backtest')
             else:
-                logger.info("\n[STEP 4/4] Skipping backtest (train only mode)")
+                logger.info("\n[STEP 5/5] Skipping backtest (train only mode)")
 
             # Workflow complete
             workflow_end = datetime.now()
@@ -234,6 +246,57 @@ class WorkflowRunner:
 
         return feature_files
 
+    def _fetch_and_merge_injuries(self, seasons: List[int]) -> List[Path]:
+        """Fetch injury data and merge into player features.
+
+        Args:
+            seasons: List of seasons to process
+
+        Returns:
+            List of merged feature file paths
+        """
+        merged_files = []
+
+        for season in seasons:
+            logger.info(f"  Fetching injury data for {season}...")
+
+            # Fetch injury data from nflverse
+            injury_output_dir = self.outputs_dir / 'injuries'
+            try:
+                injury_map = fetch_injury_data(
+                    season=season,
+                    output_dir=injury_output_dir,
+                    cache_dir=self.cache_dir
+                )
+
+                # Merge injury data into features
+                features_file = self.outputs_dir / 'features' / f"{season}_player_features.json"
+                if not features_file.exists():
+                    logger.warning(f"  ⚠️  Features file not found: {features_file}")
+                    continue
+
+                injury_file = injury_output_dir / f"{season}_injuries.json"
+                merged_output = self.outputs_dir / 'features' / f"{season}_player_features_with_injuries.json"
+
+                merge_injury_into_features(
+                    features_file=features_file,
+                    injury_file=injury_file,
+                    output_file=merged_output
+                )
+
+                merged_files.append(merged_output)
+                logger.info(f"  ✓ Merged features with injury data: {merged_output}")
+
+            except Exception as e:
+                logger.warning(f"  ⚠️  Failed to fetch/merge injury data for {season}: {e}")
+                logger.warning(f"  ⚠️  Continuing with features without injury data")
+                # Fall back to original features
+                features_file = self.outputs_dir / 'features' / f"{season}_player_features.json"
+                if features_file.exists():
+                    merged_files.append(features_file)
+
+        return merged_files
+
     def _train_models(self, seasons: List[int]) -> dict:
         """Train passing yards prediction model.
 
@@ -247,7 +310,11 @@ class WorkflowRunner:
         train_season = max(seasons)
         logger.info(f"  Training on {train_season} season data...")
 
-        features_file = self.outputs_dir / 'features' / f"{train_season}_player_features.json"
+        # Try merged features with injury data first, fall back to regular features
+        features_file = self.outputs_dir / 'features' / f"{train_season}_player_features_with_injuries.json"
+        if not features_file.exists():
+            features_file = self.outputs_dir / 'features' / f"{train_season}_player_features.json"
+
         if not features_file.exists():
             raise FileNotFoundError(f"Features file not found: {features_file}")
 
@@ -281,7 +348,7 @@ class WorkflowRunner:
             raise
 
     def _run_backtest(self, seasons: List[int], model_path: Path) -> dict:
-        """Run backtest on trained model.
+        """Run enhanced backtest with injury-aware evaluation.
 
         Args:
             seasons: List of seasons to backtest
@@ -294,29 +361,56 @@ class WorkflowRunner:
         backtest_season = max(seasons)
         logger.info(f"  Backtesting on {backtest_season} season...")
 
-        features_file = self.outputs_dir / 'features' / f"{backtest_season}_player_features.json"
+        # Try merged features with injury data first, fall back to regular features
+        features_file = self.outputs_dir / 'features' / f"{backtest_season}_player_features_with_injuries.json"
+        if not features_file.exists():
+            features_file = self.outputs_dir / 'features' / f"{backtest_season}_player_features.json"
+
         if not features_file.exists():
             raise FileNotFoundError(f"Features file not found: {features_file}")
 
-        # For actuals, we'll use the same features file (it contains actual yards)
-        actuals_file = features_file
+        # Check for injury data
+        injury_file = self.outputs_dir / 'injuries' / f"{backtest_season}_injuries.json"
 
-        report_output = self.outputs_dir / 'backtest' / f"backtest_report_{backtest_season}.json"
+        report_output = self.outputs_dir / 'backtest' / f"enhanced_backtest_report_{backtest_season}.json"
 
         try:
-            results = run_backtest(
-                season=backtest_season,
-                model_path=model_path,
-                features_file=features_file,
-                actuals_file=actuals_file,
-                output_report=report_output,
-                weeks=None  # All weeks
-            )
+            # Use enhanced backtest if injury data available
+            if injury_file.exists():
+                results = run_enhanced_backtest(
+                    season=backtest_season,
+                    model_path=model_path,
+                    features_file=features_file,
+                    injury_file=injury_file,
+                    output_report=report_output,
+                    weeks=None  # All weeks
+                )
 
-            logger.info(f"  ✓ Backtest complete: {report_output}")
-            logger.info(f"  ✓ Test RMSE: {results.get('accuracy_metrics', {}).get('rmse', 0):.2f}")
-            logger.info(f"  ✓ Test MAE: {results.get('accuracy_metrics', {}).get('mae', 0):.2f}")
-            logger.info(f"  ✓ Test R²: {results.get('accuracy_metrics', {}).get('r_squared', 0):.3f}")
+                logger.info(f"  ✓ Enhanced backtest complete (with injury data): {report_output}")
+                logger.info(f"  ✓ Overall RMSE: {results.get('overall_metrics', {}).get('rmse', 0):.2f}")
+                logger.info(f"  ✓ Overall MAE: {results.get('overall_metrics', {}).get('mae', 0):.2f}")
+                logger.info(f"  ✓ Overall R²: {results.get('overall_metrics', {}).get('r_squared', 0):.3f}")
+                logger.info(f"  ✓ DNP Rate: {results.get('dnp_rate', 0)*100:.1f}%")
+                logger.info(f"  ✓ Expected DNP caught: {results.get('dnp_summary', {}).get('expected_dnp', 0)}")
+            else:
+                # Fall back to basic backtest
+                logger.warning(f"  ⚠️  Injury data not found, using basic backtest")
+                actuals_file = features_file
+                report_output = self.outputs_dir / 'backtest' / f"backtest_report_{backtest_season}.json"
+
+                results = run_backtest(
+                    season=backtest_season,
+                    model_path=model_path,
+                    features_file=features_file,
+                    actuals_file=actuals_file,
+                    output_report=report_output,
+                    weeks=None
+                )
+
+                logger.info(f"  ✓ Backtest complete: {report_output}")
+                logger.info(f"  ✓ Test RMSE: {results.get('accuracy_metrics', {}).get('rmse', 0):.2f}")
+                logger.info(f"  ✓ Test MAE: {results.get('accuracy_metrics', {}).get('mae', 0):.2f}")
+                logger.info(f"  ✓ Test R²: {results.get('accuracy_metrics', {}).get('r_squared', 0):.3f}")
 
             return results
 

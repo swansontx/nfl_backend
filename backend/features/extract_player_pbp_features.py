@@ -358,6 +358,20 @@ def _save_game_features(player_features: Dict, game_features: Dict, game_id: str
         features['season'] = season
         features['week'] = week
 
+        # CRITICAL: Track if player was active (had any plays)
+        # Players with 0 total_plays were DNP (injury, inactive, etc.)
+        # Don't penalize models for DNP - exclude from evaluation
+        total_plays = features.get('total_plays', 0)
+        features['is_active'] = total_plays > 0
+
+        # Infer DNP reason from stats
+        # If player had 0 plays, they didn't play (could be injury, rest, inactive)
+        # This will be enhanced later with injury data integration
+        if total_plays == 0:
+            features['dnp_reason'] = 'inactive'  # Generic reason, refined later
+        else:
+            features['dnp_reason'] = None
+
         player_features[player_id].append(features)
 
 
