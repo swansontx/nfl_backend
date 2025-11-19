@@ -54,7 +54,7 @@ except Exception as e:
 # Load rosters
 print("2️⃣ Loading player rosters...")
 try:
-    rosters = nfl.import_rosters([2024])
+    rosters = nfl.import_seasonal_rosters([2024])
     print(f"   ✅ Loaded {len(rosters)} players")
 except Exception as e:
     print(f"   ❌ Error: {e}")
@@ -89,16 +89,13 @@ with get_db() as session:
                 away_team=game_row['away_team'],
                 home_team=game_row['home_team'],
                 game_date=game_row['gameday'],
-                gametime=game_row.get('gametime'),
                 stadium=game_row.get('stadium'),
-                location=game_row.get('location'),
                 roof=game_row.get('roof'),
                 surface=game_row.get('surface'),
                 temp=game_row.get('temp'),
                 wind=game_row.get('wind'),
                 away_score=game_row.get('away_score'),
-                home_score=game_row.get('home_score'),
-                completed=game_row.get('away_score') is not None
+                home_score=game_row.get('home_score')
             )
 
             session.add(game)
@@ -125,16 +122,15 @@ with get_db() as session:
             # Create player
             player = Player(
                 player_id=player_id,
-                player_name=player_row.get('player_name') or player_row.get('full_name'),
+                display_name=player_row.get('player_name') or player_row.get('full_name'),
+                first_name=player_row.get('first_name'),
+                last_name=player_row.get('last_name'),
                 team=player_row.get('team'),
                 position=player_row.get('position'),
-                jersey_number=player_row.get('jersey_number'),
-                status=player_row.get('status', 'ACT'),
                 height=player_row.get('height'),
                 weight=player_row.get('weight'),
                 birth_date=player_row.get('birth_date'),
-                college=player_row.get('college'),
-                years_exp=player_row.get('years_exp')
+                college=player_row.get('college')
             )
 
             session.add(player)
@@ -159,7 +155,7 @@ with get_db() as session:
     print()
     print("Upcoming Games:")
     upcoming = session.query(Game).filter(
-        Game.completed == False,
+        Game.away_score == None,
         Game.season == 2024
     ).order_by(Game.week, Game.game_date).limit(5).all()
 
