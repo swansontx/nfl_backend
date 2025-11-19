@@ -965,6 +965,294 @@ def get_game_boxscore(game_id: str):
     }
 
 
+@app.get('/api/v1/teams/{team_id}/stats', tags=['Teams'])
+def get_team_stats(team_id: str, season: int = 2024):
+    """Get team statistics for a season.
+
+    Args:
+        team_id: Team abbreviation
+        season: Season year (default: 2024)
+
+    Returns:
+        Team offensive/defensive stats and rankings
+    """
+    team = get_team(team_id.upper())
+    if not team:
+        raise HTTPException(status_code=404, detail=f'Team not found: {team_id}')
+
+    # TODO: Load actual team stats from database or computed files
+    # For now, return structure with mock data
+    return {
+        'team_id': team_id.upper(),
+        'season': season,
+        'offensive_stats': {
+            'points_per_game': 0.0,
+            'yards_per_game': 0.0,
+            'pass_yards_per_game': 0.0,
+            'rush_yards_per_game': 0.0,
+            'turnovers_per_game': 0.0,
+        },
+        'defensive_stats': {
+            'points_allowed_per_game': 0.0,
+            'yards_allowed_per_game': 0.0,
+            'sacks': 0,
+            'turnovers_forced': 0,
+            'interceptions': 0,
+        },
+        'rankings': {
+            'offensive_rank': None,
+            'defensive_rank': None,
+            'scoring_rank': None,
+            'pass_offense_rank': None,
+            'rush_offense_rank': None,
+            'pass_defense_rank': None,
+            'rush_defense_rank': None,
+        },
+        'record': {
+            'wins': 0,
+            'losses': 0,
+            'ties': 0,
+        }
+    }
+
+
+@app.get('/api/v1/games', tags=['Games'])
+def list_games(
+    week: Optional[int] = None,
+    season: int = 2024,
+    team: Optional[str] = None,
+    limit: int = 100
+):
+    """List NFL games (filterable by week, season, team).
+
+    Args:
+        week: Filter by week number
+        season: Season year (default: 2024)
+        team: Filter by team abbreviation
+        limit: Max number of games to return
+
+    Returns:
+        List of games matching filters
+    """
+    # Load schedule for the season
+    games = schedule_loader.load_schedule(season)
+
+    # Apply filters
+    filtered_games = games
+
+    if week is not None:
+        filtered_games = [g for g in filtered_games if g.week == week]
+
+    if team:
+        team_upper = team.upper()
+        filtered_games = [
+            g for g in filtered_games
+            if g.home_team == team_upper or g.away_team == team_upper
+        ]
+
+    # Limit results
+    filtered_games = filtered_games[:limit]
+
+    # Convert to dict
+    games_list = [
+        {
+            'game_id': g.game_id,
+            'week': g.week,
+            'season': g.season,
+            'game_type': g.game_type,
+            'game_date': g.gameday,
+            'game_time': g.gametime,
+            'home_team': g.home_team,
+            'away_team': g.away_team,
+            'home_score': g.home_score,
+            'away_score': g.away_score,
+            'completed': g.away_score is not None and g.home_score is not None,
+            'stadium': get_team(g.home_team).get('stadium', {}).get('name') if get_team(g.home_team) else None,
+        }
+        for g in filtered_games
+    ]
+
+    return {
+        'season': season,
+        'week': week,
+        'team': team,
+        'count': len(games_list),
+        'games': games_list
+    }
+
+
+@app.get('/api/v1/games/{game_id}', tags=['Games'])
+def get_game_details(game_id: str):
+    """Get detailed information for a specific game.
+
+    Args:
+        game_id: Game ID (format: YYYY_WW_AWAY_HOME)
+
+    Returns:
+        Comprehensive game details
+    """
+    # Parse game_id to extract season
+    try:
+        parts = game_id.split('_')
+        if len(parts) < 4:
+            raise HTTPException(status_code=400, detail='Invalid game_id format')
+
+        season = int(parts[0])
+        week = int(parts[1])
+        away_team = parts[2]
+        home_team = parts[3]
+    except:
+        raise HTTPException(status_code=400, detail='Invalid game_id format')
+
+    # Load schedule and find the game
+    games = schedule_loader.load_schedule(season)
+    game = next((g for g in games if g.game_id == game_id), None)
+
+    if not game:
+        raise HTTPException(status_code=404, detail=f'Game not found: {game_id}')
+
+    # Get team info
+    home_team_info = get_team(game.home_team)
+    away_team_info = get_team(game.away_team)
+
+    return {
+        'game_id': game.game_id,
+        'week': game.week,
+        'season': game.season,
+        'game_type': game.game_type,
+        'home_team': game.home_team,
+        'away_team': game.away_team,
+        'home_team_name': home_team_info.get('name') if home_team_info else game.home_team,
+        'away_team_name': away_team_info.get('name') if away_team_info else game.away_team,
+        'game_date': game.gameday,
+        'game_time': game.gametime,
+        'stadium': home_team_info.get('stadium', {}).get('name') if home_team_info else None,
+        'roof': home_team_info.get('stadium', {}).get('roof') if home_team_info else None,
+        'surface': home_team_info.get('stadium', {}).get('surface') if home_team_info else None,
+        'home_score': game.home_score,
+        'away_score': game.away_score,
+        'completed': game.away_score is not None and game.home_score is not None,
+        # TODO: Add betting lines when available
+        'spread': None,
+        'total': None,
+        'moneyline_home': None,
+        'moneyline_away': None,
+    }
+
+
+@app.get('/api/v1/players', tags=['Players'])
+def search_players(
+    team: Optional[str] = None,
+    position: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 50
+):
+    """Search and filter NFL players.
+
+    Args:
+        team: Filter by team abbreviation
+        position: Filter by position (QB, RB, WR, TE, etc.)
+        search: Search by player name
+        limit: Max number of players to return
+
+    Returns:
+        List of players matching filters
+    """
+    # TODO: Load from player lookup JSON or database
+    # For now, return empty structure
+    return {
+        'filters': {
+            'team': team,
+            'position': position,
+            'search': search,
+        },
+        'count': 0,
+        'players': []
+    }
+
+
+@app.get('/api/v1/players/{player_id}', tags=['Players'])
+def get_player_details(player_id: str):
+    """Get detailed information for a specific player.
+
+    Args:
+        player_id: Player ID (nflverse format)
+
+    Returns:
+        Player details and metadata
+    """
+    # TODO: Load from player lookup JSON or database
+    return {
+        'player_id': player_id,
+        'player_name': 'Unknown Player',
+        'position': None,
+        'team': None,
+        'number': None,
+        'height': None,
+        'weight': None,
+        'college': None,
+        'draft_year': None,
+    }
+
+
+@app.get('/api/v1/players/{player_id}/stats', tags=['Players'])
+def get_player_stats(player_id: str, season: int = 2024):
+    """Get player statistics for a season.
+
+    Args:
+        player_id: Player ID (nflverse format)
+        season: Season year (default: 2024)
+
+    Returns:
+        Season statistics by position
+    """
+    # TODO: Load from player_stats CSV or database
+    return {
+        'player_id': player_id,
+        'season': season,
+        'games_played': 0,
+        'passing': {
+            'attempts': 0,
+            'completions': 0,
+            'yards': 0,
+            'touchdowns': 0,
+            'interceptions': 0,
+        },
+        'rushing': {
+            'attempts': 0,
+            'yards': 0,
+            'touchdowns': 0,
+        },
+        'receiving': {
+            'targets': 0,
+            'receptions': 0,
+            'yards': 0,
+            'touchdowns': 0,
+        }
+    }
+
+
+@app.get('/api/v1/players/{player_id}/gamelogs', tags=['Players'])
+def get_player_gamelogs(player_id: str, season: int = 2024, limit: int = 20):
+    """Get game-by-game performance logs for a player.
+
+    Args:
+        player_id: Player ID (nflverse format)
+        season: Season year (default: 2024)
+        limit: Max number of games to return
+
+    Returns:
+        List of game performances
+    """
+    # TODO: Load from player_stats CSV (filtered by week)
+    return {
+        'player_id': player_id,
+        'season': season,
+        'count': 0,
+        'games': []
+    }
+
+
 if __name__ == '__main__':
     import uvicorn
     uvicorn.run(app, host='0.0.0.0', port=8000)
