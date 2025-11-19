@@ -1,7 +1,7 @@
 # Components and Interfaces
 
 - ingestion/
-  - fetch_nflverse.py -> outputs: inputs/stats_player_week_YYYY.csv, inputs/player_lookup.json
+  - fetch_nflverse.py -> outputs: inputs/stats_player_week_YYYY.csv, inputs/player_lookup_YYYY.json
   - fetch_odds.py -> outputs: cache/web_event_<id>.json
   - fetch_injuries.py -> outputs: outputs/injuries_YYYYMMDD_parsed.json
 

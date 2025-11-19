@@ -1,4 +1,22 @@
+# API and Web Framework
 fastapi
 uvicorn[standard]
 pydantic
-pytest
+
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# HTTP Requests (for odds API, injuries, etc.)
+requests>=2.31.0
+
+# Machine Learning (for modeling and calibration)
+scikit-learn>=1.3.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+
+# Optional: Fuzzy name matching for player_map
+# fuzzywuzzy>=0.18.0
+# python-Levenshtein>=0.21.0

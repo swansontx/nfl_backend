@@ -16,12 +16,38 @@ import argparse
 
 
 def fetch_nflverse(year: int, out_dir: Path):
-    # placeholder: implement download logic or local copy
+    """Fetch nflverse data for a given season.
+
+    Downloads and processes nflverse CSV files including:
+    - Play-by-play data
+    - Player stats by week
+    - Player lookup/roster data
+
+    TODO: Implement actual download from nflverse repository
+    Example source: https://github.com/nflverse/nflverse-data/releases
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
-    # TODO: download and unpack
-    sample = out_dir / f"stats_player_week_{year}.csv"
-    sample.write_text('player_id,week,team,stat\n')
-    print(f'Wrote sample {sample}')
+
+    # TODO: download and unpack from nflverse
+    # import requests
+    # response = requests.get(f'https://github.com/nflverse/nflverse-data/releases/download/player_stats/player_stats_{year}.csv')
+    # with open(out_dir / f'stats_player_week_{year}.csv', 'wb') as f:
+    #     f.write(response.content)
+
+    # Create sample CSV with proper schema
+    sample_stats = out_dir / f"stats_player_week_{year}.csv"
+    sample_stats.write_text(
+        'player_id,season,season_type,week,game_id,team,opponent,'
+        'completions,attempts,passing_yards,passing_tds,interceptions,'
+        'sacks,sack_yards,rushing_attempts,rushing_yards,rushing_tds,'
+        'receptions,targets,receiving_yards,receiving_tds\n'
+    )
+    print(f'Wrote sample stats CSV: {sample_stats}')
+
+    # Create sample player lookup
+    sample_lookup = out_dir / f"player_lookup_{year}.json"
+    sample_lookup.write_text('{}')
+    print(f'Wrote sample player lookup: {sample_lookup}')
 
 
 if __name__ == '__main__':
