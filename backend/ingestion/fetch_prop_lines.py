@@ -1,20 +1,38 @@
 """Fetch prop betting lines from The Odds API with historical snapshot tracking.
 
-Downloads player prop lines (passing yards, rushing yards, receiving yards, TDs, etc.)
-from major sportsbooks and tracks line movement over time for trending analysis.
+Downloads comprehensive player prop lines from major sportsbooks and tracks line movement
+over time for trending analysis and line shopping.
 
-API Documentation: https://the-odds-api.com/
+API Documentation: https://the-odds-api.com/sports-odds-data/betting-markets.html
 
-Prop Markets Available:
-- player_pass_yds (QB passing yards)
-- player_pass_tds (QB passing TDs)
-- player_pass_completions (QB completions)
-- player_rush_yds (RB/QB rushing yards)
-- player_rush_tds (Rushing TDs)
-- player_receptions (Receptions)
-- player_reception_yds (Receiving yards)
-- player_reception_tds (Receiving TDs)
-- player_anytime_td (Anytime TD scorer)
+Prop Markets Tracked (30+ markets):
+
+PASSING PROPS:
+- player_pass_yds, player_pass_tds, player_pass_completions
+- player_pass_attempts, player_pass_interceptions
+- player_pass_longest_completion
+
+RUSHING PROPS:
+- player_rush_yds, player_rush_tds, player_rush_attempts
+- player_rush_longest
+
+RECEIVING PROPS:
+- player_receptions, player_reception_yds, player_reception_tds
+- player_reception_longest
+
+KICKING PROPS:
+- player_kicking_points, player_field_goals, player_field_goals_made
+
+TOUCHDOWN PROPS:
+- player_anytime_td, player_first_td, player_last_td
+- 1st_td_scorer, last_td_scorer
+
+DEFENSIVE PROPS:
+- player_tackles_assists, player_sacks, player_interceptions
+
+COMBO PROPS:
+- player_pass_rush_yds, player_pass_tds_rush_tds
+- player_receptions_rush_yds, player_rush_reception_yds
 
 Line Movement Tracking:
 - Captures historical snapshots with timestamps
@@ -22,6 +40,11 @@ Line Movement Tracking:
 - Calculates line movement (e.g., +2.5 yards over 7 days)
 - Stores vig/juice for both OVER and UNDER sides
 - Identifies "hot movers" (2+ point moves)
+- Compares across 6 sportsbooks for line shopping
+
+Sportsbooks:
+- DraftKings (primary)
+- FanDuel, Caesars, BetMGM, PointsBet, Unibet (comparison)
 
 Output: JSON files with timestamped snapshots for trending analysis
 """
@@ -49,26 +72,64 @@ class PropLineFetcher:
         self.base_url = "https://api.the-odds-api.com/v4"
         self.sport = "americanfootball_nfl"
 
-        # Prop markets to fetch
+        # Prop markets to fetch (comprehensive list from Odds API)
         self.prop_markets = [
+            # Passing props
             'player_pass_yds',
             'player_pass_tds',
             'player_pass_completions',
+            'player_pass_attempts',
+            'player_pass_interceptions',
+            'player_pass_longest_completion',
+
+            # Rushing props
             'player_rush_yds',
             'player_rush_tds',
+            'player_rush_attempts',
+            'player_rush_longest',
+
+            # Receiving props
             'player_receptions',
             'player_reception_yds',
-            'player_anytime_td'
+            'player_reception_tds',
+            'player_reception_longest',
+
+            # Kicking props
+            'player_kicking_points',
+            'player_field_goals',
+            'player_field_goals_made',
+
+            # Touchdown props
+            'player_anytime_td',
+            'player_first_td',
+            'player_last_td',
+            '1st_td_scorer',
+            'last_td_scorer',
+
+            # Defensive props
+            'player_tackles_assists',
+            'player_sacks',
+            'player_interceptions',
+
+            # Combo props
+            'player_pass_rush_yds',
+            'player_pass_tds_rush_tds',
+            'player_receptions_rush_yds',
+            'player_rush_reception_yds'
         ]
 
-        # Sportsbooks to include (major US books)
+        # Sportsbooks to include (DraftKings primary, others for comparison)
+        # Note: User preference is DraftKings but we compare across books for:
+        # - Line shopping (find best available line)
+        # - Movement detection (sharp money vs public)
+        # - Vig comparison (which book has best juice)
         self.bookmakers = [
-            'draftkings',
-            'fanduel',
-            'williamhill_us',  # Caesars
-            'betmgm',
-            'pointsbetus',
-            'unibet_us'
+            'draftkings',      # Primary book (user preference)
+            'fanduel',         # Compare for line shopping
+            'williamhill_us',  # Caesars - compare for movement
+            'betmgm',          # Compare for sharp action
+            'pointsbetus',     # Compare
+            'unibet_us'        # Compare
         ]
 
     def fetch_upcoming_games(self) -> List[Dict]:
@@ -442,6 +503,80 @@ class PropLineFetcher:
                 return prop
 
         return None
+
+    def get_best_line(self, props: List[Dict], side: str = 'over') -> Optional[Dict]:
+        """Find best line across all sportsbooks.
+
+        Args:
+            props: List of prop dicts for same player/market
+            side: 'over' or 'under'
+
+        Returns:
+            Prop dict with best line (lowest for over, highest for under)
+        """
+        if not props:
+            return None
+
+        if side == 'over':
+            # For OVER: want lowest line (easier to hit)
+            return min(props, key=lambda p: p.get('line', float('inf')))
+        else:
+            # For UNDER: want highest line (easier to hit)
+            return max(props, key=lambda p: p.get('line', float('-inf')))
+
+    def get_draftkings_line(self, props: List[Dict]) -> Optional[Dict]:
+        """Get DraftKings line (user's primary book).
+
+        Args:
+            props: List of prop dicts for same player/market
+
+        Returns:
+            DraftKings prop dict if available
+        """
+        for prop in props:
+            if prop.get('bookmaker') == 'draftkings':
+                return prop
+        return None
+
+    def compare_books(self, props: List[Dict]) -> Dict:
+        """Compare lines across sportsbooks for line shopping.
+
+        Args:
+            props: List of prop dicts for same player/market (different books)
+
+        Returns:
+            Dict with DraftKings line, best line, and line shopping analysis
+        """
+        dk_line = self.get_draftkings_line(props)
+        best_over = self.get_best_line(props, 'over')
+        best_under = self.get_best_line(props, 'under')
+
+        # Calculate line shopping value
+        line_shopping_value = {}
+        if dk_line and best_over:
+            line_shopping_value['over'] = {
+                'dk_line': dk_line.get('line'),
+                'best_line': best_over.get('line'),
+                'best_book': best_over.get('bookmaker'),
+                'edge': dk_line.get('line') - best_over.get('line'),  # Positive = DK worse
+                'recommendation': 'Shop around' if dk_line.get('line') > best_over.get('line') else 'DK is best'
+            }
+
+        if dk_line and best_under:
+            line_shopping_value['under'] = {
+                'dk_line': dk_line.get('line'),
+                'best_line': best_under.get('line'),
+                'best_book': best_under.get('bookmaker'),
+                'edge': best_under.get('line') - dk_line.get('line'),  # Positive = other book better
+                'recommendation': 'Shop around' if best_under.get('line') > dk_line.get('line') else 'DK is best'
+            }
+
+        return {
+            'draftkings': dk_line,
+            'best_over': best_over,
+            'best_under': best_under,
+            'line_shopping': line_shopping_value
+        }
 
     def get_trending_props(
         self,
