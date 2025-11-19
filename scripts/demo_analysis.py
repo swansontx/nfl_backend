@@ -35,10 +35,17 @@ try:
             print("3. Models trained")
             sys.exit(1)
 
+        # Extract game data while session is active
+        game_id = game.game_id
+        away_team = game.away_team
+        home_team = game.home_team
+        week = game.week
+        season = game.season
+
         print(f"\n📊 Analyzing Game:")
-        print(f"   {game.away_team} @ {game.home_team}")
-        print(f"   Week {game.week}, {game.season}")
-        print(f"   Game ID: {game.game_id}")
+        print(f"   {away_team} @ {home_team}")
+        print(f"   Week {week}, {season}")
+        print(f"   Game ID: {game_id}")
         print()
 
     # Try to generate recommendations
@@ -49,7 +56,7 @@ try:
         scorer = RecommendationScorer(min_confidence=0.6)
 
         recs = scorer.recommend_props(
-            game_id=game.game_id,
+            game_id=game_id,
             limit=10,
             include_reasoning=True
         )
@@ -99,7 +106,7 @@ try:
         print("=" * 80)
 
         parlays = scorer.recommend_parlays(
-            game_id=game.game_id,
+            game_id=game_id,
             parlay_size=3,
             limit=3
         )
