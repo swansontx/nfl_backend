@@ -15,6 +15,7 @@ The NFL Props Backend API provides comprehensive data for NFL game predictions, 
 - [Phase 1: News & Injuries](#phase-1-news--injuries)
 - [Phase 2: ML Insights & Narratives](#phase-2-ml-insights--narratives)
 - [Phase 3: Content Aggregation](#phase-3-content-aggregation)
+- [Phase 4: Advanced Prop Analytics](#phase-4-advanced-prop-analytics)
 - [Bonus: Weather](#bonus-weather)
 - [Data Models](#data-models)
 
@@ -325,6 +326,294 @@ GET /api/v1/games/2025_10_KC_BUF/content?content_type=video&limit=5
 
 ---
 
+## Phase 4: Advanced Prop Analytics
+
+### Find High-Value Props
+
+```http
+GET /api/v1/props/value
+```
+
+**Description:** Find the best value prop bets using advanced analytics including edge calculation, confidence scoring, and Kelly criterion bet sizing
+
+**Query Parameters:**
+- `min_edge` (optional, default: 5.0) - Minimum edge percentage required (e.g., 7.0 for 7%+ edge)
+- `min_grade` (optional, default: "B") - Minimum value grade: `A+`, `A`, `B+`, `B`, `C`, `F`
+- `limit` (optional, default: 10) - Number of props to return
+
+**Features:**
+- Edge calculation (true probability vs implied probability from odds)
+- Confidence-based value grading (A+ = elite value, F = no value)
+- Kelly criterion bet sizing recommendations
+- Confidence intervals for model projections
+- Multiple sportsbook comparison ready
+
+**Example Request:**
+```http
+GET /api/v1/props/value?min_edge=7.0&min_grade=A&limit=5
+```
+
+**Response:**
+```json
+{
+  "total_opportunities": 45,
+  "best_values": [
+    {
+      "player_name": "Patrick Mahomes",
+      "prop_type": "passing_yards",
+      "sportsbook_line": 285.5,
+      "model_projection": 302.3,
+      "confidence_interval": [285.1, 319.5],
+      "recommendation": "OVER",
+      "edge_over": 12.4,
+      "edge_under": -8.2,
+      "value_grade": "A",
+      "confidence": 0.78,
+      "suggested_stake_pct": 3.1,
+      "sportsbook": "DraftKings",
+      "odds": -110
+    }
+  ],
+  "filters_applied": {
+    "min_edge": 7.0,
+    "min_grade": "A",
+    "limit": 5
+  }
+}
+```
+
+**Value Grading System:**
+- `A+` - Elite value (15%+ edge, 75%+ confidence)
+- `A` - Excellent value (10-14.9% edge, 70%+ confidence)
+- `B+` - Good value (7-9.9% edge, 65%+ confidence)
+- `B` - Decent value (5-6.9% edge, 60%+ confidence)
+- `C` - Marginal value (3-4.9% edge)
+- `F` - No value (<3% edge)
+
+**Kelly Criterion:**
+The `suggested_stake_pct` is calculated using fractional Kelly (0.25):
+```
+Stake % = (Edge × Confidence) / 4
+```
+
+---
+
+### Get Player Insights
+
+```http
+GET /api/v1/players/{player_id}/insights
+```
+
+**Description:** Get comprehensive data-driven insights for a specific player including trend analysis, consistency metrics, and prop recommendations
+
+**Parameters:**
+- `player_id` (path) - Player identifier
+
+**Features:**
+- Statistical trend detection (linear regression)
+- Consistency analysis (coefficient of variation)
+- Matchup-specific insights
+- Weather impact analysis
+- Injury context
+- Actionable prop recommendations
+
+**Example Request:**
+```http
+GET /api/v1/players/player_001/insights
+```
+
+**Response:**
+```json
+{
+  "player_id": "player_001",
+  "player_name": "Patrick Mahomes",
+  "position": "QB",
+  "team": "KC",
+  "insights": [
+    {
+      "insight_type": "trend",
+      "title": "Patrick Mahomes Trending Up in Passing Yards",
+      "description": "Patrick Mahomes has been on an upward trend, averaging 315.0 passing yards in recent games vs 278.3 earlier (+13.2%). Performance is very_consistent.",
+      "confidence": 0.82,
+      "impact_level": "high",
+      "supporting_data": {
+        "stat": "passing_yards",
+        "recent_avg": 315.0,
+        "earlier_avg": 278.3,
+        "pct_change": 13.2,
+        "trend_strength": 0.68,
+        "consistency": "very_consistent",
+        "sample_size": 9,
+        "recent_games": [320, 305, 320]
+      },
+      "recommendation": "Consider OVER on Patrick Mahomes passing_yards props"
+    },
+    {
+      "insight_type": "matchup",
+      "title": "Favorable Matchup: Patrick Mahomes vs Weak Defense",
+      "description": "Patrick Mahomes (avg 295.5 passing yards) faces a #28 ranked defense. Historical performance suggests exploitable matchup. League avg: 245.0.",
+      "confidence": 0.86,
+      "impact_level": "high",
+      "supporting_data": {
+        "player_avg": 295.5,
+        "league_avg": 245.0,
+        "opponent_rank": 28,
+        "percentile": 12.5
+      },
+      "recommendation": "Value play on Patrick Mahomes OVER"
+    }
+  ],
+  "season_avg": {
+    "passing_yards": 295.5,
+    "passing_tds": 2.3,
+    "completions": 26.8
+  },
+  "recent_performance": [
+    {"game": "Week 10", "passing_yards": 320},
+    {"game": "Week 9", "passing_yards": 305},
+    {"game": "Week 8", "passing_yards": 320}
+  ]
+}
+```
+
+**Insight Types:**
+- `trend` - Performance trend analysis (increasing/decreasing/stable)
+- `matchup` - Opponent-specific advantages
+- `weather` - Weather impact on performance
+- `injury` - Injury impact on role/usage
+- `consistency` - Reliability metrics
+
+**Impact Levels:**
+- `high` - Significant factor (trend strength >0.6, or top/bottom 25% matchup)
+- `medium` - Moderate factor
+- `low` - Minor consideration
+
+---
+
+### Compare Props
+
+```http
+GET /api/v1/props/compare
+```
+
+**Description:** Side-by-side comparison of props across multiple players for the same stat category
+
+**Query Parameters:**
+- `player_ids` (required) - Comma-separated player IDs (max 5)
+- `prop_type` (optional, default: "passing_yards") - Stat to compare
+- `sportsbook` (optional) - Filter by specific sportsbook
+
+**Example Request:**
+```http
+GET /api/v1/props/compare?player_ids=p1,p2,p3&prop_type=rushing_yards
+```
+
+**Response:**
+```json
+{
+  "prop_type": "rushing_yards",
+  "players_compared": 3,
+  "comparisons": [
+    {
+      "player_name": "Christian McCaffrey",
+      "player_id": "p1",
+      "line": 95.5,
+      "model_projection": 108.2,
+      "edge_over": 15.3,
+      "value_grade": "A+",
+      "recommendation": "OVER"
+    },
+    {
+      "player_name": "Derrick Henry",
+      "player_id": "p2",
+      "line": 88.5,
+      "model_projection": 91.7,
+      "edge_over": 4.2,
+      "value_grade": "C",
+      "recommendation": "PASS"
+    }
+  ],
+  "best_value": {
+    "player_name": "Christian McCaffrey",
+    "edge": 15.3,
+    "grade": "A+"
+  }
+}
+```
+
+---
+
+### Get Game Prop Sheet
+
+```http
+GET /api/v1/games/{game_id}/prop-sheet
+```
+
+**Description:** Comprehensive prop sheet for a specific game with all players, organized by category and ranked by value
+
+**Parameters:**
+- `game_id` (path) - Game ID (e.g., `2025_10_KC_BUF`)
+
+**Example Request:**
+```http
+GET /api/v1/games/2025_10_KC_BUF/prop-sheet
+```
+
+**Response:**
+```json
+{
+  "game_id": "2025_10_KC_BUF",
+  "total_props": 67,
+  "high_value_props": 12,
+  "categories": {
+    "passing": {
+      "props": [
+        {
+          "player": "Patrick Mahomes",
+          "stat": "passing_yards",
+          "line": 285.5,
+          "projection": 302.3,
+          "edge": 12.4,
+          "grade": "A",
+          "recommendation": "OVER"
+        }
+      ]
+    },
+    "rushing": {
+      "props": [...]
+    },
+    "receiving": {
+      "props": [...]
+    },
+    "scoring": {
+      "props": [...]
+    }
+  },
+  "top_plays": [
+    {
+      "player": "Patrick Mahomes",
+      "prop": "passing_yards OVER 285.5",
+      "edge": 12.4,
+      "grade": "A"
+    },
+    {
+      "player": "Travis Kelce",
+      "prop": "receiving_yards OVER 68.5",
+      "edge": 10.1,
+      "grade": "A"
+    }
+  ]
+}
+```
+
+**Categories:**
+- `passing` - QB stats (yards, TDs, completions, attempts)
+- `rushing` - RB/QB rushing (yards, TDs, attempts)
+- `receiving` - WR/TE/RB receiving (yards, TDs, receptions)
+- `scoring` - Anytime TD, first TD scorer
+
+---
+
 ## Bonus: Weather
 
 ### Get Game Weather
@@ -444,6 +733,79 @@ GET /api/v1/games/{game_id}/weather
 }
 ```
 
+### PropValue
+
+```typescript
+{
+  player_name: string;
+  prop_type: string;  // e.g., "passing_yards", "rushing_yards"
+  sportsbook_line: number;
+  model_projection: number;
+  confidence_interval: [number, number];  // [lower, upper] bounds
+  recommendation: "OVER" | "UNDER" | "PASS";
+  edge_over: number;  // Percentage edge on OVER
+  edge_under: number;  // Percentage edge on UNDER
+  value_grade: "A+" | "A" | "B+" | "B" | "C" | "F";
+  confidence: number;  // 0.0 to 1.0
+  suggested_stake_pct: number;  // Kelly criterion stake percentage
+  sportsbook: string;
+  odds: number;  // American odds (e.g., -110, +150)
+}
+```
+
+### PropComparison
+
+```typescript
+{
+  player_name: string;
+  player_id: string;
+  line: number;
+  model_projection: number;
+  edge_over: number;
+  value_grade: "A+" | "A" | "B+" | "B" | "C" | "F";
+  recommendation: "OVER" | "UNDER" | "PASS";
+}
+```
+
+### PlayerInsight
+
+```typescript
+{
+  player_id: string;
+  player_name: string;
+  position: string;
+  team: string;
+  insights: MatchupInsight[];
+  season_avg: Record<string, number>;
+  recent_performance: Array<{
+    game: string;
+    [stat: string]: number | string;
+  }>;
+}
+```
+
+### GamePropSheet
+
+```typescript
+{
+  game_id: string;
+  total_props: number;
+  high_value_props: number;  // Count of A/A+ graded props
+  categories: {
+    passing: { props: PropValue[] };
+    rushing: { props: PropValue[] };
+    receiving: { props: PropValue[] };
+    scoring: { props: PropValue[] };
+  };
+  top_plays: Array<{
+    player: string;
+    prop: string;
+    edge: number;
+    grade: string;
+  }>;
+}
+```
+
 ---
 
 ## Error Responses
@@ -558,32 +920,58 @@ Currently, no authentication is required. For production, consider implementing:
 
 Run the test suite:
 ```bash
+# Core API tests
 pytest tests/test_api.py -v
+
+# Enhanced endpoint tests
+pytest tests/test_enhanced_endpoints.py -v
+
+# Run all tests
+pytest tests/ -v
 ```
 
-All 20 API tests should pass.
+**Test Coverage:**
+- `test_api.py` - 20 tests for core endpoints, news, injuries, insights, narratives, content, weather
+- `test_enhanced_endpoints.py` - 11 tests for prop value finder, player insights, prop comparisons, prop sheets
+
+**Total:** 31 tests, all passing ✅
 
 ---
 
 ## Future Enhancements
 
+### Completed ✅
+- [x] Sleeper API integration for injuries (Phase 1)
+- [x] OpenWeather API integration (Bonus)
+- [x] Statistical insight generation engine (Phase 2)
+- [x] Narrative template system with LLM scaffolding (Phase 2)
+- [x] Prop value finder with edge calculations (Phase 4)
+- [x] Kelly criterion bet sizing (Phase 4)
+- [x] Player-specific trend analysis (Phase 4)
+- [x] Comprehensive test coverage (31 tests)
+
 ### Short Term
-- [ ] Implement actual news aggregation (ESPN, NFL.com RSS)
-- [ ] Add caching for Sleeper API responses
-- [ ] Integrate with actual ML models for insights
-- [ ] Add stadium database for weather lookups
+- [ ] Implement actual news aggregation (ESPN, NFL.com RSS feeds)
+- [ ] Add caching layer for Sleeper API responses (1-hour TTL)
+- [ ] Connect to real sportsbook line feeds (DraftKings, FanDuel APIs)
+- [ ] Add stadium database with coordinates for accurate weather lookups
+- [ ] Integrate actual ML model outputs from `outputs/predictions/`
 
 ### Medium Term
-- [ ] Implement LLM integration for narratives (OpenAI/Claude)
-- [ ] Add content aggregation (YouTube, podcasts)
-- [ ] Implement WebSocket for real-time updates
-- [ ] Add user authentication and personalization
+- [ ] Implement full LLM integration for narratives (OpenAI GPT-4 or Claude)
+- [ ] Add content aggregation (YouTube Data API, podcast RSS)
+- [ ] Build WebSocket endpoint for real-time line movement alerts
+- [ ] Add user authentication and personalized betting history
+- [ ] Implement bet tracking and results analysis
+- [ ] Add bankroll management recommendations
 
 ### Long Term
-- [ ] GraphQL API alongside REST
+- [ ] GraphQL API alongside REST for flexible querying
 - [ ] Real-time injury updates via webhooks
-- [ ] Custom ML models for prop predictions
-- [ ] Mobile app-specific endpoints
+- [ ] Train custom ML models for prop predictions using nflverse data
+- [ ] Mobile app-specific endpoints with reduced payloads
+- [ ] Multi-sport expansion (NBA, MLB)
+- [ ] Social features (share plays, leaderboards)
 
 ---
 

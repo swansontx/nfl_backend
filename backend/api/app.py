@@ -5,6 +5,9 @@ from typing import List, Dict, Optional
 from datetime import datetime
 
 from backend.api.external_apis import weather_api, sleeper_api
+from backend.api.insights_engine import insight_generator, PlayerStats, Insight as InsightData
+from backend.api.narrative_generator import narrative_generator
+from backend.api.prop_analyzer import prop_analyzer, PropLine, PropProjection, PropValue
 
 app = FastAPI(
     title='NFL Props Backend API',
@@ -411,6 +414,274 @@ async def get_game_weather(game_id: str):
     )
 
     return WeatherData(**weather_data)
+
+
+# ============================================================================
+# Enhanced Endpoints: Prop Value & Player Insights
+# ============================================================================
+
+@app.get('/api/v1/props/value')
+async def find_prop_value(
+    game_id: Optional[str] = None,
+    player_id: Optional[str] = None,
+    min_edge: float = 5.0,
+    min_grade: str = "B",
+    limit: int = 10
+):
+    """Find high-value prop bets.
+
+    Args:
+        game_id: Filter by game ID (optional)
+        player_id: Filter by player ID (optional)
+        min_edge: Minimum edge percentage (default 5%)
+        min_grade: Minimum value grade (default "B")
+        limit: Number of results to return
+
+    Returns:
+        List of high-value prop recommendations with:
+        - Sportsbook lines vs model projections
+        - Expected value calculations
+        - Edge percentages
+        - Bet sizing recommendations
+        - Value grades (A+, A, B+, B, C, F)
+    """
+    # TODO: Load actual prop lines from sportsbooks
+    # TODO: Load model projections from outputs/predictions/
+
+    # Placeholder data demonstrating the value finder
+    sample_lines = [
+        PropLine(
+            player_id="player_001",
+            player_name="Patrick Mahomes",
+            prop_type="passing_yards",
+            line=275.5,
+            over_odds=-110,
+            under_odds=-110,
+            book="DraftKings",
+            timestamp=datetime.now().isoformat()
+        ),
+        PropLine(
+            player_id="player_002",
+            player_name="Travis Kelce",
+            prop_type="receiving_yards",
+            line=65.5,
+            over_odds=-115,
+            under_odds=-105,
+            book="FanDuel",
+            timestamp=datetime.now().isoformat()
+        )
+    ]
+
+    sample_projections = [
+        PropProjection(
+            player_id="player_001",
+            player_name="Patrick Mahomes",
+            prop_type="passing_yards",
+            projection=295.3,
+            std_dev=42.5,
+            confidence_interval=(252.8, 337.8),
+            hit_probability_over=0.68,
+            hit_probability_under=0.32
+        ),
+        PropProjection(
+            player_id="player_002",
+            player_name="Travis Kelce",
+            prop_type="receiving_yards",
+            projection=58.2,
+            std_dev=18.3,
+            confidence_interval=(39.9, 76.5),
+            hit_probability_over=0.35,
+            hit_probability_under=0.65
+        )
+    ]
+
+    # Find value props
+    value_props = prop_analyzer.find_best_props(
+        sample_lines,
+        sample_projections,
+        min_edge=min_edge,
+        min_grade=min_grade
+    )
+
+    # Convert to response format
+    results = []
+    for value in value_props[:limit]:
+        stake = prop_analyzer.calculate_kelly_stake(
+            max(value.edge_over, value.edge_under),
+            value.confidence,
+            bankroll=1000  # Placeholder bankroll
+        )
+
+        results.append({
+            "player_name": value.prop_line.player_name,
+            "prop_type": value.prop_line.prop_type,
+            "sportsbook_line": value.prop_line.line,
+            "model_projection": value.projection.projection,
+            "confidence_interval": value.projection.confidence_interval,
+            "recommendation": value.recommendation,
+            "edge_over": round(value.edge_over, 2),
+            "edge_under": round(value.edge_under, 2),
+            "value_grade": value.value_grade,
+            "confidence": round(value.confidence, 3),
+            "suggested_stake_pct": round(stake / 1000 * 100, 2),  # As percentage
+            "sportsbook": value.prop_line.book,
+            "odds": value.prop_line.over_odds if value.recommendation == "OVER" else value.prop_line.under_odds
+        })
+
+    return {
+        "total_opportunities": len(results),
+        "best_values": results,
+        "filters_applied": {
+            "min_edge": min_edge,
+            "min_grade": min_grade
+        }
+    }
+
+
+@app.get('/api/v1/players/{player_id}/insights')
+async def get_player_insights(player_id: str):
+    """Get comprehensive insights for a specific player.
+
+    Args:
+        player_id: Player ID
+
+    Returns:
+        Player-specific insights including:
+        - Recent performance trends
+        - Statistical consistency
+        - Matchup history
+        - Prop recommendations
+    """
+    # TODO: Load actual player data from database/files
+    # Placeholder player data
+    sample_player = PlayerStats(
+        player_id=player_id,
+        player_name="Patrick Mahomes",
+        position="QB",
+        team="KC",
+        recent_games=[
+            {"passing_yards": 320, "passing_tds": 3},
+            {"passing_yards": 295, "passing_tds": 2},
+            {"passing_yards": 278, "passing_tds": 2},
+            {"passing_yards": 310, "passing_tds": 4},
+            {"passing_yards": 285, "passing_tds": 2}
+        ],
+        season_avg={"passing_yards": 297.6, "passing_tds": 2.6}
+    )
+
+    # Generate insights
+    insights = []
+
+    # Trend insight
+    trend_insight = insight_generator.generate_player_trend_insight(
+        sample_player,
+        "passing_yards"
+    )
+    if trend_insight:
+        insights.append({
+            "insight_type": trend_insight.insight_type,
+            "title": trend_insight.title,
+            "description": trend_insight.description,
+            "confidence": trend_insight.confidence,
+            "impact_level": trend_insight.impact_level,
+            "recommendation": trend_insight.recommendation,
+            "supporting_data": trend_insight.supporting_data
+        })
+
+    return {
+        "player_id": player_id,
+        "player_name": sample_player.player_name,
+        "position": sample_player.position,
+        "team": sample_player.team,
+        "insights": insights,
+        "season_avg": sample_player.season_avg,
+        "recent_performance": sample_player.recent_games[-5:]
+    }
+
+
+@app.get('/api/v1/props/compare')
+async def compare_props(
+    player_ids: str,  # Comma-separated
+    prop_type: str = "passing_yards"
+):
+    """Compare props across multiple players.
+
+    Args:
+        player_ids: Comma-separated list of player IDs
+        prop_type: Type of prop to compare
+
+    Returns:
+        Comparative analysis of players for the specified prop
+    """
+    player_id_list = player_ids.split(',')
+
+    # TODO: Load actual player projections
+    # Placeholder data
+    comparisons = []
+    for pid in player_id_list[:5]:  # Limit to 5 players
+        comparisons.append({
+            "player_id": pid,
+            "player_name": f"Player {pid}",
+            "projection": 275.5,
+            "std_dev": 35.2,
+            "recent_avg": 282.3,
+            "trend": "increasing",
+            "matchup_grade": "B+",
+            "recommendation": "Consider OVER"
+        })
+
+    return {
+        "prop_type": prop_type,
+        "players_compared": len(comparisons),
+        "comparisons": comparisons,
+        "best_value": comparisons[0] if comparisons else None
+    }
+
+
+@app.get('/api/v1/games/{game_id}/prop-sheet')
+async def get_game_prop_sheet(game_id: str):
+    """Get comprehensive prop sheet for a game.
+
+    Args:
+        game_id: Game ID in format {season}_{week}_{away}_{home}
+
+    Returns:
+        Complete prop sheet with:
+        - All available props
+        - Model projections
+        - Value assessments
+        - Recommended plays
+    """
+    # TODO: Aggregate all props for the game
+    # TODO: Generate projections for all players
+    # TODO: Calculate value for each prop
+
+    return {
+        "game_id": game_id,
+        "total_props": 150,
+        "high_value_props": 12,
+        "categories": {
+            "passing": 50,
+            "rushing": 35,
+            "receiving": 45,
+            "scoring": 20
+        },
+        "top_plays": [
+            {
+                "player": "Player A",
+                "prop": "passing_yards OVER 285.5",
+                "edge": 8.5,
+                "grade": "A"
+            },
+            {
+                "player": "Player B",
+                "prop": "receiving_yards UNDER 72.5",
+                "edge": 6.2,
+                "grade": "B+"
+            }
+        ]
+    }
+
 
 if __name__ == '__main__':
     import uvicorn
