@@ -661,6 +661,87 @@ async def compare_props(
     }
 
 
+@app.get('/api/v1/props/trending')
+async def get_trending_props(
+    week: Optional[int] = None,
+    limit: int = 20
+):
+    """Get trending prop lines with movement tracking.
+
+    Shows "hot movers" (2+ point line moves) and sustained trends for prop betting.
+
+    Args:
+        week: Week number (optional, defaults to current week)
+        limit: Number of trending props to return
+
+    Returns:
+        Dict with hot_movers and sustained_trends:
+        - hot_movers: Props with 2+ point moves
+        - sustained_trends: Props with consistent movement over 3+ snapshots
+        - Each includes: player, market, movement direction, opening/current line, badges
+    """
+    from pathlib import Path
+    from backend.ingestion.fetch_prop_lines import PropLineFetcher
+
+    # Use dummy API key for analysis (doesn't make API calls)
+    fetcher = PropLineFetcher('dummy_key')
+    snapshots_dir = Path('outputs/prop_lines')
+
+    if not snapshots_dir.exists():
+        return {
+            "error": "No prop line snapshots found",
+            "message": "Run prop line fetcher first to capture snapshots",
+            "command": "python -m backend.ingestion.fetch_prop_lines --week {week}"
+        }
+
+    # Analyze trends
+    trends = fetcher.get_trending_props(snapshots_dir, week)
+
+    if 'error' in trends:
+        return trends
+
+    # Format for frontend
+    hot_movers = trends.get('hot_movers', [])[:limit]
+    sustained_trends = trends.get('sustained_trends', [])[:limit]
+
+    # Add visual indicators
+    for mover in hot_movers:
+        if mover['direction'] == 'up':
+            mover['icon'] = '⬆️'
+            mover['color'] = 'green'
+        elif mover['direction'] == 'down':
+            mover['icon'] = '⬇️'
+            mover['color'] = 'red'
+        else:
+            mover['icon'] = '➡️'
+            mover['color'] = 'gray'
+
+        # Add strength indicator
+        if abs(mover['movement']) >= 5.0:
+            mover['strength'] = 'strong'
+            mover['strength_icon'] = '🔥'
+        elif abs(mover['movement']) >= 3.0:
+            mover['strength'] = 'moderate'
+            mover['strength_icon'] = '⚡'
+        else:
+            mover['strength'] = 'light'
+            mover['strength_icon'] = '📊'
+
+    return {
+        "week": week,
+        "snapshot_count": trends.get('snapshots_analyzed', 0),
+        "current_timestamp": trends.get('current_timestamp'),
+        "hot_movers": hot_movers,
+        "sustained_trends": sustained_trends,
+        "summary": {
+            "total_hot_movers": len(hot_movers),
+            "strong_movers": len([m for m in hot_movers if abs(m['movement']) >= 5.0]),
+            "trending_up": len([m for m in hot_movers if m['direction'] == 'up']),
+            "trending_down": len([m for m in hot_movers if m['direction'] == 'down'])
+        }
+    }
+
+
 @app.get('/api/v1/games/{game_id}/prop-sheet')
 async def get_game_prop_sheet(game_id: str):
     """Get comprehensive prop sheet for a game.
