@@ -69,7 +69,7 @@ features_created = 0
 features_updated = 0
 
 # Group by game_id and player
-for (game_id, old_game_id), plays in pbp.groupby(['game_id', 'old_game_id']):
+for game_id, plays in pbp.groupby('game_id'):
     # Parse game_id to get our format
     try:
         # pbp game_id format: 2024_01_DET_KC
