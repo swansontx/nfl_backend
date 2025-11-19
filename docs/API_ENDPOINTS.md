@@ -280,6 +280,252 @@ Get NFL standings by division and conference.
 
 ---
 
+## Usage Guide: Prop Betting Workflow
+
+### Prerequisites
+
+Before using the prop betting endpoints, you need to capture prop line snapshots:
+
+```bash
+# Set your Odds API key
+export ODDS_API_KEY="your_api_key_here"
+
+# Fetch current week prop lines (creates snapshot)
+python -m backend.ingestion.fetch_prop_lines --week 12 --output outputs/prop_lines/
+
+# Run daily to build historical data for trending analysis
+# Recommended: Set up cron job to run daily at same time
+```
+
+### Complete Workflow
+
+#### 1. Daily Snapshot Capture (Automated)
+
+Set up a daily cron job to capture snapshots:
+
+```bash
+# Add to crontab (runs daily at 10 AM)
+0 10 * * * cd /path/to/nfl_backend && python -m backend.ingestion.fetch_prop_lines --week 12
+```
+
+**Why daily?**
+- Week-over-week trending requires 7 daily snapshots
+- 3-week sustained trends need 10-15 snapshots (every 2-3 days minimum)
+- More snapshots = better trend detection
+
+#### 2. Get Current Odds (Frontend Display)
+
+```bash
+# Get all current DraftKings odds for week 12
+curl http://localhost:8000/api/v1/odds/current?week=12
+
+# Filter by specific market
+curl http://localhost:8000/api/v1/odds/current?week=12&market=player_pass_yds
+```
+
+**Use cases:**
+- Display current lines on player prop cards
+- Show live odds for betting decisions
+- Compare against model projections
+
+#### 3. Get Trending Props (Line Movement)
+
+```bash
+# Get top 20 trending props per category
+curl http://localhost:8000/api/v1/props/trending?week=12&limit=20
+
+# Get top 50 for comprehensive analysis
+curl http://localhost:8000/api/v1/props/trending?week=12&limit=50
+```
+
+**Response includes 4 categories:**
+
+**🔥 Hottest Movers** - Biggest absolute line changes
+```javascript
+// Use for: Immediate action alerts, breaking news detection
+hottest_movers[0]
+// {
+//   player: "Patrick Mahomes",
+//   line_movement: 10.0,  // Line moved up 10 yards
+//   badge: "+10.0 pts (7 days)",
+//   strength: "🔥"  // Strong move
+// }
+```
+
+**⬆️ Lines Moving Up** - Props getting harder to hit Over
+```javascript
+// Use for: Under betting opportunities, fade the public
+lines_moving_up.filter(p => p.strength === "🔥")
+// Line increased = Market expects better performance
+// Strategy: Target the Under, or wait for line to stabilize
+```
+
+**⬇️ Lines Moving Down** - Props getting easier to hit Over
+```javascript
+// Use for: Over betting opportunities, injury/news detection
+lines_moving_down.filter(p => p.strength === "🔥")
+// Line decreased = Market expects worse performance
+// Strategy: Target the Over if you disagree with market
+```
+
+**Sustained 3-Week Trends** - Pattern validation
+```javascript
+// Use for: Long-term trend validation, sustained edges
+sustained_trends.filter(t => t.consistency === "3/3 weeks up")
+// Consistent upward trend = Market confidence growing
+// Consistent downward trend = Market confidence fading
+```
+
+#### 4. Get NFL Standings (Context)
+
+```bash
+# Get current standings
+curl http://localhost:8000/api/v1/standings?season=2024
+
+# Get standings for specific week
+curl http://localhost:8000/api/v1/standings?season=2024&week=12
+```
+
+**Use cases:**
+- Display team records on game pages
+- Contextualize playoff implications
+- Show division standings on team pages
+
+### Frontend Integration Examples
+
+#### Display Current Odds on Player Card
+
+```javascript
+// Fetch current odds for a game
+const response = await fetch('/api/v1/odds/current?week=12');
+const { games } = await response.json();
+
+// Find player's prop
+const game = games.find(g => g.game_id === '2024_12_KC_BUF');
+const passYards = game.props_by_market.player_pass_yds;
+const mahomesLine = passYards.find(p => p.player === 'Patrick Mahomes');
+
+// Display: "Patrick Mahomes O/U 275.5 yards (-110/-110)"
+```
+
+#### Show Trending Props Section
+
+```javascript
+// Fetch trending props
+const response = await fetch('/api/v1/props/trending?week=12&limit=20');
+const { hottest_movers, lines_moving_up, lines_moving_down, sustained_trends } = await response.json();
+
+// Display sections:
+// 🔥 Hottest Movers (biggest changes)
+hottest_movers.map(prop => (
+  <TrendingCard
+    player={prop.player}
+    market={prop.market}
+    badge={prop.badge}  // "+10.0 pts (7 days)"
+    icon={prop.icon}    // "⬆️"
+    color={prop.color}  // "green"
+    strength={prop.strength}  // "🔥"
+  />
+));
+
+// ⬆️ Lines Moving Up (harder to hit Over)
+lines_moving_up.map(prop => (
+  <TrendingCard {...prop} />
+));
+
+// ⬇️ Lines Moving Down (easier to hit Over)
+lines_moving_down.map(prop => (
+  <TrendingCard {...prop} />
+));
+```
+
+#### Display Standings Widget
+
+```javascript
+// Fetch standings
+const response = await fetch('/api/v1/standings?season=2024');
+const { standings } = await response.json();
+
+// Display AFC East standings
+standings.afc_east.map(team => (
+  <StandingsRow
+    team={team.team}
+    wins={team.wins}
+    losses={team.losses}
+    winPct={team.win_pct}
+  />
+));
+```
+
+### Recommended API Call Frequency
+
+**High Frequency (Real-time)**
+- `/api/v1/odds/current` - Every 5-10 minutes during game week
+  - Lines change frequently as games approach
+  - Critical for timing bets
+
+**Medium Frequency (Multiple times per day)**
+- `/api/v1/props/trending` - 2-3 times daily
+  - Morning (to see overnight moves)
+  - Afternoon (to catch breaking news)
+  - Evening (for next-day preview)
+
+**Low Frequency (Once per day or less)**
+- `/api/v1/standings` - Once daily or after games complete
+  - Standings only update after games finish
+
+### Error Handling
+
+```javascript
+// Check for missing data errors
+const response = await fetch('/api/v1/props/trending?week=12');
+const data = await response.json();
+
+if (data.error) {
+  if (data.error === 'Insufficient snapshots for trending analysis') {
+    // Show message: "Trending data not available yet. Need at least 2 daily snapshots."
+    console.log('Snapshots found:', data.snapshots_found);
+    console.log('Run: python -m backend.ingestion.fetch_prop_lines --week 12');
+  } else if (data.error === 'No prop line snapshots found') {
+    // Show message: "No prop data available. Run data ingestion first."
+    console.log('Command:', data.command);
+  }
+}
+```
+
+### Sharp Action Detection (Advanced)
+
+The prop line fetcher tracks multiple sportsbooks to detect sharp action:
+
+```bash
+# Fetch with sharp action analysis
+python -m backend.ingestion.fetch_prop_lines --week 12
+```
+
+**How to interpret line movements:**
+
+1. **DK isolated move** (Public money)
+   - DraftKings line moves alone
+   - Other sharp books stay flat
+   - **Strategy:** FADE DraftKings
+
+2. **Steam move** (Strong consensus)
+   - All books move together
+   - Sharp and public money aligned
+   - **Strategy:** Follow the movement
+
+3. **Sharp disagreement**
+   - Sharp books (FanDuel, BetMGM) move opposite DK
+   - DraftKings stays flat or moves opposite
+   - **Strategy:** Follow sharp books, fade DK
+
+4. **Sharp consensus**
+   - DK + sharp books move together
+   - Good signal for betting
+   - **Strategy:** High confidence bet
+
+---
+
 ## Complete Documentation
 
 See Swagger docs for detailed request/response schemas:
