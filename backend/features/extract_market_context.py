@@ -142,7 +142,7 @@ def add_market_features_to_player_games(
             week = game.get('week', '')
             team = game.get('team', '')
             opponent = game.get('opponent', '')
-            is_home = game.get('is_home', True)  # Assume home if not specified
+            is_home = game.get('is_home', None)
 
             # Try to find matching market data
             # Try both home/away combinations
@@ -152,28 +152,30 @@ def add_market_features_to_player_games(
             market_data = market_context.get(game_key_1) or market_context.get(game_key_2)
 
             if market_data:
-                # Determine team's perspective
-                if is_home:
-                    game['spread'] = market_data['spread']
-                    game['implied_team_total'] = market_data['home_implied_total']
-                    game['opponent_implied_total'] = market_data['away_implied_total']
-                else:
-                    game['spread'] = -market_data['spread']  # Flip spread for away team
-                    game['implied_team_total'] = market_data['away_implied_total']
-                    game['opponent_implied_total'] = market_data['home_implied_total']
+                if is_home is not None:
+                    # Determine team's perspective
+                    if is_home is True:
+                        game['spread'] = market_data['spread']
+                        game['implied_team_total'] = market_data['home_implied_total']
+                        game['opponent_implied_total'] = market_data['away_implied_total']
+                    else:
+                        game['spread'] = -market_data['spread']  # Flip spread for away team
+                        game['implied_team_total'] = market_data['away_implied_total']
+                        game['opponent_implied_total'] = market_data['home_implied_total']
 
-                game['total'] = market_data['total']
+                    game['total'] = market_data['total']
 
-                # Derived features
-                game['is_favorite'] = 1 if game['spread'] < 0 else 0
-                game['is_underdog'] = 1 if game['spread'] > 0 else 0
-                game['expected_to_trail'] = 1 if game['spread'] > 3 else 0  # 3+ point dog
-                game['expected_to_lead'] = 1 if game['spread'] < -3 else 0  # 3+ point favorite
+                    # Derived features
+                    game['is_favorite'] = 1 if game['spread'] < 0 else 0
+                    game['is_underdog'] = 1 if game['spread'] > 0 else 0
+                    game['expected_to_trail'] = 1 if game['spread'] > 3 else 0  # 3+ point dog
+                    game['expected_to_lead'] = 1 if game['spread'] < -3 else 0  # 3+ point favorite
 
-                # Game script indicator (positive = likely high-scoring shootout)
-                game['expected_script'] = game['spread'] * game['total'] / 100
+                    # Game script indicator (positive = likely high-scoring shootout)
+                    game['expected_script'] = game['spread'] * game['total'] / 100
 
-                enhanced_count += 1
+                    enhanced_count += 1
+                # else: Skip games where is_home is missing (can't determine perspective)
 
     print(f"✓ Added market features to {enhanced_count} player-games")
 

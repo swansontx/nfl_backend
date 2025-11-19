@@ -97,8 +97,8 @@ def load_weather_from_nflverse(
         # Parse temperature
         try:
             temp_f = float(str(temp).replace('°', '').replace('F', '').strip()) if temp else 65
-        except:
-            temp_f = 65
+        except (ValueError, TypeError, AttributeError):
+            temp_f = 65  # Default to mild temperature if parsing fails
 
         # Parse wind speed
         try:
@@ -110,8 +110,8 @@ def load_weather_from_nflverse(
                 wind_mph = (float(wind_parts[0]) + float(wind_parts[1])) / 2
             else:
                 wind_mph = float(wind_str) if wind_str and wind_str != 'nan' else 5
-        except:
-            wind_mph = 5
+        except (ValueError, TypeError, AttributeError, IndexError):
+            wind_mph = 5  # Default to light wind if parsing fails
 
         # Check for precipitation
         precipitation = any(
