@@ -42,12 +42,9 @@ with get_db() as session:
             away_team='PIT',
             home_team='CLE',
             game_date=datetime.now() + timedelta(days=2),  # Thursday
-            gametime='20:15',
             stadium='Huntington Bank Field',
-            location='Cleveland',
             roof='outdoor',
-            surface='grass',
-            completed=False
+            surface='grass'
         )
         session.add(game)
         session.commit()
