@@ -1,0 +1,180 @@
+{
+  "mock_api_data": {
+    "note": "Use these responses for frontend development until API is accessible",
+
+    "games_list": {
+      "endpoint": "GET /api/v1/games/?season=2024",
+      "response": {
+        "games": [
+          {
+            "game_id": "2024_11_KC_BUF",
+            "season": 2024,
+            "week": 11,
+            "game_type": "REG",
+            "home_team": "KC",
+            "away_team": "BUF",
+            "game_date": "2024-11-17T18:00:00Z",
+            "stadium": "Arrowhead Stadium",
+            "home_score": null,
+            "away_score": null,
+            "completed": false
+          },
+          {
+            "game_id": "2024_11_SF_GB",
+            "season": 2024,
+            "week": 11,
+            "game_type": "REG",
+            "home_team": "GB",
+            "away_team": "SF",
+            "game_date": "2024-11-17T13:00:00Z",
+            "stadium": "Lambeau Field",
+            "home_score": null,
+            "away_score": null,
+            "completed": false
+          }
+        ],
+        "total_count": 2,
+        "season": 2024,
+        "week": null,
+        "team": null,
+        "date": null
+      }
+    },
+
+    "recommendations": {
+      "endpoint": "GET /api/v1/recommendations/{game_id}",
+      "response": {
+        "game_id": "2024_11_KC_BUF",
+        "game_time": "2024-11-17T18:00:00Z",
+        "home_team": "KC",
+        "away_team": "BUF",
+        "recommendations": [
+          {
+            "player_id": "00-0033873",
+            "player_name": "Patrick Mahomes",
+            "position": "QB",
+            "team": "KC",
+            "game_id": "2024_11_KC_BUF",
+            "market": "passing_yards",
+            "line": 285.5,
+            "model_prob": 0.68,
+            "calibrated_prob": 0.72,
+            "base_signal": 0.68,
+            "matchup_signal": 0.85,
+            "trend_signal": 0.75,
+            "news_signal": 0.5,
+            "roster_signal": 0.9,
+            "overall_score": 0.784,
+            "recommendation_strength": "strong",
+            "confidence": 0.82,
+            "reasoning": [
+              "Model probability: 72.0%",
+              "Favorable matchup vs BUF (allows 245.3 yards/game)",
+              "Defense allows 1.8 TDs/game to QB",
+              "Hot streak: 4 game streak"
+            ],
+            "flags": [],
+            "market_line": 285.5,
+            "market_odds": -110,
+            "edge": 0.12
+          },
+          {
+            "player_id": "00-0036355",
+            "player_name": "Travis Kelce",
+            "position": "TE",
+            "team": "KC",
+            "game_id": "2024_11_KC_BUF",
+            "market": "receiving_yards",
+            "line": 65.5,
+            "model_prob": 0.62,
+            "calibrated_prob": 0.65,
+            "base_signal": 0.62,
+            "matchup_signal": 0.78,
+            "trend_signal": 0.68,
+            "news_signal": 0.5,
+            "roster_signal": 0.9,
+            "overall_score": 0.712,
+            "recommendation_strength": "moderate",
+            "confidence": 0.75,
+            "reasoning": [
+              "Model probability: 65.0%",
+              "Favorable matchup vs BUF (allows 72.1 yards/game)",
+              "Recent uptick in targets"
+            ],
+            "flags": [],
+            "market_line": 65.5,
+            "market_odds": -110,
+            "edge": 0.08
+          }
+        ],
+        "total_count": 2,
+        "markets_analyzed": ["all"],
+        "min_confidence": 0.6
+      }
+    },
+
+    "parlays": {
+      "endpoint": "GET /api/v1/recommendations/{game_id}/parlays",
+      "response": {
+        "game_id": "2024_11_KC_BUF",
+        "parlays": [
+          {
+            "props": [
+              {
+                "player_name": "Patrick Mahomes",
+                "market": "passing_yards",
+                "line": 285.5,
+                "probability": 0.72,
+                "score": 0.784
+              },
+              {
+                "player_name": "Travis Kelce",
+                "market": "receiving_yards",
+                "line": 65.5,
+                "probability": 0.65,
+                "score": 0.712
+              },
+              {
+                "player_name": "Isiah Pacheco",
+                "market": "rushing_yards",
+                "line": 75.5,
+                "probability": 0.58,
+                "score": 0.645
+              }
+            ],
+            "raw_probability": 0.271,
+            "adjusted_probability": 0.315,
+            "adjustment_factor": 1.162,
+            "overall_score": 0.713,
+            "correlation_impact": "positive",
+            "confidence": 0.72,
+            "reasoning": [
+              "Parlay of 3 props",
+              "Raw probability: 27.10%",
+              "Adjusted probability: 31.50%",
+              "Correlation: +0.18 (positive)"
+            ],
+            "flags": [],
+            "market_odds": 600,
+            "edge": 0.045
+          }
+        ],
+        "total_count": 1,
+        "parlay_size": 3,
+        "min_correlation": 0.0,
+        "max_correlation": 0.8
+      }
+    },
+
+    "health": {
+      "endpoint": "GET /health",
+      "response": {
+        "status": "healthy",
+        "timestamp": "2024-11-17T12:00:00Z",
+        "database": "connected",
+        "games": 284,
+        "players": 3215
+      }
+    }
+  }
+}
