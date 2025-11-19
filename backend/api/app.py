@@ -752,6 +752,223 @@ async def get_trending_props(
     }
 
 
+@app.get('/api/v1/odds/current')
+async def get_current_odds(
+    week: Optional[int] = None,
+    market: Optional[str] = None
+):
+    """Get current DraftKings prop odds for all upcoming games.
+
+    Essential for displaying current betting lines to users.
+
+    Args:
+        week: Week number (optional, defaults to current week)
+        market: Filter by specific market (e.g., 'player_pass_yds', 'player_rush_yds')
+
+    Returns:
+        Dict with current DraftKings odds:
+        - games: List of games with props
+        - Each prop includes: player, market, line, over_odds, under_odds, timestamp
+        - Grouped by game for easy navigation
+    """
+    from pathlib import Path
+    import json
+
+    snapshots_dir = Path('outputs/prop_lines')
+    week_str = f"week_{week}" if week else "current"
+    latest_file = snapshots_dir / f"snapshot_{week_str}_latest.json"
+
+    if not latest_file.exists():
+        return {
+            "error": "No current odds available",
+            "message": "Run prop line fetcher to get current odds",
+            "command": f"python -m backend.ingestion.fetch_prop_lines --week {week}"
+        }
+
+    # Load latest snapshot
+    with open(latest_file, 'r') as f:
+        snapshot = json.load(f)
+
+    # Format for frontend
+    games_with_odds = []
+
+    for game_id, game_data in snapshot.items():
+        game_info = {
+            "game_id": game_id,
+            "home_team": game_data.get('home_team'),
+            "away_team": game_data.get('away_team'),
+            "commence_time": game_data.get('commence_time'),
+            "snapshot_timestamp": game_data.get('snapshot_timestamp'),
+            "props_by_market": {}
+        }
+
+        # Group props by market
+        for market_name, props in game_data.get('props', {}).items():
+            # Filter by market if specified
+            if market and market_name != market:
+                continue
+
+            # Only include DraftKings lines
+            dk_props = [
+                {
+                    "player": p.get('player_name'),
+                    "market": market_name,
+                    "line": p.get('line'),
+                    "over_odds": p.get('over_odds', -110),
+                    "under_odds": p.get('under_odds', -110),
+                    "timestamp": p.get('timestamp'),
+                    "bookmaker": "draftkings"
+                }
+                for p in props
+                if p.get('bookmaker') == 'draftkings'
+            ]
+
+            if dk_props:
+                game_info['props_by_market'][market_name] = dk_props
+
+        if game_info['props_by_market']:  # Only include games with props
+            games_with_odds.append(game_info)
+
+    return {
+        "week": week,
+        "total_games": len(games_with_odds),
+        "total_props": sum(
+            len(props)
+            for game in games_with_odds
+            for props in game['props_by_market'].values()
+        ),
+        "snapshot_timestamp": snapshot.get(list(snapshot.keys())[0], {}).get('snapshot_timestamp') if snapshot else None,
+        "games": games_with_odds
+    }
+
+
+@app.get('/api/v1/standings')
+async def get_standings(
+    season: int = 2024,
+    week: Optional[int] = None
+):
+    """Get NFL standings by division and conference.
+
+    Essential context for understanding team strength and playoff implications.
+
+    Args:
+        season: Season year (default 2024)
+        week: Week number (optional, returns current standings if not specified)
+
+    Returns:
+        Dict with standings:
+        - afc_east, afc_north, afc_south, afc_west
+        - nfc_east, nfc_north, nfc_south, nfc_west
+        - Each division includes: team, wins, losses, ties, win_pct, division_record, conference_record
+    """
+    from pathlib import Path
+    import pandas as pd
+
+    # Try to load standings from nflverse data
+    standings_file = Path(f'inputs/{season}_standings.csv')
+
+    if standings_file.exists():
+        # Load from nflverse standings
+        standings_df = pd.read_csv(standings_file)
+
+        # Filter by week if specified
+        if week:
+            standings_df = standings_df[standings_df['week'] == week]
+
+        # Group by division
+        divisions = {}
+        for division in ['AFC East', 'AFC North', 'AFC South', 'AFC West',
+                        'NFC East', 'NFC North', 'NFC South', 'NFC West']:
+            div_teams = standings_df[standings_df['division'] == division].to_dict('records')
+            divisions[division.lower().replace(' ', '_')] = div_teams
+
+        return {
+            "season": season,
+            "week": week,
+            "standings": divisions
+        }
+
+    # Fallback: Calculate from schedule/games data
+    schedule_file = Path(f'inputs/{season}_schedule.parquet')
+
+    if schedule_file.exists():
+        import pandas as pd
+
+        schedule = pd.read_parquet(schedule_file)
+
+        # Calculate records from completed games
+        teams_records = {}
+
+        for _, game in schedule.iterrows():
+            if pd.notna(game.get('home_score')) and pd.notna(game.get('away_score')):
+                # Game is complete
+                home_team = game['home_team']
+                away_team = game['away_team']
+                home_score = game['home_score']
+                away_score = game['away_score']
+
+                # Initialize teams if not exist
+                for team in [home_team, away_team]:
+                    if team not in teams_records:
+                        teams_records[team] = {'wins': 0, 'losses': 0, 'ties': 0}
+
+                # Update records
+                if home_score > away_score:
+                    teams_records[home_team]['wins'] += 1
+                    teams_records[away_team]['losses'] += 1
+                elif away_score > home_score:
+                    teams_records[away_team]['wins'] += 1
+                    teams_records[home_team]['losses'] += 1
+                else:
+                    teams_records[home_team]['ties'] += 1
+                    teams_records[away_team]['ties'] += 1
+
+        # Format standings by division (hardcoded NFL divisions)
+        divisions = {
+            'afc_east': ['BUF', 'MIA', 'NE', 'NYJ'],
+            'afc_north': ['BAL', 'CIN', 'CLE', 'PIT'],
+            'afc_south': ['HOU', 'IND', 'JAX', 'TEN'],
+            'afc_west': ['DEN', 'KC', 'LV', 'LAC'],
+            'nfc_east': ['DAL', 'NYG', 'PHI', 'WAS'],
+            'nfc_north': ['CHI', 'DET', 'GB', 'MIN'],
+            'nfc_south': ['ATL', 'CAR', 'NO', 'TB'],
+            'nfc_west': ['ARI', 'LAR', 'SF', 'SEA']
+        }
+
+        standings = {}
+        for division, teams in divisions.items():
+            standings[division] = [
+                {
+                    'team': team,
+                    'wins': teams_records.get(team, {}).get('wins', 0),
+                    'losses': teams_records.get(team, {}).get('losses', 0),
+                    'ties': teams_records.get(team, {}).get('ties', 0),
+                    'win_pct': round(
+                        teams_records.get(team, {}).get('wins', 0) /
+                        max(sum(teams_records.get(team, {}).values()), 1),
+                        3
+                    )
+                }
+                for team in teams
+            ]
+
+            # Sort by win percentage
+            standings[division].sort(key=lambda x: x['win_pct'], reverse=True)
+
+        return {
+            "season": season,
+            "week": week,
+            "standings": standings
+        }
+
+    # No data available
+    return {
+        "error": "No standings data available",
+        "message": "Ingest nflverse data to get standings",
+        "command": f"python -m backend.ingestion.fetch_nflverse --year {season}"
+    }
+
+
 @app.get('/api/v1/games/{game_id}/prop-sheet')
 async def get_game_prop_sheet(game_id: str):
     """Get comprehensive prop sheet for a game.
