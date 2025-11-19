@@ -12,6 +12,15 @@ requests>=2.31.0
 
 # Machine Learning (for modeling and calibration)
 scikit-learn>=1.3.0
+xgboost>=2.0.0
+lightgbm>=4.0.0
+scipy>=1.11.0
+
+# Database
+sqlalchemy>=2.0.0
+
+# Environment variables
+python-dotenv>=1.0.0
 
 # Testing
 pytest>=7.4.0

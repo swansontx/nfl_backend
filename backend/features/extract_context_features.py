@@ -105,8 +105,8 @@ def extract_defensive_metrics(
                 try:
                     defensive_metrics[key]['cpoe_sum'] += float(cpoe)
                     defensive_metrics[key]['cpoe_count'] += 1
-                except:
-                    pass
+                except (ValueError, TypeError):
+                    pass  # Skip invalid CPOE values
 
         elif play_type == 'run':
             defensive_metrics[key]['rush_epa_sum'] += epa
@@ -169,11 +169,21 @@ def extract_pace_metrics(
     df = df[df['play_type'].isin(['pass', 'run'])]
 
     # Define neutral game script
-    df['is_neutral'] = (
-        (df['score_differential'].abs() <= 8) &
-        (df['half_seconds_remaining'] > 120) &
-        (df['qtr'].isin([1, 2, 3]))
-    )
+    # Check for required columns first
+    has_score_diff = 'score_differential' in df.columns
+    has_half_seconds = 'half_seconds_remaining' in df.columns
+    has_qtr = 'qtr' in df.columns
+
+    if has_score_diff and has_half_seconds and has_qtr:
+        df['is_neutral'] = (
+            (df['score_differential'].abs() <= 8) &
+            (df['half_seconds_remaining'] > 120) &
+            (df['qtr'].isin([1, 2, 3]))
+        )
+    else:
+        # Fallback: assume all plays are neutral if columns missing
+        print("⚠️  Warning: Missing score_differential/half_seconds_remaining/qtr columns, assuming all plays neutral")
+        df['is_neutral'] = True
 
     # Calculate pace metrics by team/week
     pace_metrics = defaultdict(lambda: {
@@ -382,9 +392,20 @@ def merge_context_into_features(
                 game.update(pace_metrics[team_pace_key])
 
             # Add stadium features (based on home team)
-            # For now, use team's stadium (simplified - should use actual game location)
-            if team in stadium_features:
-                game.update(stadium_features[team])
+            # Use actual game location (home team), not player's team
+            is_home = game.get('is_home', None)
+            if is_home is True:
+                # Player's team is home - use their stadium
+                if team in stadium_features:
+                    game.update(stadium_features[team])
+            elif is_home is False:
+                # Player's team is away - use opponent's stadium
+                if opponent in stadium_features:
+                    game.update(stadium_features[opponent])
+            else:
+                # is_home missing - try to infer or skip
+                if team in stadium_features:
+                    game.update(stadium_features[team])  # Fallback to team stadium
 
             enhanced_count += 1
 

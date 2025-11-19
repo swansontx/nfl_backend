@@ -1,0 +1,329 @@
+{
+  "date": "2025-11-09",
+  "week": 10,
+  "props": [
+    {
+      "player": "Michael Penix",
+      "team": "ATL",
+      "game_id": "2025_10_ATL_IND",
+      "prop_type": "pass_yards",
+      "line": 245.5,
+      "side": "OVER",
+      "prediction": 268.0,
+      "actual": 312,
+      "hit": true,
+      "confidence": 0.68,
+      "edge": 0.082
+    },
+    {
+      "player": "Bijan Robinson",
+      "team": "ATL",
+      "game_id": "2025_10_ATL_IND",
+      "prop_type": "rush_yards",
+      "line": 75.5,
+      "side": "OVER",
+      "prediction": 88.0,
+      "actual": 72,
+      "hit": false,
+      "confidence": 0.65,
+      "edge": 0.075
+    },
+    {
+      "player": "Josh Allen",
+      "team": "BUF",
+      "game_id": "2025_10_BUF_MIA",
+      "prop_type": "pass_yards",
+      "line": 265.5,
+      "side": "OVER",
+      "prediction": 285.0,
+      "actual": 189,
+      "hit": false,
+      "confidence": 0.7,
+      "edge": 0.088
+    },
+    {
+      "player": "Tua Tagovailoa",
+      "team": "MIA",
+      "game_id": "2025_10_BUF_MIA",
+      "prop_type": "pass_yards",
+      "line": 235.5,
+      "side": "OVER",
+      "prediction": 258.0,
+      "actual": 298,
+      "hit": true,
+      "confidence": 0.66,
+      "edge": 0.078
+    },
+    {
+      "player": "Lamar Jackson",
+      "team": "BAL",
+      "game_id": "2025_10_BAL_MIN",
+      "prop_type": "pass_yards",
+      "line": 215.5,
+      "side": "OVER",
+      "prediction": 238.0,
+      "actual": 244,
+      "hit": true,
+      "confidence": 0.69,
+      "edge": 0.084
+    },
+    {
+      "player": "Derrick Henry",
+      "team": "BAL",
+      "game_id": "2025_10_BAL_MIN",
+      "prop_type": "rush_yards",
+      "line": 85.5,
+      "side": "OVER",
+      "prediction": 102.0,
+      "actual": 118,
+      "hit": true,
+      "confidence": 0.72,
+      "edge": 0.095
+    },
+    {
+      "player": "Jared Goff",
+      "team": "DET",
+      "game_id": "2025_10_DET_WAS",
+      "prop_type": "pass_yards",
+      "line": 255.5,
+      "side": "OVER",
+      "prediction": 285.0,
+      "actual": 342,
+      "hit": true,
+      "confidence": 0.71,
+      "edge": 0.091
+    },
+    {
+      "player": "Amon-Ra St. Brown",
+      "team": "DET",
+      "game_id": "2025_10_DET_WAS",
+      "prop_type": "rec_yards",
+      "line": 75.5,
+      "side": "OVER",
+      "prediction": 92.0,
+      "actual": 135,
+      "hit": true,
+      "confidence": 0.73,
+      "edge": 0.098
+    },
+    {
+      "player": "Sam Darnold",
+      "team": "SEA",
+      "game_id": "2025_10_ARI_SEA",
+      "prop_type": "pass_yards",
+      "line": 235.5,
+      "side": "OVER",
+      "prediction": 265.0,
+      "actual": 328,
+      "hit": true,
+      "confidence": 0.67,
+      "edge": 0.08
+    },
+    {
+      "player": "Kenneth Walker",
+      "team": "SEA",
+      "game_id": "2025_10_ARI_SEA",
+      "prop_type": "rush_yards",
+      "line": 68.5,
+      "side": "OVER",
+      "prediction": 82.0,
+      "actual": 95,
+      "hit": true,
+      "confidence": 0.64,
+      "edge": 0.074
+    },
+    {
+      "player": "Matthew Stafford",
+      "team": "LA",
+      "game_id": "2025_10_LA_SF",
+      "prop_type": "pass_yards",
+      "line": 245.5,
+      "side": "OVER",
+      "prediction": 275.0,
+      "actual": 365,
+      "hit": true,
+      "confidence": 0.68,
+      "edge": 0.083
+    },
+    {
+      "player": "Puka Nacua",
+      "team": "LA",
+      "game_id": "2025_10_LA_SF",
+      "prop_type": "rec_yards",
+      "line": 72.5,
+      "side": "OVER",
+      "prediction": 88.0,
+      "actual": 142,
+      "hit": true,
+      "confidence": 0.7,
+      "edge": 0.087
+    }
+  ],
+  "parlays": [
+    {
+      "name": "DET Passing Stack",
+      "legs": [
+        {
+          "player": "Jared Goff",
+          "team": "DET",
+          "game_id": "2025_10_DET_WAS",
+          "prop_type": "pass_yards",
+          "line": 255.5,
+          "side": "OVER",
+          "prediction": 285.0,
+          "actual": 342,
+          "hit": true,
+          "confidence": 0.71,
+          "edge": 0.091
+        },
+        {
+          "player": "Amon-Ra St. Brown",
+          "team": "DET",
+          "game_id": "2025_10_DET_WAS",
+          "prop_type": "rec_yards",
+          "line": 75.5,
+          "side": "OVER",
+          "prediction": 92.0,
+          "actual": 135,
+          "hit": true,
+          "confidence": 0.73,
+          "edge": 0.098
+        }
+      ],
+      "hit": true,
+      "odds": 260
+    },
+    {
+      "name": "BAL Offense Stack",
+      "legs": [
+        {
+          "player": "Lamar Jackson",
+          "team": "BAL",
+          "game_id": "2025_10_BAL_MIN",
+          "prop_type": "pass_yards",
+          "line": 215.5,
+          "side": "OVER",
+          "prediction": 238.0,
+          "actual": 244,
+          "hit": true,
+          "confidence": 0.69,
+          "edge": 0.084
+        },
+        {
+          "player": "Derrick Henry",
+          "team": "BAL",
+          "game_id": "2025_10_BAL_MIN",
+          "prop_type": "rush_yards",
+          "line": 85.5,
+          "side": "OVER",
+          "prediction": 102.0,
+          "actual": 118,
+          "hit": true,
+          "confidence": 0.72,
+          "edge": 0.095
+        }
+      ],
+      "hit": true,
+      "odds": 260
+    },
+    {
+      "name": "LAR Passing Stack",
+      "legs": [
+        {
+          "player": "Matthew Stafford",
+          "team": "LA",
+          "game_id": "2025_10_LA_SF",
+          "prop_type": "pass_yards",
+          "line": 245.5,
+          "side": "OVER",
+          "prediction": 275.0,
+          "actual": 365,
+          "hit": true,
+          "confidence": 0.68,
+          "edge": 0.083
+        },
+        {
+          "player": "Puka Nacua",
+          "team": "LA",
+          "game_id": "2025_10_LA_SF",
+          "prop_type": "rec_yards",
+          "line": 72.5,
+          "side": "OVER",
+          "prediction": 88.0,
+          "actual": 142,
+          "hit": true,
+          "confidence": 0.7,
+          "edge": 0.087
+        }
+      ],
+      "hit": true,
+      "odds": 260
+    },
+    {
+      "name": "3-Game Studs Parlay",
+      "legs": [
+        {
+          "player": "Derrick Henry",
+          "team": "BAL",
+          "game_id": "2025_10_BAL_MIN",
+          "prop_type": "rush_yards",
+          "line": 85.5,
+          "side": "OVER",
+          "prediction": 102.0,
+          "actual": 118,
+          "hit": true,
+          "confidence": 0.72,
+          "edge": 0.095
+        },
+        {
+          "player": "Jared Goff",
+          "team": "DET",
+          "game_id": "2025_10_DET_WAS",
+          "prop_type": "pass_yards",
+          "line": 255.5,
+          "side": "OVER",
+          "prediction": 285.0,
+          "actual": 342,
+          "hit": true,
+          "confidence": 0.71,
+          "edge": 0.091
+        },
+        {
+          "player": "Matthew Stafford",
+          "team": "LA",
+          "game_id": "2025_10_LA_SF",
+          "prop_type": "pass_yards",
+          "line": 245.5,
+          "side": "OVER",
+          "prediction": 275.0,
+          "actual": 365,
+          "hit": true,
+          "confidence": 0.68,
+          "edge": 0.083
+        }
+      ],
+      "hit": true,
+      "odds": 600
+    }
+  ],
+  "prop_metrics": {
+    "total_props": 12,
+    "wins": 10,
+    "losses": 2,
+    "win_rate": 0.8333333333333334,
+    "net_profit": 700,
+    "roi": 0.5833333333333334
+  },
+  "parlay_metrics": {
+    "total_parlays": 4,
+    "wins": 4,
+    "losses": 0,
+    "net_profit": 980,
+    "roi": 2.45
+  },
+  "combined": {
+    "total_staked": 1600,
+    "total_net": 1680.0,
+    "combined_roi": 1.05
+  }
+}

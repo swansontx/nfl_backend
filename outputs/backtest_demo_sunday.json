@@ -1,0 +1,269 @@
+{
+  "date": "Week 11 Sunday (Demo)",
+  "games": [
+    {
+      "game_id": "2025_11_BAL_PIT",
+      "week": 11,
+      "away_team": "BAL",
+      "home_team": "PIT",
+      "spread_line": -2.5,
+      "total_line": 47.5,
+      "away_score": 20,
+      "home_score": 24
+    },
+    {
+      "game_id": "2025_11_GB_CHI",
+      "week": 11,
+      "away_team": "GB",
+      "home_team": "CHI",
+      "spread_line": 3.5,
+      "total_line": 43.5,
+      "away_score": 27,
+      "home_score": 17
+    },
+    {
+      "game_id": "2025_11_KC_BUF",
+      "week": 11,
+      "away_team": "KC",
+      "home_team": "BUF",
+      "spread_line": -4.5,
+      "total_line": 52.5,
+      "away_score": 31,
+      "home_score": 35
+    },
+    {
+      "game_id": "2025_11_SF_ARI",
+      "week": 11,
+      "away_team": "SF",
+      "home_team": "ARI",
+      "spread_line": 5.5,
+      "total_line": 48.5,
+      "away_score": 21,
+      "home_score": 28
+    },
+    {
+      "game_id": "2025_11_DET_JAX",
+      "week": 11,
+      "away_team": "DET",
+      "home_team": "JAX",
+      "spread_line": 13.5,
+      "total_line": 50.5,
+      "away_score": 38,
+      "home_score": 14
+    },
+    {
+      "game_id": "2025_11_MIN_TEN",
+      "week": 11,
+      "away_team": "MIN",
+      "home_team": "TEN",
+      "spread_line": 7.5,
+      "total_line": 44.5,
+      "away_score": 23,
+      "home_score": 13
+    }
+  ],
+  "predictions": [
+    {
+      "game_id": "2025_11_BAL_PIT",
+      "away_team": "BAL",
+      "home_team": "PIT",
+      "predicted_winner": "PIT",
+      "home_win_prob": 0.6513548646660542,
+      "predicted_home_score": 25,
+      "predicted_away_score": 22,
+      "predicted_spread": -2.5,
+      "predicted_total": 47.5
+    },
+    {
+      "game_id": "2025_11_GB_CHI",
+      "away_team": "GB",
+      "home_team": "CHI",
+      "predicted_winner": "GB",
+      "home_win_prob": 0.29421497216298875,
+      "predicted_home_score": 20,
+      "predicted_away_score": 24,
+      "predicted_spread": 3.5,
+      "predicted_total": 43.5
+    },
+    {
+      "game_id": "2025_11_KC_BUF",
+      "away_team": "KC",
+      "home_team": "BUF",
+      "predicted_winner": "BUF",
+      "home_win_prob": 0.7549149868676283,
+      "predicted_home_score": 28,
+      "predicted_away_score": 24,
+      "predicted_spread": -4.5,
+      "predicted_total": 52.5
+    },
+    {
+      "game_id": "2025_11_SF_ARI",
+      "away_team": "SF",
+      "home_team": "ARI",
+      "predicted_winner": "SF",
+      "home_win_prob": 0.20181322226037884,
+      "predicted_home_score": 22,
+      "predicted_away_score": 27,
+      "predicted_spread": 5.5,
+      "predicted_total": 48.5
+    },
+    {
+      "game_id": "2025_11_DET_JAX",
+      "away_team": "DET",
+      "home_team": "JAX",
+      "predicted_winner": "DET",
+      "home_win_prob": 0.033085978388704126,
+      "predicted_home_score": 18,
+      "predicted_away_score": 32,
+      "predicted_spread": 13.5,
+      "predicted_total": 50.5
+    },
+    {
+      "game_id": "2025_11_MIN_TEN",
+      "away_team": "MIN",
+      "home_team": "TEN",
+      "predicted_winner": "MIN",
+      "home_win_prob": 0.13296424019782926,
+      "predicted_home_score": 18,
+      "predicted_away_score": 26,
+      "predicted_spread": 7.5,
+      "predicted_total": 44.5
+    }
+  ],
+  "props": [
+    {
+      "game_id": "2025_11_BAL_PIT",
+      "player": "Lamar Jackson",
+      "team": "BAL",
+      "prop_type": "pass_yards",
+      "line": 235.5,
+      "side": "OVER",
+      "prediction": 258.3,
+      "hit_prob": 0.68,
+      "edge": 0.084,
+      "ev": 0.052,
+      "actual_result": 245,
+      "hit": true
+    },
+    {
+      "game_id": "2025_11_BAL_PIT",
+      "player": "Najee Harris",
+      "team": "PIT",
+      "prop_type": "rush_yards",
+      "line": 68.5,
+      "side": "OVER",
+      "prediction": 82.1,
+      "hit_prob": 0.72,
+      "edge": 0.096,
+      "ev": 0.061,
+      "actual_result": 91,
+      "hit": true
+    },
+    {
+      "game_id": "2025_11_GB_CHI",
+      "player": "Aaron Rodgers",
+      "team": "GB",
+      "prop_type": "pass_tds",
+      "line": 1.5,
+      "side": "OVER",
+      "prediction": 2.1,
+      "hit_prob": 0.64,
+      "edge": 0.071,
+      "ev": 0.043,
+      "actual_result": 3,
+      "hit": true
+    },
+    {
+      "game_id": "2025_11_KC_BUF",
+      "player": "Josh Allen",
+      "team": "BUF",
+      "prop_type": "pass_yards",
+      "line": 278.5,
+      "side": "OVER",
+      "prediction": 292.7,
+      "hit_prob": 0.66,
+      "edge": 0.078,
+      "ev": 0.048,
+      "actual_result": 305,
+      "hit": true
+    },
+    {
+      "game_id": "2025_11_KC_BUF",
+      "player": "Travis Kelce",
+      "team": "KC",
+      "prop_type": "rec_yards",
+      "line": 54.5,
+      "side": "UNDER",
+      "prediction": 42.3,
+      "hit_prob": 0.61,
+      "edge": 0.065,
+      "ev": 0.038,
+      "actual_result": 38,
+      "hit": true
+    },
+    {
+      "game_id": "2025_11_SF_ARI",
+      "player": "Christian McCaffrey",
+      "team": "SF",
+      "prop_type": "rush_yards",
+      "line": 85.5,
+      "side": "OVER",
+      "prediction": 98.2,
+      "hit_prob": 0.7,
+      "edge": 0.092,
+      "ev": 0.058,
+      "actual_result": 82,
+      "hit": false
+    },
+    {
+      "game_id": "2025_11_DET_JAX",
+      "player": "Jared Goff",
+      "team": "DET",
+      "prop_type": "pass_yards",
+      "line": 245.5,
+      "side": "OVER",
+      "prediction": 268.9,
+      "hit_prob": 0.69,
+      "edge": 0.087,
+      "ev": 0.054,
+      "actual_result": 312,
+      "hit": true
+    },
+    {
+      "game_id": "2025_11_DET_JAX",
+      "player": "Amon-Ra St. Brown",
+      "team": "DET",
+      "prop_type": "rec_yards",
+      "line": 72.5,
+      "side": "OVER",
+      "prediction": 88.4,
+      "hit_prob": 0.73,
+      "edge": 0.103,
+      "ev": 0.067,
+      "actual_result": 124,
+      "hit": true
+    },
+    {
+      "game_id": "2025_11_MIN_TEN",
+      "player": "Justin Jefferson",
+      "team": "MIN",
+      "prop_type": "rec_yards",
+      "line": 82.5,
+      "side": "OVER",
+      "prediction": 95.1,
+      "hit_prob": 0.67,
+      "edge": 0.081,
+      "ev": 0.05,
+      "actual_result": 78,
+      "hit": false
+    }
+  ],
+  "metrics": {
+    "game_accuracy": 0.8333333333333334,
+    "spread_mae": 14.166666666666666,
+    "total_mae": 4.666666666666667,
+    "prop_win_rate": 0.7777777777777778,
+    "prop_roi": 0.4777777777777778,
+    "net_profit": 430
+  }
+}
