@@ -1659,6 +1659,275 @@ def get_player_stats(player_id: str, season: int = 2024):
     }
 
 
+# ============================================================================
+# Betting Infrastructure Endpoints (NEW!)
+# ============================================================================
+
+@app.get('/api/v1/betting/parlays/suggestions', tags=['Betting'])
+async def get_parlay_suggestions(
+    game_ids: Optional[str] = None,
+    max_legs: int = 4,
+    min_parlay_ev: float = 0.10,
+    limit: int = 10
+):
+    """Get correlation-aware parlay suggestions.
+
+    Uses the portfolio optimizer to build optimal parlays that account for:
+    - Correlation between props (same-game, same-team, opposing teams)
+    - Game script scenarios (shootout, defensive, RB game)
+    - Risk-adjusted sizing with correlation penalties
+
+    Args:
+        game_ids: Comma-separated game IDs to analyze (optional, uses all if not specified)
+        max_legs: Maximum legs per parlay (default 4)
+        min_parlay_ev: Minimum EV to suggest parlay (default 10%)
+        limit: Number of parlay suggestions to return
+
+    Returns:
+        List of parlay suggestions with:
+        - Legs (individual props)
+        - Combined odds and probabilities (raw vs correlation-adjusted)
+        - EV and recommended stake
+        - Correlation analysis and scenarios
+    """
+    from backend.betting.portfolio_optimizer import build_parlay_suggestions, PropValue
+
+    # Load value props (from /api/v1/props/value endpoint logic)
+    prop_lines = odds_api.get_player_props()
+    projections = []
+
+    if game_ids:
+        for game_id in game_ids.split(','):
+            projections.extend(model_loader.load_projections_for_game(game_id.strip()))
+    else:
+        # Load all available
+        available_games = model_loader.get_available_games()
+        for gid in available_games[:10]:  # Limit to 10 games
+            projections.extend(model_loader.load_projections_for_game(gid))
+
+    # Find value props
+    value_props_raw = prop_analyzer.find_best_props(
+        prop_lines,
+        projections,
+        min_edge=settings.min_edge_threshold
+    )
+
+    # Convert to PropValue format for optimizer
+    value_props = []
+    for vp in value_props_raw:
+        # Extract game context (would come from projections in real implementation)
+        value_props.append(PropValue(
+            player_id=vp.prop_line.player_id,
+            player_name=vp.prop_line.player_name,
+            game_id="2024_12_KC_BUF",  # TODO: Extract from data
+            team="KC",  # TODO: Extract from data
+            opponent="BUF",
+            prop_type=vp.prop_line.prop_type,
+            line=vp.prop_line.line,
+            side="over" if vp.recommendation == "OVER" else "under",
+            odds=vp.prop_line.over_odds if vp.recommendation == "OVER" else vp.prop_line.under_odds,
+            projection=vp.projection.projection,
+            hit_probability=vp.projection.hit_probability_over if vp.recommendation == "OVER" else vp.projection.hit_probability_under,
+            edge=max(vp.edge_over, vp.edge_under),
+            ev=max(vp.edge_over, vp.edge_under) / 100,  # Convert to decimal
+            is_home=True,  # TODO: Extract from data
+            spread=-3.0,  # TODO: Extract from market data
+            total=49.5,  # TODO: Extract from market data
+        ))
+
+    # Build parlay suggestions
+    parlay_suggestions = build_parlay_suggestions(
+        value_props=value_props,
+        max_legs=max_legs,
+        max_risk_per_game=settings.max_stake_pct,
+        kelly_fraction=settings.kelly_fraction,
+        min_parlay_ev=min_parlay_ev
+    )
+
+    # Convert to response format
+    results = []
+    for parlay in parlay_suggestions[:limit]:
+        results.append({
+            "legs": [
+                {
+                    "player_name": leg.player_name,
+                    "prop_type": leg.prop_type,
+                    "side": leg.side,
+                    "line": leg.line,
+                    "odds": leg.odds,
+                    "projection": leg.projection,
+                    "hit_probability": leg.hit_probability
+                }
+                for leg in parlay.legs
+            ],
+            "combined_odds": parlay.combined_odds,
+            "probabilities": {
+                "raw": round(parlay.raw_probability, 3),
+                "adjusted": round(parlay.combined_probability, 3),
+                "correlation_penalty": round(parlay.correlation_adjustment, 2)
+            },
+            "ev": round(parlay.ev, 2),
+            "recommended_stake_pct": round(parlay.recommended_stake_pct, 2),
+            "confidence": parlay.confidence,
+            "scenarios": parlay.scenarios
+        })
+
+    return {
+        "total_suggestions": len(results),
+        "parlays": results,
+        "filters": {
+            "max_legs": max_legs,
+            "min_parlay_ev": min_parlay_ev
+        },
+        "warning": "Parlay betting is high-risk. These suggestions account for correlation but variance is still significant."
+    }
+
+
+@app.get('/api/v1/betting/clv/report', tags=['Betting'])
+async def get_clv_report(last_n: int = 50):
+    """Get Closing Line Value (CLV) report for recent bets.
+
+    CLV is the gold standard for evaluating betting model quality.
+    Consistent positive CLV indicates a profitable long-term process
+    regardless of short-term win/loss record.
+
+    Args:
+        last_n: Number of recent bets to analyze (default 50)
+
+    Returns:
+        CLV summary with:
+        - Average CLV
+        - Positive CLV rate
+        - Win rate by CLV buckets
+        - Top/worst CLV bets
+        - Breakdown by prop type
+    """
+    from backend.betting.recommendation_manager import recommendation_manager
+
+    # Get CLV summary
+    summary = recommendation_manager.get_recent_clv_summary(last_n=last_n)
+
+    if 'error' in summary:
+        return {
+            "error": summary['error'],
+            "message": "No CLV data available. Log bets using /api/v1/betting/recommendations endpoint first."
+        }
+
+    # Get detailed CLV report from tracker
+    clv_tracker = recommendation_manager.clv_tracker
+    report = clv_tracker.generate_clv_report()
+
+    return {
+        "summary": summary,
+        "overall_metrics": {
+            "total_bets": report.get('total_bets', 0),
+            "avg_clv": report.get('avg_clv', 0),
+            "median_clv": report.get('median_clv', 0),
+            "positive_clv_rate": report.get('positive_clv_rate', 0),
+            "win_rate": report.get('win_rate', 0)
+        },
+        "by_prop_type": report.get('by_prop_type', {}),
+        "clv_buckets": report.get('clv_buckets', {}),
+        "top_clv_bets": report.get('top_clv_bets', [])[:10],
+        "worst_clv_bets": report.get('worst_clv_bets', [])[:10],
+        "interpretation": {
+            "avg_clv": _interpret_clv(summary.get('avg_clv', 0)),
+            "positive_clv_rate": _interpret_positive_rate(summary.get('positive_clv_rate', 0))
+        }
+    }
+
+
+def _interpret_clv(avg_clv: float) -> str:
+    """Interpret average CLV."""
+    if avg_clv >= 2.0:
+        return "EXCELLENT - Elite market-beating performance"
+    elif avg_clv >= 1.0:
+        return "GOOD - Sustainable edge, profitable long-term"
+    elif avg_clv >= 0.5:
+        return "FAIR - Slight edge, marginally profitable"
+    elif avg_clv >= 0:
+        return "NEUTRAL - Breaking even with closing lines"
+    else:
+        return "POOR - Consistently betting on wrong side of information"
+
+
+def _interpret_positive_rate(rate: float) -> str:
+    """Interpret positive CLV rate."""
+    if rate >= 0.60:
+        return "EXCELLENT - Beating closing line 60%+ of the time"
+    elif rate >= 0.55:
+        return "GOOD - Consistently finding value"
+    elif rate >= 0.50:
+        return "FAIR - Slightly better than market"
+    else:
+        return "POOR - Losing to closing line more often than winning"
+
+
+@app.post('/api/v1/betting/recommendations', tags=['Betting'])
+async def log_recommendation(recommendation: Dict):
+    """Log a prop recommendation for CLV tracking.
+
+    This endpoint should be called whenever a recommendation is generated,
+    whether or not the bet is actually placed. This builds the CLV tracking
+    history and meta trust model training data.
+
+    Request body:
+        {
+            "player_name": "Patrick Mahomes",
+            "game_id": "2024_12_KC_BUF",
+            "prop_type": "player_pass_yds",
+            "side": "over",
+            "line": 275.5,
+            "odds": -110,
+            "projection": 295.3,
+            "hit_probability": 0.68,
+            "edge": 0.078,
+            "ev": 0.05,
+            "actually_bet": true,
+            "trust_score": 0.72,
+            "games_sampled": 12
+        }
+
+    Returns:
+        Bet ID for tracking
+    """
+    from backend.betting.recommendation_manager import (
+        recommendation_manager,
+        PropRecommendation
+    )
+
+    # Create recommendation object
+    rec = PropRecommendation(
+        player_id=recommendation.get('player_id', 'unknown'),
+        player_name=recommendation['player_name'],
+        game_id=recommendation['game_id'],
+        prop_type=recommendation['prop_type'],
+        side=recommendation['side'],
+        line=recommendation['line'],
+        odds=recommendation['odds'],
+        projection=recommendation['projection'],
+        hit_probability=recommendation['hit_probability'],
+        edge=recommendation['edge'],
+        ev=recommendation['ev'],
+        trust_score=recommendation.get('trust_score'),
+        games_sampled=recommendation.get('games_sampled'),
+        recommendation="BET" if recommendation.get('actually_bet') else "CONSIDER",
+        stake_pct=recommendation.get('stake_pct')
+    )
+
+    # Log recommendation
+    bet_id = recommendation_manager.log_prop_recommendation(
+        recommendation=rec,
+        actually_bet=recommendation.get('actually_bet', False)
+    )
+
+    return {
+        "status": "logged",
+        "bet_id": bet_id,
+        "message": "Recommendation logged for CLV tracking" if recommendation.get('actually_bet') else "Recommendation logged (not bet)"
+    }
+
+
 @app.get('/api/v1/players/{player_id}/gamelogs', tags=['Players'])
 def get_player_gamelogs(player_id: str, season: int = 2024, limit: int = 20):
     """Get game-by-game performance logs for a player.
