@@ -80,6 +80,25 @@ with get_db() as session:
             if existing:
                 continue
 
+            # Handle numeric fields with NaN/inf
+            import math
+
+            temp = game_row.get('temp')
+            if temp is not None and (math.isnan(temp) or math.isinf(temp)):
+                temp = None
+
+            wind = game_row.get('wind')
+            if wind is not None and (math.isnan(wind) or math.isinf(wind)):
+                wind = None
+
+            away_score = game_row.get('away_score')
+            if away_score is not None and (math.isnan(away_score) or math.isinf(away_score)):
+                away_score = None
+
+            home_score = game_row.get('home_score')
+            if home_score is not None and (math.isnan(home_score) or math.isinf(home_score)):
+                home_score = None
+
             # Create game
             game = Game(
                 game_id=game_id,
@@ -92,10 +111,10 @@ with get_db() as session:
                 stadium=game_row.get('stadium'),
                 roof=game_row.get('roof'),
                 surface=game_row.get('surface'),
-                temp=game_row.get('temp'),
-                wind=game_row.get('wind'),
-                away_score=game_row.get('away_score'),
-                home_score=game_row.get('home_score')
+                temp=temp,
+                wind=wind,
+                away_score=away_score,
+                home_score=home_score
             )
 
             session.add(game)
@@ -108,6 +127,10 @@ with get_db() as session:
     if rosters is not None:
         print("Loading players...")
         players_added = 0
+
+        # Deduplicate by player_id, keeping most recent entry (2025 season data)
+        rosters = rosters.sort_values('season', ascending=False).drop_duplicates(subset='player_id', keep='first')
+        print(f"   Processing {len(rosters)} unique players...")
 
         for _, player_row in rosters.iterrows():
             player_id = player_row.get('player_id') or player_row.get('gsis_id')
