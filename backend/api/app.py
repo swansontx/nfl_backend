@@ -661,6 +661,358 @@ async def compare_props(
     }
 
 
+@app.get('/api/v1/props/trending')
+async def get_trending_props(
+    week: Optional[int] = None,
+    limit: int = 20
+):
+    """Get trending prop lines with 3-week movement tracking (DraftKings only).
+
+    Returns "hot movers" (2+ point week-over-week changes) and "sustained trends"
+    (3-week consistent direction patterns) for DraftKings prop betting.
+
+    Args:
+        week: Week number (optional, defaults to current week)
+        limit: Number of trending props to return per category
+
+    Returns:
+        Dict with:
+
+        hot_movers (week-over-week big changes):
+        - player, market, bookmaker (always 'draftkings')
+        - opening_line, current_line, line_movement, line_movement_pct
+        - over_odds, under_odds (juice/vig)
+        - direction ('up', 'down', 'neutral')
+        - opening_timestamp, current_timestamp, days_tracked
+        - badge: "+2.5 pts (7 days)" or "+22% (7 days)"
+        - icon (⬆️⬇️), color (green/red), strength (🔥⚡📊)
+
+        sustained_trends (3-week consistent patterns):
+        - player, market, bookmaker
+        - week_1_line, week_2_line, week_3_line, current_line
+        - total_movement, total_movement_pct
+        - direction, consistency ("3/3 weeks up")
+        - badge: "+5.5 pts (3 weeks)" or "+15% (3 weeks)"
+        - icon, color, strength (🔥🔥 for strong sustained trends)
+
+        Snapshot frequency:
+        - Week-over-week: Daily snapshots (7 data points)
+        - 3-week: Every 2-3 days (10-15 data points recommended)
+    """
+    from pathlib import Path
+    from backend.ingestion.fetch_prop_lines import PropLineFetcher
+
+    # Use dummy API key for analysis (doesn't make API calls)
+    fetcher = PropLineFetcher('dummy_key')
+    snapshots_dir = Path('outputs/prop_lines')
+
+    if not snapshots_dir.exists():
+        return {
+            "error": "No prop line snapshots found",
+            "message": "Run prop line fetcher first to capture snapshots",
+            "command": f"python -m backend.ingestion.fetch_prop_lines --week {week}"
+        }
+
+    # Analyze trends
+    trends = fetcher.get_trending_props(snapshots_dir, week)
+
+    if 'error' in trends:
+        return trends
+
+    # Format for frontend (already has icons/colors/strength from get_trending_props)
+    all_movers = trends.get('hot_movers', [])
+    sustained_trends = trends.get('sustained_trends', [])[:limit]
+
+    # Categorize hot movers by direction
+    # 🔥 Hottest movers: Biggest absolute line changes (regardless of direction)
+    hottest_movers = sorted(
+        all_movers,
+        key=lambda m: abs(m.get('line_movement', 0)),
+        reverse=True
+    )[:limit]
+
+    # ⬆️ Lines moving up: Harder to hit Over, easier to hit Under
+    lines_moving_up = [
+        m for m in all_movers
+        if m.get('direction') == 'up'
+    ][:limit]
+
+    # ⬇️ Lines moving down: Easier to hit Over, harder to hit Under
+    lines_moving_down = [
+        m for m in all_movers
+        if m.get('direction') == 'down'
+    ][:limit]
+
+    return {
+        "week": week,
+        "snapshot_count": trends.get('snapshots_analyzed', 0),
+        "current_timestamp": trends.get('current_timestamp'),
+
+        # 🔥 Hottest movers (biggest absolute line changes)
+        "hottest_movers": hottest_movers,
+
+        # ⬆️ Lines moving up (getting harder to hit Over)
+        "lines_moving_up": lines_moving_up,
+
+        # ⬇️ Lines moving down (getting easier to hit Over)
+        "lines_moving_down": lines_moving_down,
+
+        # Sustained 3-week trends (pattern validation)
+        "sustained_trends": sustained_trends,
+
+        # Summary stats with averages and counts for each category
+        "summary": {
+            "hottest_movers": {
+                "total": len(hottest_movers),
+                "strong": len([m for m in hottest_movers if abs(m.get('line_movement', 0)) >= 5.0]),
+                "avg_movement": round(
+                    sum(abs(m.get('line_movement', 0)) for m in hottest_movers) / max(len(hottest_movers), 1),
+                    2
+                )
+            },
+            "lines_moving_up": {
+                "total": len(lines_moving_up),
+                "strong": len([m for m in lines_moving_up if m.get('line_movement', 0) >= 5.0]),
+                "avg_movement": round(
+                    sum(m.get('line_movement', 0) for m in lines_moving_up) / max(len(lines_moving_up), 1),
+                    2
+                )
+            },
+            "lines_moving_down": {
+                "total": len(lines_moving_down),
+                "strong": len([m for m in lines_moving_down if m.get('line_movement', 0) <= -5.0]),
+                "avg_movement": round(
+                    sum(m.get('line_movement', 0) for m in lines_moving_down) / max(len(lines_moving_down), 1),
+                    2
+                )
+            },
+            "sustained_trends": {
+                "total": len(sustained_trends),
+                "strong": len([t for t in sustained_trends if abs(t.get('total_movement', 0)) >= 8.0]),
+                "trending_up": len([t for t in sustained_trends if t.get('direction') == 'up']),
+                "trending_down": len([t for t in sustained_trends if t.get('direction') == 'down'])
+            }
+        }
+    }
+
+
+@app.get('/api/v1/odds/current')
+async def get_current_odds(
+    week: Optional[int] = None,
+    market: Optional[str] = None
+):
+    """Get current DraftKings prop odds for all upcoming games.
+
+    Essential for displaying current betting lines to users.
+
+    Args:
+        week: Week number (optional, defaults to current week)
+        market: Filter by specific market (e.g., 'player_pass_yds', 'player_rush_yds')
+
+    Returns:
+        Dict with current DraftKings odds:
+        - games: List of games with props
+        - Each prop includes: player, market, line, over_odds, under_odds, timestamp
+        - Grouped by game for easy navigation
+    """
+    from pathlib import Path
+    import json
+
+    snapshots_dir = Path('outputs/prop_lines')
+    week_str = f"week_{week}" if week else "current"
+    latest_file = snapshots_dir / f"snapshot_{week_str}_latest.json"
+
+    if not latest_file.exists():
+        return {
+            "error": "No current odds available",
+            "message": "Run prop line fetcher to get current odds",
+            "command": f"python -m backend.ingestion.fetch_prop_lines --week {week}"
+        }
+
+    # Load latest snapshot
+    with open(latest_file, 'r') as f:
+        snapshot = json.load(f)
+
+    # Format for frontend
+    games_with_odds = []
+
+    for game_id, game_data in snapshot.items():
+        game_info = {
+            "game_id": game_id,
+            "home_team": game_data.get('home_team'),
+            "away_team": game_data.get('away_team'),
+            "commence_time": game_data.get('commence_time'),
+            "snapshot_timestamp": game_data.get('snapshot_timestamp'),
+            "props_by_market": {}
+        }
+
+        # Group props by market
+        for market_name, props in game_data.get('props', {}).items():
+            # Filter by market if specified
+            if market and market_name != market:
+                continue
+
+            # Only include DraftKings lines
+            dk_props = [
+                {
+                    "player": p.get('player_name'),
+                    "market": market_name,
+                    "line": p.get('line'),
+                    "over_odds": p.get('over_odds', -110),
+                    "under_odds": p.get('under_odds', -110),
+                    "timestamp": p.get('timestamp'),
+                    "bookmaker": "draftkings"
+                }
+                for p in props
+                if p.get('bookmaker') == 'draftkings'
+            ]
+
+            if dk_props:
+                game_info['props_by_market'][market_name] = dk_props
+
+        if game_info['props_by_market']:  # Only include games with props
+            games_with_odds.append(game_info)
+
+    return {
+        "week": week,
+        "total_games": len(games_with_odds),
+        "total_props": sum(
+            len(props)
+            for game in games_with_odds
+            for props in game['props_by_market'].values()
+        ),
+        "snapshot_timestamp": snapshot.get(list(snapshot.keys())[0], {}).get('snapshot_timestamp') if snapshot else None,
+        "games": games_with_odds
+    }
+
+
+@app.get('/api/v1/standings')
+async def get_standings(
+    season: int = 2024,
+    week: Optional[int] = None
+):
+    """Get NFL standings by division and conference.
+
+    Essential context for understanding team strength and playoff implications.
+
+    Args:
+        season: Season year (default 2024)
+        week: Week number (optional, returns current standings if not specified)
+
+    Returns:
+        Dict with standings:
+        - afc_east, afc_north, afc_south, afc_west
+        - nfc_east, nfc_north, nfc_south, nfc_west
+        - Each division includes: team, wins, losses, ties, win_pct, division_record, conference_record
+    """
+    from pathlib import Path
+    import pandas as pd
+
+    # Try to load standings from nflverse data
+    standings_file = Path(f'inputs/{season}_standings.csv')
+
+    if standings_file.exists():
+        # Load from nflverse standings
+        standings_df = pd.read_csv(standings_file)
+
+        # Filter by week if specified
+        if week:
+            standings_df = standings_df[standings_df['week'] == week]
+
+        # Group by division
+        divisions = {}
+        for division in ['AFC East', 'AFC North', 'AFC South', 'AFC West',
+                        'NFC East', 'NFC North', 'NFC South', 'NFC West']:
+            div_teams = standings_df[standings_df['division'] == division].to_dict('records')
+            divisions[division.lower().replace(' ', '_')] = div_teams
+
+        return {
+            "season": season,
+            "week": week,
+            "standings": divisions
+        }
+
+    # Fallback: Calculate from schedule/games data
+    schedule_file = Path(f'inputs/{season}_schedule.parquet')
+
+    if schedule_file.exists():
+        import pandas as pd
+
+        schedule = pd.read_parquet(schedule_file)
+
+        # Calculate records from completed games
+        teams_records = {}
+
+        for _, game in schedule.iterrows():
+            if pd.notna(game.get('home_score')) and pd.notna(game.get('away_score')):
+                # Game is complete
+                home_team = game['home_team']
+                away_team = game['away_team']
+                home_score = game['home_score']
+                away_score = game['away_score']
+
+                # Initialize teams if not exist
+                for team in [home_team, away_team]:
+                    if team not in teams_records:
+                        teams_records[team] = {'wins': 0, 'losses': 0, 'ties': 0}
+
+                # Update records
+                if home_score > away_score:
+                    teams_records[home_team]['wins'] += 1
+                    teams_records[away_team]['losses'] += 1
+                elif away_score > home_score:
+                    teams_records[away_team]['wins'] += 1
+                    teams_records[home_team]['losses'] += 1
+                else:
+                    teams_records[home_team]['ties'] += 1
+                    teams_records[away_team]['ties'] += 1
+
+        # Format standings by division (hardcoded NFL divisions)
+        divisions = {
+            'afc_east': ['BUF', 'MIA', 'NE', 'NYJ'],
+            'afc_north': ['BAL', 'CIN', 'CLE', 'PIT'],
+            'afc_south': ['HOU', 'IND', 'JAX', 'TEN'],
+            'afc_west': ['DEN', 'KC', 'LV', 'LAC'],
+            'nfc_east': ['DAL', 'NYG', 'PHI', 'WAS'],
+            'nfc_north': ['CHI', 'DET', 'GB', 'MIN'],
+            'nfc_south': ['ATL', 'CAR', 'NO', 'TB'],
+            'nfc_west': ['ARI', 'LAR', 'SF', 'SEA']
+        }
+
+        standings = {}
+        for division, teams in divisions.items():
+            standings[division] = [
+                {
+                    'team': team,
+                    'wins': teams_records.get(team, {}).get('wins', 0),
+                    'losses': teams_records.get(team, {}).get('losses', 0),
+                    'ties': teams_records.get(team, {}).get('ties', 0),
+                    'win_pct': round(
+                        teams_records.get(team, {}).get('wins', 0) /
+                        max(sum(teams_records.get(team, {}).values()), 1),
+                        3
+                    )
+                }
+                for team in teams
+            ]
+
+            # Sort by win percentage
+            standings[division].sort(key=lambda x: x['win_pct'], reverse=True)
+
+        return {
+            "season": season,
+            "week": week,
+            "standings": standings
+        }
+
+    # No data available
+    return {
+        "error": "No standings data available",
+        "message": "Ingest nflverse data to get standings",
+        "command": f"python -m backend.ingestion.fetch_nflverse --year {season}"
+    }
+
+
 @app.get('/api/v1/games/{game_id}/prop-sheet')
 async def get_game_prop_sheet(game_id: str):
     """Get comprehensive prop sheet for a game.
