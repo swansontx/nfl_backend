@@ -666,19 +666,38 @@ async def get_trending_props(
     week: Optional[int] = None,
     limit: int = 20
 ):
-    """Get trending prop lines with movement tracking.
+    """Get trending prop lines with 3-week movement tracking (DraftKings only).
 
-    Shows "hot movers" (2+ point line moves) and sustained trends for prop betting.
+    Returns "hot movers" (2+ point week-over-week changes) and "sustained trends"
+    (3-week consistent direction patterns) for DraftKings prop betting.
 
     Args:
         week: Week number (optional, defaults to current week)
-        limit: Number of trending props to return
+        limit: Number of trending props to return per category
 
     Returns:
-        Dict with hot_movers and sustained_trends:
-        - hot_movers: Props with 2+ point moves
-        - sustained_trends: Props with consistent movement over 3+ snapshots
-        - Each includes: player, market, movement direction, opening/current line, badges
+        Dict with:
+
+        hot_movers (week-over-week big changes):
+        - player, market, bookmaker (always 'draftkings')
+        - opening_line, current_line, line_movement, line_movement_pct
+        - over_odds, under_odds (juice/vig)
+        - direction ('up', 'down', 'neutral')
+        - opening_timestamp, current_timestamp, days_tracked
+        - badge: "+2.5 pts (7 days)" or "+22% (7 days)"
+        - icon (⬆️⬇️), color (green/red), strength (🔥⚡📊)
+
+        sustained_trends (3-week consistent patterns):
+        - player, market, bookmaker
+        - week_1_line, week_2_line, week_3_line, current_line
+        - total_movement, total_movement_pct
+        - direction, consistency ("3/3 weeks up")
+        - badge: "+5.5 pts (3 weeks)" or "+15% (3 weeks)"
+        - icon, color, strength (🔥🔥 for strong sustained trends)
+
+        Snapshot frequency:
+        - Week-over-week: Daily snapshots (7 data points)
+        - 3-week: Every 2-3 days (10-15 data points recommended)
     """
     from pathlib import Path
     from backend.ingestion.fetch_prop_lines import PropLineFetcher
@@ -691,7 +710,7 @@ async def get_trending_props(
         return {
             "error": "No prop line snapshots found",
             "message": "Run prop line fetcher first to capture snapshots",
-            "command": "python -m backend.ingestion.fetch_prop_lines --week {week}"
+            "command": f"python -m backend.ingestion.fetch_prop_lines --week {week}"
         }
 
     # Analyze trends
@@ -700,44 +719,35 @@ async def get_trending_props(
     if 'error' in trends:
         return trends
 
-    # Format for frontend
+    # Format for frontend (already has icons/colors/strength from get_trending_props)
     hot_movers = trends.get('hot_movers', [])[:limit]
     sustained_trends = trends.get('sustained_trends', [])[:limit]
-
-    # Add visual indicators
-    for mover in hot_movers:
-        if mover['direction'] == 'up':
-            mover['icon'] = '⬆️'
-            mover['color'] = 'green'
-        elif mover['direction'] == 'down':
-            mover['icon'] = '⬇️'
-            mover['color'] = 'red'
-        else:
-            mover['icon'] = '➡️'
-            mover['color'] = 'gray'
-
-        # Add strength indicator
-        if abs(mover['movement']) >= 5.0:
-            mover['strength'] = 'strong'
-            mover['strength_icon'] = '🔥'
-        elif abs(mover['movement']) >= 3.0:
-            mover['strength'] = 'moderate'
-            mover['strength_icon'] = '⚡'
-        else:
-            mover['strength'] = 'light'
-            mover['strength_icon'] = '📊'
 
     return {
         "week": week,
         "snapshot_count": trends.get('snapshots_analyzed', 0),
         "current_timestamp": trends.get('current_timestamp'),
+
+        # Hot movers (immediate action)
         "hot_movers": hot_movers,
+
+        # Sustained trends (pattern validation)
         "sustained_trends": sustained_trends,
+
+        # Summary stats
         "summary": {
-            "total_hot_movers": len(hot_movers),
-            "strong_movers": len([m for m in hot_movers if abs(m['movement']) >= 5.0]),
-            "trending_up": len([m for m in hot_movers if m['direction'] == 'up']),
-            "trending_down": len([m for m in hot_movers if m['direction'] == 'down'])
+            "hot_movers": {
+                "total": len(hot_movers),
+                "strong": len([m for m in hot_movers if abs(m.get('line_movement', 0)) >= 5.0]),
+                "trending_up": len([m for m in hot_movers if m.get('direction') == 'up']),
+                "trending_down": len([m for m in hot_movers if m.get('direction') == 'down'])
+            },
+            "sustained_trends": {
+                "total": len(sustained_trends),
+                "strong": len([t for t in sustained_trends if abs(t.get('total_movement', 0)) >= 8.0]),
+                "trending_up": len([t for t in sustained_trends if t.get('direction') == 'up']),
+                "trending_down": len([t for t in sustained_trends if t.get('direction') == 'down'])
+            }
         }
     }
 

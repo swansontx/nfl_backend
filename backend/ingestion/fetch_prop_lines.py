@@ -649,7 +649,7 @@ class PropLineFetcher:
         week: Optional[int] = None,
         lookback_days: int = 7
     ) -> Dict:
-        """Analyze prop line trends over time.
+        """Analyze prop line trends over time with 3-week sustained trend tracking.
 
         Args:
             snapshots_dir: Directory with historical snapshots
@@ -657,7 +657,10 @@ class PropLineFetcher:
             lookback_days: Days to look back for trending
 
         Returns:
-            Dict with trending analysis (hot movers, sustained trends)
+            Dict with:
+            - hot_movers: Week-over-week big changes (2+ pts)
+            - sustained_trends: 3-week consistent direction patterns
+            - timestamps, juice/vig, movement badges, visual indicators
         """
         week_str = f"week_{week}" if week else "current"
 
@@ -673,45 +676,213 @@ class PropLineFetcher:
                 'snapshots_found': len(snapshot_files)
             }
 
-        # Load current and opening snapshots
-        with open(snapshot_files[0], 'r') as f:
-            current = json.load(f)
+        # Load snapshots (current + all historical)
+        snapshots = []
+        for snapshot_file in snapshot_files:
+            with open(snapshot_file, 'r') as f:
+                data = json.load(f)
+                snapshots.append({
+                    'file': snapshot_file.name,
+                    'data': data
+                })
 
-        with open(snapshot_files[-1], 'r') as f:
-            opening = json.load(f)
+        current = snapshots[0]['data']
+        opening = snapshots[-1]['data']
 
         # Analyze trends
         hot_movers = []
         sustained_trends = []
 
+        # Track each player/market/bookmaker combo
+        player_trends = {}
+
         for game_id, game_data in current.items():
             for market, props in game_data.get('props', {}).items():
                 for prop in props:
-                    movement = prop.get('movement', {})
+                    player_name = prop['player_name']
+                    bookmaker = prop['bookmaker']
+                    key = f"{player_name}_{market}_{bookmaker}"
 
-                    # Hot movers (2+ point moves)
+                    # Only track DraftKings (user's book)
+                    if bookmaker != 'draftkings':
+                        continue
+
+                    movement = prop.get('movement', {})
+                    current_line = prop.get('line', 0)
+                    over_odds = prop.get('over_odds', -110)
+                    under_odds = prop.get('under_odds', -110)
+
+                    # Week-over-week: Hot movers (2+ point moves)
                     if movement.get('is_hot_mover'):
+                        opening_line = movement.get('opening_line', current_line)
+                        line_change = current_line - opening_line
+                        pct_change = (line_change / opening_line * 100) if opening_line != 0 else 0
+                        days_tracked = movement.get('days_tracked', 0)
+
                         hot_movers.append({
-                            'player': prop['player_name'],
+                            'player': player_name,
                             'market': market,
-                            'movement': movement['line_movement'],
+                            'bookmaker': bookmaker,
+
+                            # Line data
+                            'opening_line': opening_line,
+                            'current_line': current_line,
+                            'line_movement': line_change,
+                            'line_movement_pct': round(pct_change, 1),
+
+                            # Juice/vig
+                            'over_odds': over_odds,
+                            'under_odds': under_odds,
+
+                            # Direction
                             'direction': movement['movement_direction'],
-                            'opening_line': movement['opening_line'],
-                            'current_line': movement['current_line'],
-                            'bookmaker': prop['bookmaker'],
-                            'badge': f"{movement['line_movement']:+.1f} pts ({movement.get('days_tracked', 0)} days)"
+
+                            # Timestamps
+                            'opening_timestamp': movement.get('opening_timestamp'),
+                            'current_timestamp': prop.get('timestamp'),
+                            'days_tracked': days_tracked,
+
+                            # Badge for frontend
+                            'badge': f"{line_change:+.1f} pts ({days_tracked} days)" if days_tracked > 0 else f"{line_change:+.1f} pts",
+                            'badge_pct': f"{pct_change:+.0f}% ({days_tracked} days)" if days_tracked > 0 else f"{pct_change:+.0f}%",
+
+                            # Visual indicators
+                            'icon': '⬆️' if line_change > 0 else '⬇️',
+                            'color': 'green' if line_change > 0 else 'red',
+                            'strength': '🔥' if abs(line_change) >= 5.0 else '⚡' if abs(line_change) >= 3.0 else '📊'
                         })
 
-                    # Sustained trends (check multiple snapshots)
-                    if len(snapshot_files) >= 3:
-                        # TODO: Check middle snapshots for sustained direction
-                        pass
+                    # 3-week sustained trends: Check for consistent direction
+                    if len(snapshots) >= 3:
+                        trend_history = self._analyze_sustained_trend(
+                            player_name,
+                            market,
+                            bookmaker,
+                            snapshots
+                        )
+
+                        if trend_history and trend_history['is_sustained']:
+                            sustained_trends.append({
+                                'player': player_name,
+                                'market': market,
+                                'bookmaker': bookmaker,
+
+                                # Trend data
+                                'week_1_line': trend_history['week_1_line'],
+                                'week_2_line': trend_history.get('week_2_line'),
+                                'week_3_line': trend_history.get('week_3_line'),
+                                'current_line': current_line,
+
+                                # Total movement
+                                'total_movement': trend_history['total_movement'],
+                                'total_movement_pct': trend_history['total_movement_pct'],
+
+                                # Direction consistency
+                                'direction': trend_history['direction'],
+                                'consistency': trend_history['consistency'],  # e.g., "3/3 weeks up"
+
+                                # Juice/vig
+                                'over_odds': over_odds,
+                                'under_odds': under_odds,
+
+                                # Badge
+                                'badge': f"{trend_history['total_movement']:+.1f} pts (3 weeks)",
+                                'badge_pct': f"{trend_history['total_movement_pct']:+.0f}% (3 weeks)",
+
+                                # Visual
+                                'icon': '⬆️' if trend_history['direction'] == 'up' else '⬇️',
+                                'color': 'green' if trend_history['direction'] == 'up' else 'red',
+                                'strength': '🔥🔥' if abs(trend_history['total_movement']) >= 8.0 else '🔥'
+                            })
 
         return {
-            'hot_movers': sorted(hot_movers, key=lambda x: abs(x['movement']), reverse=True),
-            'sustained_trends': sustained_trends,
-            'snapshots_analyzed': len(snapshot_files),
+            'hot_movers': sorted(hot_movers, key=lambda x: abs(x['line_movement']), reverse=True),
+            'sustained_trends': sorted(sustained_trends, key=lambda x: abs(x['total_movement']), reverse=True),
+            'snapshots_analyzed': len(snapshots),
             'current_timestamp': current.get(list(current.keys())[0], {}).get('snapshot_timestamp') if current else None
+        }
+
+    def _analyze_sustained_trend(
+        self,
+        player_name: str,
+        market: str,
+        bookmaker: str,
+        snapshots: List[Dict],
+        min_weeks: int = 3
+    ) -> Optional[Dict]:
+        """Analyze if a prop has sustained trend over multiple weeks.
+
+        Args:
+            player_name: Player name
+            market: Market type
+            bookmaker: Bookmaker
+            snapshots: List of snapshot dicts (newest first)
+            min_weeks: Minimum weeks for sustained trend (default 3)
+
+        Returns:
+            Dict with trend analysis or None if no sustained trend
+        """
+        if len(snapshots) < min_weeks:
+            return None
+
+        # Extract lines from each snapshot (up to 3 weeks)
+        lines = []
+        for i, snapshot in enumerate(snapshots[:min_weeks]):
+            snapshot_data = snapshot['data']
+
+            # Find this player's line in this snapshot
+            for game_id, game_data in snapshot_data.items():
+                props = game_data.get('props', {}).get(market, [])
+                for prop in props:
+                    if (prop.get('player_name') == player_name and
+                        prop.get('bookmaker') == bookmaker):
+                        lines.append({
+                            'week': min_weeks - i,  # Week 1 (oldest), 2, 3 (newest)
+                            'line': prop.get('line', 0),
+                            'timestamp': prop.get('timestamp')
+                        })
+                        break
+
+        if len(lines) < min_weeks:
+            return None
+
+        # Sort by week
+        lines = sorted(lines, key=lambda x: x['week'])
+
+        # Check for consistent direction
+        movements = []
+        for i in range(len(lines) - 1):
+            movement = lines[i + 1]['line'] - lines[i]['line']
+            movements.append(movement)
+
+        # Sustained if all movements in same direction (all positive or all negative)
+        if not movements:
+            return None
+
+        all_up = all(m > 0 for m in movements)
+        all_down = all(m < 0 for m in movements)
+        is_sustained = all_up or all_down
+
+        if not is_sustained:
+            return None
+
+        # Calculate total movement
+        total_movement = lines[-1]['line'] - lines[0]['line']
+        total_movement_pct = (total_movement / lines[0]['line'] * 100) if lines[0]['line'] != 0 else 0
+
+        # Direction and consistency
+        direction = 'up' if all_up else 'down'
+        consistency = f"{len(movements)}/{len(movements)} weeks {direction}"
+
+        return {
+            'is_sustained': True,
+            'week_1_line': lines[0]['line'],
+            'week_2_line': lines[1]['line'] if len(lines) > 1 else None,
+            'week_3_line': lines[2]['line'] if len(lines) > 2 else None,
+            'total_movement': round(total_movement, 1),
+            'total_movement_pct': round(total_movement_pct, 1),
+            'direction': direction,
+            'consistency': consistency
         }
 
 
