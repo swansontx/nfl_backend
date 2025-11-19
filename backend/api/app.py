@@ -13,6 +13,7 @@ from backend.api.model_loader import model_loader
 from backend.api.team_database import get_team, get_all_teams, get_division_teams, get_conference_teams
 from backend.api.schedule_loader import schedule_loader, Game
 from backend.api.boxscore_generator import boxscore_generator
+from backend.config import settings, check_environment
 
 app = FastAPI(
     title='NFL Props Backend API',
@@ -103,6 +104,80 @@ class ContentItem(BaseModel):
 async def health():
     """Health check endpoint."""
     return {'status': 'ok', 'timestamp': datetime.now().isoformat()}
+
+
+@app.get('/health/data')
+async def health_data():
+    """Check environment setup and data availability.
+
+    Returns detailed status about:
+    - Environment mode (development/production)
+    - Missing required API keys
+    - Available output directories (predictions, odds, reports)
+    - Configuration thresholds
+    - Warnings about setup issues
+    """
+    env_status = check_environment()
+
+    # Add API-specific checks
+    predictions_count = 0
+    if env_status['data_available']['predictions']:
+        predictions_dir = settings.get_predictions_dir()
+        predictions_count = len(list(predictions_dir.glob('props_*.csv')))
+
+    odds_count = 0
+    if env_status['data_available']['odds']:
+        odds_dir = settings.get_odds_dir()
+        odds_count = len(list(odds_dir.glob('*.json')))
+
+    return {
+        'status': 'ok' if not env_status['warnings'] else 'degraded',
+        'timestamp': datetime.now().isoformat(),
+        'environment': env_status['environment'],
+        'is_production': env_status['is_production'],
+        'api_keys': {
+            'odds_api_key': bool(settings.odds_api_key),
+            'openweather_api_key': bool(settings.openweather_api_key),
+        },
+        'missing_required_keys': env_status['missing_keys'],
+        'data_status': {
+            'predictions_available': env_status['data_available']['predictions'],
+            'predictions_count': predictions_count,
+            'odds_available': env_status['data_available']['odds'],
+            'odds_snapshots_count': odds_count,
+            'reports_available': env_status['data_available']['reports'],
+        },
+        'configuration': env_status['thresholds'],
+        'warnings': env_status['warnings'],
+        'recommendations': _get_setup_recommendations(env_status)
+    }
+
+
+def _get_setup_recommendations(env_status: dict) -> list[str]:
+    """Generate setup recommendations based on environment status."""
+    recommendations = []
+
+    if env_status['missing_keys']:
+        recommendations.append(
+            f"Set missing API keys: {', '.join(env_status['missing_keys'])} in .env file"
+        )
+
+    if not env_status['data_available']['predictions']:
+        recommendations.append(
+            "Run data pipeline to generate predictions: python -m backend.workflow.workflow_multi_prop_system"
+        )
+
+    if not env_status['data_available']['odds']:
+        recommendations.append(
+            "Fetch odds snapshots: python -m backend.ingestion.fetch_prop_lines"
+        )
+
+    if env_status['is_production'] and env_status['warnings']:
+        recommendations.append(
+            "⚠️  Production mode has warnings - review configuration before deploying"
+        )
+
+    return recommendations
 
 
 @app.post('/admin/recompute')
