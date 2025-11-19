@@ -119,6 +119,11 @@ with get_db() as session:
             if existing:
                 continue
 
+            # Handle NaT (Not a Time) values from pandas
+            birth_date = player_row.get('birth_date')
+            if birth_date is not None and str(birth_date) == 'NaT':
+                birth_date = None
+
             # Create player
             player = Player(
                 player_id=player_id,
@@ -129,7 +134,7 @@ with get_db() as session:
                 position=player_row.get('position'),
                 height=player_row.get('height'),
                 weight=player_row.get('weight'),
-                birth_date=player_row.get('birth_date'),
+                birth_date=birth_date,
                 college=player_row.get('college')
             )
 
