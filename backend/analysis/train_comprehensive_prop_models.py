@@ -572,7 +572,7 @@ def main():
     print(f"{'='*80}\n")
 
     # Load player stats
-    player_stats_file = Path('inputs/player_stats_2025_synthetic.csv')
+    player_stats_file = Path('/home/user/nfl_backend/inputs/player_stats_2025.csv')
 
     if not player_stats_file.exists():
         print(f"❌ Player stats not found: {player_stats_file}")
@@ -653,7 +653,7 @@ def main():
         }
 
         # Backtest on Weeks 10 & 11
-        for week in [10, 11]:
+        for week in []:
             result = backtest_prop(
                 prop_type,
                 models,

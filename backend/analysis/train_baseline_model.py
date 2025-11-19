@@ -161,7 +161,7 @@ def make_week10_predictions(models, features):
     print(f"{'='*80}\n")
 
     # Load games data
-    games_file = Path('inputs/games_2025.csv')
+    games_file = Path('/home/user/nfl_backend/inputs/games_2025.csv')
     all_games = pd.read_csv(games_file)
 
     week10 = all_games[

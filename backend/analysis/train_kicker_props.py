@@ -29,7 +29,7 @@ def load_kicker_data():
     print(f"LOADING KICKER STATS")
     print(f"{'='*80}\n")
 
-    kicker_file = Path('inputs/kicker_stats_2025_synthetic.csv')
+    kicker_file = Path('/home/user/nfl_backend/inputs/kicker_stats_2025.csv')
 
     if not kicker_file.exists():
         print(f"❌ Kicker stats not found: {kicker_file}")
@@ -278,7 +278,7 @@ def main():
         return
 
     # Load games for context features
-    games_file = Path('inputs/games_2025_with_quarters.csv')
+    games_file = Path('/home/user/nfl_backend/inputs/games_2025_with_quarters.csv')
     games_df = pd.read_csv(games_file)
 
     # Add implied totals to games
