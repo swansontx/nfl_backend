@@ -1,0 +1,264 @@
+{
+  "date": "2025-11-09",
+  "week": 10,
+  "games": [
+    {
+      "game_id": "2025_10_ATL_IND",
+      "away_team": "ATL",
+      "home_team": "IND",
+      "away_score": 25.0,
+      "home_score": 31.0,
+      "spread_line": 6.5,
+      "total_line": 48.5
+    },
+    {
+      "game_id": "2025_10_NO_CAR",
+      "away_team": "NO",
+      "home_team": "CAR",
+      "away_score": 17.0,
+      "home_score": 7.0,
+      "spread_line": 5.5,
+      "total_line": 38.5
+    },
+    {
+      "game_id": "2025_10_NYG_CHI",
+      "away_team": "NYG",
+      "home_team": "CHI",
+      "away_score": 20.0,
+      "home_score": 24.0,
+      "spread_line": 4.5,
+      "total_line": 45.5
+    },
+    {
+      "game_id": "2025_10_JAX_HOU",
+      "away_team": "JAX",
+      "home_team": "HOU",
+      "away_score": 29.0,
+      "home_score": 36.0,
+      "spread_line": -1.5,
+      "total_line": 37.5
+    },
+    {
+      "game_id": "2025_10_BUF_MIA",
+      "away_team": "BUF",
+      "home_team": "MIA",
+      "away_score": 13.0,
+      "home_score": 30.0,
+      "spread_line": -8.5,
+      "total_line": 50.5
+    },
+    {
+      "game_id": "2025_10_BAL_MIN",
+      "away_team": "BAL",
+      "home_team": "MIN",
+      "away_score": 27.0,
+      "home_score": 19.0,
+      "spread_line": -4.5,
+      "total_line": 48.5
+    },
+    {
+      "game_id": "2025_10_CLE_NYJ",
+      "away_team": "CLE",
+      "home_team": "NYJ",
+      "away_score": 20.0,
+      "home_score": 27.0,
+      "spread_line": -1.5,
+      "total_line": 37.5
+    },
+    {
+      "game_id": "2025_10_NE_TB",
+      "away_team": "NE",
+      "home_team": "TB",
+      "away_score": 28.0,
+      "home_score": 23.0,
+      "spread_line": 2.5,
+      "total_line": 48.5
+    },
+    {
+      "game_id": "2025_10_ARI_SEA",
+      "away_team": "ARI",
+      "home_team": "SEA",
+      "away_score": 22.0,
+      "home_score": 44.0,
+      "spread_line": 7.0,
+      "total_line": 44.5
+    },
+    {
+      "game_id": "2025_10_LA_SF",
+      "away_team": "LA",
+      "home_team": "SF",
+      "away_score": 42.0,
+      "home_score": 26.0,
+      "spread_line": -5.5,
+      "total_line": 49.5
+    },
+    {
+      "game_id": "2025_10_DET_WAS",
+      "away_team": "DET",
+      "home_team": "WAS",
+      "away_score": 44.0,
+      "home_score": 22.0,
+      "spread_line": -8.5,
+      "total_line": 49.5
+    },
+    {
+      "game_id": "2025_10_PIT_LAC",
+      "away_team": "PIT",
+      "home_team": "LAC",
+      "away_score": 10.0,
+      "home_score": 25.0,
+      "spread_line": 3.0,
+      "total_line": 45.5
+    }
+  ],
+  "predictions": [
+    {
+      "game_id": "2025_10_ATL_IND",
+      "away_team": "ATL",
+      "home_team": "IND",
+      "predicted_winner": "IND",
+      "home_win_prob": 0.16451646289656316,
+      "predicted_home_score": 21,
+      "predicted_away_score": 28,
+      "predicted_spread": 6.5,
+      "predicted_total": 48.5
+    },
+    {
+      "game_id": "2025_10_NO_CAR",
+      "away_team": "NO",
+      "home_team": "CAR",
+      "predicted_winner": "CAR",
+      "home_win_prob": 0.20181322226037884,
+      "predicted_home_score": 16,
+      "predicted_away_score": 22,
+      "predicted_spread": 5.5,
+      "predicted_total": 38.5
+    },
+    {
+      "game_id": "2025_10_NYG_CHI",
+      "away_team": "NYG",
+      "home_team": "CHI",
+      "predicted_winner": "CHI",
+      "home_win_prob": 0.24508501313237172,
+      "predicted_home_score": 20,
+      "predicted_away_score": 25,
+      "predicted_spread": 4.5,
+      "predicted_total": 45.5
+    },
+    {
+      "game_id": "2025_10_JAX_HOU",
+      "away_team": "JAX",
+      "home_team": "HOU",
+      "predicted_winner": "JAX",
+      "home_win_prob": 0.40733340004593027,
+      "predicted_home_score": 20,
+      "predicted_away_score": 18,
+      "predicted_spread": -1.5,
+      "predicted_total": 37.5
+    },
+    {
+      "game_id": "2025_10_BUF_MIA",
+      "away_team": "BUF",
+      "home_team": "MIA",
+      "predicted_winner": "BUF",
+      "home_win_prob": 0.10669059394565118,
+      "predicted_home_score": 30,
+      "predicted_away_score": 21,
+      "predicted_spread": -8.5,
+      "predicted_total": 50.5
+    },
+    {
+      "game_id": "2025_10_BAL_MIN",
+      "away_team": "BAL",
+      "home_team": "MIN",
+      "predicted_winner": "BAL",
+      "home_win_prob": 0.24508501313237172,
+      "predicted_home_score": 26,
+      "predicted_away_score": 22,
+      "predicted_spread": -4.5,
+      "predicted_total": 48.5
+    },
+    {
+      "game_id": "2025_10_CLE_NYJ",
+      "away_team": "CLE",
+      "home_team": "NYJ",
+      "predicted_winner": "CLE",
+      "home_win_prob": 0.40733340004593027,
+      "predicted_home_score": 20,
+      "predicted_away_score": 18,
+      "predicted_spread": -1.5,
+      "predicted_total": 37.5
+    },
+    {
+      "game_id": "2025_10_NE_TB",
+      "away_team": "NE",
+      "home_team": "TB",
+      "predicted_winner": "TB",
+      "home_win_prob": 0.34864513533394575,
+      "predicted_home_score": 23,
+      "predicted_away_score": 26,
+      "predicted_spread": 2.5,
+      "predicted_total": 48.5
+    },
+    {
+      "game_id": "2025_10_ARI_SEA",
+      "away_team": "ARI",
+      "home_team": "SEA",
+      "predicted_winner": "SEA",
+      "home_win_prob": 0.14804719803168948,
+      "predicted_home_score": 19,
+      "predicted_away_score": 26,
+      "predicted_spread": 7.0,
+      "predicted_total": 44.5
+    },
+    {
+      "game_id": "2025_10_LA_SF",
+      "away_team": "LA",
+      "home_team": "SF",
+      "predicted_winner": "LA",
+      "home_win_prob": 0.20181322226037884,
+      "predicted_home_score": 28,
+      "predicted_away_score": 22,
+      "predicted_spread": -5.5,
+      "predicted_total": 49.5
+    },
+    {
+      "game_id": "2025_10_DET_WAS",
+      "away_team": "DET",
+      "home_team": "WAS",
+      "predicted_winner": "DET",
+      "home_win_prob": 0.10669059394565118,
+      "predicted_home_score": 29,
+      "predicted_away_score": 20,
+      "predicted_spread": -8.5,
+      "predicted_total": 49.5
+    },
+    {
+      "game_id": "2025_10_PIT_LAC",
+      "away_team": "PIT",
+      "home_team": "LAC",
+      "predicted_winner": "LAC",
+      "home_win_prob": 0.320821300824607,
+      "predicted_home_score": 21,
+      "predicted_away_score": 24,
+      "predicted_spread": 3.0,
+      "predicted_total": 45.5
+    }
+  ],
+  "accuracy_metrics": {
+    "games": 12,
+    "winner_accuracy": 0.5833333333333334,
+    "spread_mae": 10.083333333333334,
+    "spread_within_3": 0.16666666666666666,
+    "spread_within_7": 0.25,
+    "total_mae": 11.666666666666666,
+    "total_within_3": 0.25,
+    "total_within_7": 0.25
+  },
+  "betting_metrics": {
+    "moneyline_roi": 0.10833333333333334,
+    "moneyline_wins": 7,
+    "moneyline_losses": 5,
+    "net_profit": 130
+  }
+}
