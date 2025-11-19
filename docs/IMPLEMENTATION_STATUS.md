@@ -33,10 +33,21 @@ This document tracks what's been built vs what's scaffolded (structure exists bu
 - ✅ **Home Field Advantage** (`backend/features/home_field_advantage.py`) - HFA features
 - ✅ **HFA Impact Analysis** (`backend/features/hfa_impact_analysis.py`) - Position-specific HFA
 
+### Ingestion & Feature Engineering
+- ✅ **NFLverse Fetcher** (`backend/ingestion/fetch_nflverse.py`) - Download play-by-play, player stats, rosters
+- ✅ **PBP Feature Extraction** (`backend/features/extract_player_pbp_features.py`) - Extract player stats from PBP
+- ✅ **Feature Smoothing** (`backend/features/smoothing_and_rolling.py`) - EMA, rolling windows, weighted recent
+
+### Roster & Injury System
+- ✅ **Roster Index Builder** (`backend/roster_injury/build_game_roster_index.py`) - Build roster index from nflverse
+- ✅ **Injury Index Builder** (`backend/roster_injury/build_injury_game_index.py`) - Map injuries to games
+- ✅ **Roster Lookup** (`backend/roster_injury/roster_lookup.py`) - Load roster/injury data for games
+
 ### Testing
-- ✅ 31 tests passing
+- ✅ 60 tests passing
 - ✅ Test coverage for all core endpoints
 - ✅ Test coverage for enhanced analytics
+- ✅ Test coverage for feature engineering modules
 
 ---
 
@@ -49,43 +60,10 @@ This document tracks what's been built vs what's scaffolded (structure exists bu
   - **Priority:** Low (users can Google themselves)
 
 ### Ingestion Layer
-- ⚠️ `backend/ingestion/fetch_nflverse.py`
-  - **Status:** Creates sample CSV, no actual download
-  - **TODO:** Implement real download from nflverse GitHub releases
-  - **Priority:** Medium (needed for model training)
-  - **URL:** https://github.com/nflverse/nflverse-data/releases
-
 - ⚠️ `backend/ingestion/fetch_injuries.py`
   - **Status:** Placeholder structure
   - **TODO:** Implement if needed (we have Sleeper API already)
   - **Priority:** Low (Sleeper API covers this)
-
-### Roster/Injury System
-- ⚠️ `backend/roster_injury/build_game_roster_index.py`
-  - **Status:** Creates sample roster index
-  - **TODO:** Load real roster data from nflverse
-  - **Priority:** Medium (useful for injury impact analysis)
-
-- ⚠️ `backend/roster_injury/build_injury_game_index.py`
-  - **Status:** Placeholder structure
-  - **TODO:** Map injuries to specific games
-  - **Priority:** Medium (useful for backfilling historical injury data)
-
-- ⚠️ `backend/roster_injury/roster_lookup.py`
-  - **Status:** Returns placeholder status
-  - **TODO:** Load from `outputs/game_rosters_YYYY.json`
-  - **Priority:** Medium (needed for historical analysis)
-
-### Feature Engineering
-- ⚠️ `backend/features/extract_player_pbp_features.py`
-  - **Status:** Structure exists
-  - **TODO:** Check if implementation is complete
-  - **Priority:** High (core for model training)
-
-- ⚠️ `backend/features/smoothing_and_rolling.py`
-  - **Status:** Structure exists
-  - **TODO:** Check if implementation is complete
-  - **Priority:** High (core for model training)
 
 ---
 
@@ -287,12 +265,20 @@ print(f"HFA swing: {result['total_hfa_swing']} yards")
 
 | Category | Status | Count |
 |---|---|---|
-| ✅ Production Ready | Complete | 13 endpoints, 10 modules |
-| ⚠️ Partially Implemented | Scaffolded | 8 modules |
+| ✅ Production Ready | Complete | 13 endpoints, 16 modules |
+| ⚠️ Partially Implemented | Scaffolded | 2 modules |
 | ❌ Not Started | TODO | 5 major areas |
 
-**Overall Completion:** ~70% for API layer, ~40% for full pipeline
+**Overall Completion:** ~70% for API layer, ~65% for full pipeline
 
-**Next Bottleneck:** Model training pipeline (orchestration + feature engineering)
+**What's New (2025-11-19):**
+- ✅ Completed all previously scaffolded ingestion & feature engineering modules
+- ✅ NFLverse data download (play-by-play, player stats, rosters)
+- ✅ Player PBP feature extraction from play-by-play data
+- ✅ Feature smoothing with EMA, rolling windows, weighted recent
+- ✅ Roster & injury index building from nflverse data
+- ✅ Roster/injury lookup service with auto-loading
+
+**Next Bottleneck:** Model training pipeline (orchestration + actual ML models)
 
 **Immediate Win:** Integrate HFA into prop projections (2-3 hours, big accuracy boost)

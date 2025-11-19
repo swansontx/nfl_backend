@@ -172,21 +172,47 @@ def process_all_players(input_features_path: Path,
             'rolling_window': 4
         }
 
-    # TODO: Load actual features
-    # if input_features_path.exists():
-    #     with open(input_features_path) as f:
-    #         raw_features = json.load(f)
-    # else:
-    #     print(f"Input file not found: {input_features_path}")
-    #     return
+    # Load actual features from extract_player_pbp_features.py output
+    if not input_features_path.exists():
+        print(f"⚠ Input features file not found: {input_features_path}")
+        print(f"⚠ Creating empty smoothed features file")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text('{}')
+        return {}
 
-    # Placeholder
-    raw_features = {
-        'player_001': {
-            'pass_yards': [250, 300, 280, 320, 290],
-            'pass_tds': [2, 1, 3, 2, 2]
-        }
-    }
+    print(f"Loading raw features from {input_features_path}")
+
+    with open(input_features_path, 'r') as f:
+        player_games = json.load(f)
+
+    # Convert from list of game dicts to dict of feature arrays
+    # Input format: player_id -> [game1, game2, ...] where each game has multiple features
+    # Output format: player_id -> {feature_name: [val1, val2, ...]}
+    raw_features = {}
+
+    for player_id, games in player_games.items():
+        if not games:
+            continue
+
+        # Initialize feature arrays
+        player_features = {}
+
+        # Extract each stat across all games
+        for game in games:
+            for stat_name, stat_value in game.items():
+                # Skip metadata fields
+                if stat_name in ['game_id', 'season', 'week']:
+                    continue
+
+                if stat_name not in player_features:
+                    player_features[stat_name] = []
+
+                player_features[stat_name].append(stat_value)
+
+        if player_features:
+            raw_features[player_id] = player_features
+
+    print(f"✓ Loaded features for {len(raw_features)} players")
 
     # Process each player
     all_smoothed = {}
@@ -203,6 +229,8 @@ def process_all_players(input_features_path: Path,
 
     print(f"Processed {len(all_smoothed)} players")
     print(f"Smoothed features written to {output_path}")
+
+    return all_smoothed
 
 
 if __name__ == '__main__':

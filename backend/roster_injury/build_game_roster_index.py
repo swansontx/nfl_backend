@@ -56,24 +56,81 @@ def build_roster_index(year: int,
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # TODO: Load roster data
-    # Options:
-    # 1. nflverse weekly roster data
-    # 2. ESPN/NFL.com roster scraping
-    # 3. Sports data APIs
+    # Load roster data from nflverse weekly_rosters CSV
+    rosters_file = rosters_source / f'weekly_rosters_{year}.csv'
 
-    # Placeholder: create sample roster index
-    roster_index = {
-        f"{year}_01_KC_BUF": {
-            "sample_player_001": "ACT",
-            "sample_player_002": "ACT",
-            "sample_player_003": "INA"
-        },
-        f"{year}_01_DAL_NYG": {
-            "sample_player_004": "ACT",
-            "sample_player_005": "RES"
-        }
-    }
+    if not rosters_file.exists() or rosters_file.stat().st_size == 0:
+        print(f"⚠ Rosters file not found or empty: {rosters_file}")
+        print(f"⚠ Creating empty roster index")
+
+        # Create empty placeholder
+        roster_index = {}
+        output_file = output_dir / f"game_rosters_{year}.json"
+        with open(output_file, 'w') as f:
+            json.dump(roster_index, f, indent=2)
+
+        return roster_index
+
+    print(f"Loading roster data from {rosters_file}")
+
+    # Build roster index from weekly_rosters CSV
+    # Format: season,team,position,depth_chart_position,jersey_number,status,
+    #         player_id,player_name,week,game_type,...
+
+    roster_index = {}
+    player_count = 0
+
+    try:
+        import csv
+
+        with open(rosters_file, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+
+            for row in reader:
+                season = row.get('season', '')
+                team = row.get('team', '')
+                week = row.get('week', '')
+                player_id = row.get('gsis_id', row.get('player_id', ''))
+                status = row.get('status', 'ACT')
+
+                if not all([season, team, week, player_id]):
+                    continue
+
+                # Normalize status codes
+                # nflverse uses: ACT, RES, NON, etc.
+                # We use: ACT, RES, INA, DEV, CUT, RET
+                status_map = {
+                    'ACT': 'ACT',     # Active
+                    'RES': 'RES',     # Reserve/Injured
+                    'NON': 'INA',     # Inactive
+                    'PUP': 'RES',     # Physically unable to perform
+                    'SUS': 'INA',     # Suspended
+                    'EXE': 'RES',     # Exempt
+                    'RET': 'RET',     # Retired
+                }
+                normalized_status = status_map.get(status, 'ACT')
+
+                # Build game_id for each week's games
+                # We don't have exact matchups from roster data, so we'll create
+                # team-week entries that can be matched to games later
+                #
+                # Store as: {year}_{week}_{team} -> player_id -> status
+                week_key = f"{season}_{int(week):02d}_{team}"
+
+                if week_key not in roster_index:
+                    roster_index[week_key] = {}
+
+                roster_index[week_key][player_id] = normalized_status
+                player_count += 1
+
+        print(f"✓ Loaded {player_count:,} player-week records")
+        print(f"✓ Built roster index for {len(roster_index)} team-weeks")
+
+    except Exception as e:
+        print(f"✗ Error loading rosters: {e}")
+        import traceback
+        traceback.print_exc()
+        roster_index = {}
 
     # Write output
     output_file = output_dir / f"game_rosters_{year}.json"

@@ -35,22 +35,43 @@ def load_injury_reports(injuries_dir: Path, year: int) -> Dict[str, Dict]:
     """
     injury_data = {}
 
-    # TODO: Load all injury files for the year
-    # pattern = f"injuries_{year}*_parsed.json"
-    # for injury_file in injuries_dir.glob(pattern):
-    #     date = injury_file.stem.split('_')[1]
-    #     with open(injury_file) as f:
-    #         injury_data[date] = json.load(f)
+    # Load all injury files for the year
+    # Pattern: injuries_YYYYMMDD_parsed.json or injuries_YYYYMMDD.json
+    pattern = f"injuries_{year}*.json"
 
-    # Placeholder
-    injury_data['20251119'] = [
-        {
-            'player_id': 'sample_player_001',
-            'status': 'Questionable',
-            'injury': 'Knee',
-            'week': 12
-        }
-    ]
+    injury_files = list(injuries_dir.glob(pattern))
+
+    if not injury_files:
+        print(f"⚠ No injury files found matching {pattern} in {injuries_dir}")
+        print(f"  Injury index will be empty")
+        return {}
+
+    print(f"Found {len(injury_files)} injury report files")
+
+    for injury_file in injury_files:
+        try:
+            # Extract date from filename: injuries_YYYYMMDD_parsed.json -> YYYYMMDD
+            filename_parts = injury_file.stem.split('_')
+            if len(filename_parts) >= 2:
+                date = filename_parts[1]  # YYYYMMDD
+
+                with open(injury_file) as f:
+                    injury_report = json.load(f)
+
+                    # Handle different injury report formats
+                    if isinstance(injury_report, list):
+                        injury_data[date] = injury_report
+                    elif isinstance(injury_report, dict):
+                        # Flatten dict format to list
+                        injuries_list = []
+                        for team, players in injury_report.items():
+                            if isinstance(players, list):
+                                injuries_list.extend(players)
+                        injury_data[date] = injuries_list if injuries_list else injury_report
+
+                print(f"  ✓ Loaded injury report for {date}")
+        except Exception as e:
+            print(f"  ✗ Error loading {injury_file}: {e}")
 
     return injury_data
 
@@ -78,17 +99,119 @@ def map_injuries_to_games(injury_data: Dict[str, Dict],
     """
     injury_index = {}
 
-    # TODO: Implement game-injury mapping logic
-    # For each game:
-    # 1. Determine game date from game_id/schedule
-    # 2. Find injury report closest to game date
-    # 3. Map player injuries to game_id
+    # Map injuries to games
+    # Strategy: For each injury report date, find games in that week
+    # Map injuries to all games for that team in that week
 
-    # Placeholder
-    injury_index[f'{year}_12_KC_BUF'] = {
-        'sample_player_001': 'Questionable',
-        'sample_player_002': 'Out'
-    }
+    if not injury_data:
+        print("⚠ No injury data available")
+        return injury_index
+
+    if not schedule:
+        print("⚠ No schedule provided, using date-based mapping")
+
+        # Without schedule, map by week estimate
+        # Assume Sunday games, map injury reports to nearest week
+        for date_str, injuries in injury_data.items():
+            try:
+                # Parse date: YYYYMMDD
+                if len(date_str) != 8:
+                    continue
+
+                year_str = date_str[:4]
+                month = int(date_str[4:6])
+                day = int(date_str[6:8])
+
+                # Estimate week number (rough approximation)
+                # NFL season starts in September, week 1 typically
+                if month == 9:
+                    week = ((day - 1) // 7) + 1
+                elif month == 10:
+                    week = 5 + ((day - 1) // 7)
+                elif month == 11:
+                    week = 9 + ((day - 1) // 7)
+                elif month == 12:
+                    week = 13 + ((day - 1) // 7)
+                elif month == 1:
+                    week = 18  # Playoffs
+                else:
+                    continue
+
+                week = min(week, 18)  # Cap at week 18
+
+                # Process injuries
+                for injury in injuries:
+                    if isinstance(injury, dict):
+                        player_id = injury.get('player_id', injury.get('gsis_id', ''))
+                        team = injury.get('team', '')
+                        status = injury.get('status', injury.get('game_status', 'Questionable'))
+
+                        if not player_id or not team:
+                            continue
+
+                        # Create game_id for this team/week
+                        # Format: {year}_{week}_{team}
+                        # We don't know opponent, so we'll use team-week key
+                        game_key = f"{year_str}_{week:02d}_{team}"
+
+                        if game_key not in injury_index:
+                            injury_index[game_key] = {}
+
+                        injury_index[game_key][player_id] = status
+
+            except Exception as e:
+                print(f"  ✗ Error processing date {date_str}: {e}")
+
+        print(f"✓ Mapped injuries to {len(injury_index)} team-week combinations")
+
+    else:
+        # With schedule, map injuries to actual games
+        print("⚠ Schedule-based mapping not yet implemented")
+        print("  Using date-based approximation instead")
+
+        # Fall back to date-based mapping (same logic as above)
+        for date_str, injuries in injury_data.items():
+            try:
+                if len(date_str) != 8:
+                    continue
+
+                year_str = date_str[:4]
+                month = int(date_str[4:6])
+                day = int(date_str[6:8])
+
+                if month == 9:
+                    week = ((day - 1) // 7) + 1
+                elif month == 10:
+                    week = 5 + ((day - 1) // 7)
+                elif month == 11:
+                    week = 9 + ((day - 1) // 7)
+                elif month == 12:
+                    week = 13 + ((day - 1) // 7)
+                elif month == 1:
+                    week = 18
+                else:
+                    continue
+
+                week = min(week, 18)
+
+                for injury in injuries:
+                    if isinstance(injury, dict):
+                        player_id = injury.get('player_id', injury.get('gsis_id', ''))
+                        team = injury.get('team', '')
+                        status = injury.get('status', injury.get('game_status', 'Questionable'))
+
+                        if not player_id or not team:
+                            continue
+
+                        game_key = f"{year_str}_{week:02d}_{team}"
+
+                        if game_key not in injury_index:
+                            injury_index[game_key] = {}
+
+                        injury_index[game_key][player_id] = status
+
+            except Exception as e:
+                print(f"  ✗ Error processing date {date_str}: {e}")
 
     return injury_index
 
