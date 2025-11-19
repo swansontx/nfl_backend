@@ -28,7 +28,7 @@ def load_pbp_data():
     print(f"LOADING PLAY-BY-PLAY DATA")
     print(f"{'='*80}\n")
 
-    pbp_file = Path('inputs/play_by_play_2025.parquet')
+    pbp_file = Path('/home/user/nfl_backend/inputs/play_by_play_2025.parquet')
 
     if not pbp_file.exists():
         print(f"❌ PBP file not found: {pbp_file}")

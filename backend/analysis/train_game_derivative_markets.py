@@ -24,7 +24,7 @@ def load_games_with_quarters():
     print(f"LOADING GAMES WITH QUARTER SCORES")
     print(f"{'='*80}\n")
 
-    games_file = Path('inputs/games_2025_with_quarters.csv')
+    games_file = Path('/home/user/nfl_backend/inputs/games_2025_with_quarters.csv')
 
     if not games_file.exists():
         print(f"❌ Games file not found: {games_file}")

@@ -12,7 +12,7 @@ def extract_quarter_scores():
     print(f"{'='*80}\n")
 
     # Load PBP data
-    pbp_file = Path('inputs/play_by_play_2025.parquet')
+    pbp_file = Path('/home/user/nfl_backend/inputs/play_by_play_2025.parquet')
     pbp = pd.read_parquet(pbp_file)
 
     print(f"Loaded {len(pbp):,} plays")
@@ -82,7 +82,7 @@ def extract_quarter_scores():
     print()
 
     # Save
-    output_file = Path('inputs/games_with_quarters.csv')
+    output_file = Path('/home/user/nfl_backend/inputs/games_with_quarters.csv')
     games_df.to_csv(output_file, index=False)
 
     print(f"💾 Saved to: {output_file}")

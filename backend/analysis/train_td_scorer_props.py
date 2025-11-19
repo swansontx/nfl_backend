@@ -23,7 +23,7 @@ def load_player_stats():
     print(f"LOADING PLAYER STATS")
     print(f"{'='*80}\n")
 
-    player_file = Path('inputs/player_stats_2025_synthetic.csv')
+    player_file = Path('/home/user/nfl_backend/inputs/player_stats_2025.csv')
 
     if not player_file.exists():
         print(f"❌ Player stats not found: {player_file}")

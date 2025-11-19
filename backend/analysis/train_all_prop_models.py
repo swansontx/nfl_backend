@@ -407,7 +407,7 @@ def main():
         return
 
     # Load full player stats for backtesting
-    player_stats = pd.read_csv('inputs/player_stats_2025_synthetic.csv')
+    player_stats = pd.read_csv('/home/user/nfl_backend/inputs/player_stats_2025.csv')
 
     # Train models for each prop type
     all_models = {}
