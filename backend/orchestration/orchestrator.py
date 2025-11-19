@@ -1,20 +1,25 @@
 """Orchestrator for running the full NFL props pipeline
 
 Coordinates execution of all pipeline stages:
-1. Ingestion (nflverse, odds, injuries)
-2. Canonicalization (player/game mapping)
-3. Feature extraction
-4. Modeling
-5. Calibration (if needed)
+1. Data Ingestion (nflverse, schedules, odds, injuries)
+2. Feature Extraction (player PBP features from play-by-play)
+3. Feature Engineering (smoothing, rolling windows)
+4. Roster/Injury Indexing (build game-level indexes)
+5. Model Training (train passing/rushing/receiving models)
+6. Prediction Generation (generate prop projections)
+7. Backtest/Calibration (validate model accuracy)
 
 Can run full pipeline or individual stages.
 
-TODOs:
-- Add pipeline DAG/dependency management
-- Add error handling and retry logic
-- Add logging and monitoring
-- Support parallel execution where possible
-- Add CLI for running specific stages or full pipeline
+Usage:
+    # Run full pipeline with training
+    python -m backend.orchestration.orchestrator --season 2024 --train
+
+    # Run predictions only (skip data/features)
+    python -m backend.orchestration.orchestrator --season 2024 --predict-only
+
+    # Run backtest on historical data
+    python -m backend.orchestration.orchestrator --season 2023 --backtest
 """
 
 from pathlib import Path
@@ -74,47 +79,63 @@ class NFLPropsPipeline:
         """Build the pipeline stages."""
         backend_dir = Path(__file__).parent.parent
 
-        # Stage 1: Ingestion
+        # Stage 1: Data Ingestion
         self.stages.append(PipelineStage(
-            name="Ingest nflverse data",
+            name="Ingest nflverse data (PBP, player stats, rosters)",
             script_path=str(backend_dir / "ingestion" / "fetch_nflverse.py"),
-            args=["--year", str(self.season)]
+            args=["--year", str(self.season), "--out", "inputs"]
         ))
 
         self.stages.append(PipelineStage(
-            name="Ingest odds data",
-            script_path=str(backend_dir / "ingestion" / "fetch_odds.py"),
-            args=[]
+            name="Ingest NFL schedules",
+            script_path=str(backend_dir / "ingestion" / "fetch_nflverse_schedules.py"),
+            args=["--year", str(self.season), "--out", "inputs"]
         ))
 
-        self.stages.append(PipelineStage(
-            name="Ingest injury data",
-            script_path=str(backend_dir / "ingestion" / "fetch_injuries.py"),
-            args=["--date", datetime.now().strftime('%Y%m%d')]
-        ))
-
-        # Stage 2: Feature extraction
+        # Stage 2: Feature Extraction
         self.stages.append(PipelineStage(
             name="Extract player PBP features",
             script_path=str(backend_dir / "features" / "extract_player_pbp_features.py"),
-            args=[]
+            args=["--pbp", f"inputs/play_by_play_{self.season}.csv",
+                  "--out", "outputs/player_pbp_features_by_id.json"]
         ))
 
-        # TODO: Add smoothing/rolling features stage when implemented
+        # Stage 3: Feature Engineering
+        self.stages.append(PipelineStage(
+            name="Apply smoothing and rolling windows",
+            script_path=str(backend_dir / "features" / "smoothing_and_rolling.py"),
+            args=["--input", "outputs/player_pbp_features_by_id.json",
+                  "--output", "outputs/player_features_smoothed.json"]
+        ))
 
-        # Stage 3: Roster/injury indexing
-        # TODO: Add roster and injury index building when implemented
+        # Stage 4: Roster/Injury Indexing
+        self.stages.append(PipelineStage(
+            name="Build roster index",
+            script_path=str(backend_dir / "roster_injury" / "build_game_roster_index.py"),
+            args=["--year", str(self.season),
+                  "--source", "inputs",
+                  "--output", "outputs"]
+        ))
 
-        # Stage 4: Modeling
-        # Note: This would typically run for each upcoming game
-        if self.week:
-            # Example game_id - would need to build from actual schedule
-            game_id = f"{self.season}_{self.week:02d}_KC_BUF"
-            self.stages.append(PipelineStage(
-                name=f"Run models for week {self.week}",
-                script_path=str(backend_dir / "modeling" / "model_runner.py"),
-                args=["--game-id", game_id]
-            ))
+        self.stages.append(PipelineStage(
+            name="Build injury index",
+            script_path=str(backend_dir / "roster_injury" / "build_injury_game_index.py"),
+            args=["--year", str(self.season),
+                  "--injuries-dir", "outputs",
+                  "--output", "outputs"]
+        ))
+
+        # Stage 5: Model Training (optional, controlled by --train flag)
+        # Note: Model training scripts to be implemented
+        # Would run: backend/modeling/train_passing_model.py, etc.
+
+        # Stage 6: Prediction Generation (for specific week/games)
+        # Note: Prediction scripts to be implemented
+        # Would run: backend/modeling/generate_predictions.py
+
+        # Stage 7: Backtest/Calibration (optional, controlled by --backtest flag)
+        # Note: Backtest framework to be implemented
+        # Would run: backend/calib_backtest/run_backtest.py
 
     def run_full_pipeline(self) -> bool:
         """Run the complete pipeline.
@@ -165,14 +186,20 @@ class NFLPropsPipeline:
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description='NFL Props Pipeline Orchestrator')
-    p.add_argument('--season', type=int, default=2025,
-                   help='NFL season year')
+    p.add_argument('--season', type=int, default=2024,
+                   help='NFL season year (default: 2024)')
     p.add_argument('--week', type=int, default=None,
-                   help='Week number for modeling stage')
+                   help='Week number for prediction generation')
     p.add_argument('--list-stages', action='store_true',
                    help='List all pipeline stages')
     p.add_argument('--stage', type=str, default=None,
                    help='Run specific stage by name')
+    p.add_argument('--train', action='store_true',
+                   help='Include model training step (not yet implemented)')
+    p.add_argument('--backtest', action='store_true',
+                   help='Include backtest validation step (not yet implemented)')
+    p.add_argument('--predict-only', action='store_true',
+                   help='Skip data ingestion/features, only run predictions (not yet implemented)')
     args = p.parse_args()
 
     # Create pipeline
@@ -180,10 +207,21 @@ if __name__ == '__main__':
 
     if args.list_stages:
         pipeline.list_stages()
+        print(f"\nNotes:")
+        print(f"  - Model training: Use --train flag (not yet implemented)")
+        print(f"  - Backtest validation: Use --backtest flag (not yet implemented)")
+        print(f"  - Predictions only: Use --predict-only flag (not yet implemented)")
     elif args.stage:
         success = pipeline.run_stage(args.stage)
         sys.exit(0 if success else 1)
     else:
         # Run full pipeline
+        if args.train:
+            print("\n⚠️  Model training requested but not yet implemented")
+        if args.backtest:
+            print("\n⚠️  Backtest validation requested but not yet implemented")
+        if args.predict_only:
+            print("\n⚠️  Predict-only mode requested but not yet implemented")
+
         success = pipeline.run_full_pipeline()
         sys.exit(0 if success else 1)

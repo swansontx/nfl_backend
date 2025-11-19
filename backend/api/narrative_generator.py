@@ -1,12 +1,20 @@
 """Narrative generation for game previews and betting angles.
 
 This module generates data-driven narratives using templates and statistical analysis.
-Can be enhanced with LLM integration (OpenAI, Claude) for more sophisticated narratives.
+Enhanced with LLM integration (OpenAI GPT-4, Anthropic Claude) for sophisticated narratives.
+
+Environment Variables:
+    LLM_PROVIDER: 'openai' or 'anthropic' (default: None, uses templates only)
+    OPENAI_API_KEY: OpenAI API key (required if using OpenAI)
+    ANTHROPIC_API_KEY: Anthropic API key (required if using Anthropic Claude)
+    LLM_MODEL: Model to use (default: 'gpt-4' or 'claude-3-sonnet-20240229')
 """
 
 from typing import List, Dict, Optional
 from dataclasses import dataclass
 from datetime import datetime
+import os
+import json
 
 
 @dataclass
@@ -258,10 +266,51 @@ class NarrativeTemplates:
 
 
 class NarrativeGenerator:
-    """Main narrative generation class."""
+    """Main narrative generation class with LLM enhancement."""
 
     def __init__(self):
         self.templates = NarrativeTemplates()
+        self.llm_provider = os.getenv('LLM_PROVIDER')  # 'openai' or 'anthropic'
+        self.llm_model = os.getenv('LLM_MODEL')
+
+        # Initialize LLM client if configured
+        self.llm_client = None
+        if self.llm_provider == 'openai':
+            self._init_openai()
+        elif self.llm_provider == 'anthropic':
+            self._init_anthropic()
+
+    def _init_openai(self):
+        """Initialize OpenAI client."""
+        try:
+            from openai import OpenAI
+            api_key = os.getenv('OPENAI_API_KEY')
+            if api_key:
+                self.llm_client = OpenAI(api_key=api_key)
+                if not self.llm_model:
+                    self.llm_model = 'gpt-4'
+                print(f"✓ OpenAI LLM initialized with model: {self.llm_model}")
+            else:
+                print("⚠ OpenAI API key not found - using templates only")
+        except ImportError:
+            print("⚠ OpenAI package not installed - using templates only")
+            self.llm_provider = None
+
+    def _init_anthropic(self):
+        """Initialize Anthropic Claude client."""
+        try:
+            from anthropic import Anthropic
+            api_key = os.getenv('ANTHROPIC_API_KEY')
+            if api_key:
+                self.llm_client = Anthropic(api_key=api_key)
+                if not self.llm_model:
+                    self.llm_model = 'claude-3-sonnet-20240229'
+                print(f"✓ Anthropic Claude initialized with model: {self.llm_model}")
+            else:
+                print("⚠ Anthropic API key not found - using templates only")
+        except ImportError:
+            print("⚠ Anthropic package not installed - using templates only")
+            self.llm_provider = None
 
     def generate_game_narratives(self,
                                 game_id: str,
@@ -333,35 +382,114 @@ class NarrativeGenerator:
         return narratives
 
     def enhance_with_llm(self, narrative: Narrative, context: Dict) -> str:
-        """Enhance narrative with LLM (placeholder for future implementation).
+        """Enhance narrative with LLM.
 
         Args:
             narrative: Base narrative
-            context: Additional context for LLM
+            context: Additional context for LLM (stats, trends, historical data)
 
         Returns:
-            Enhanced narrative content
-
-        TODO: Integrate with OpenAI or Claude API
-        Example:
-            from openai import OpenAI
-            client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[{
-                    "role": "system",
-                    "content": "You are an expert NFL analyst and betting strategist."
-                }, {
-                    "role": "user",
-                    "content": f"Enhance this narrative with more detail: {narrative.content}"
-                }]
-            )
-            return response.choices[0].message.content
+            Enhanced narrative content (LLM-generated or original if LLM not available)
         """
-        # For now, return original content
-        # In production, call LLM API here
-        return narrative.content
+        # Return original if no LLM configured
+        if not self.llm_client or not self.llm_provider:
+            return narrative.content
+
+        try:
+            # Build LLM prompt
+            system_prompt = self._build_system_prompt(narrative.narrative_type)
+            user_prompt = self._build_user_prompt(narrative, context)
+
+            # Call appropriate LLM
+            if self.llm_provider == 'openai':
+                enhanced = self._enhance_with_openai(system_prompt, user_prompt)
+            elif self.llm_provider == 'anthropic':
+                enhanced = self._enhance_with_claude(system_prompt, user_prompt)
+            else:
+                enhanced = narrative.content
+
+            return enhanced if enhanced else narrative.content
+
+        except Exception as e:
+            print(f"⚠ LLM enhancement failed: {e}")
+            # Fallback to original content
+            return narrative.content
+
+    def _build_system_prompt(self, narrative_type: str) -> str:
+        """Build system prompt based on narrative type."""
+        base = (
+            "You are an expert NFL analyst and betting strategist with deep knowledge of "
+            "player performance, team dynamics, and betting markets. Your analysis is "
+            "data-driven, insightful, and actionable for bettors."
+        )
+
+        type_specific = {
+            'preview': " Focus on game flow, key matchups, and strategic angles.",
+            'key_matchups': " Focus on player vs defense dynamics and statistical trends.",
+            'betting_angle': " Focus on value identification, line analysis, and contrarian opportunities.",
+            'weather': " Focus on environmental impact on game script and player performance."
+        }
+
+        return base + type_specific.get(narrative_type, "")
+
+    def _build_user_prompt(self, narrative: Narrative, context: Dict) -> str:
+        """Build user prompt with narrative and context."""
+        prompt = f"""Enhance this NFL betting narrative with more depth and insight:
+
+BASE NARRATIVE:
+{narrative.content}
+
+SUPPORTING STATS:
+{json.dumps(narrative.supporting_stats, indent=2)}
+
+ADDITIONAL CONTEXT:
+{json.dumps(context, indent=2)}
+
+Instructions:
+- Maintain the core insight and betting angle from the base narrative
+- Add statistical depth and historical context where relevant
+- Keep it concise (2-4 sentences max)
+- Use specific numbers and trends
+- Be actionable for bettors
+- Don't add speculation without data support
+- Maintain professional, analytical tone
+
+Enhanced narrative:"""
+        return prompt
+
+    def _enhance_with_openai(self, system_prompt: str, user_prompt: str) -> Optional[str]:
+        """Enhance narrative using OpenAI GPT."""
+        try:
+            response = self.llm_client.chat.completions.create(
+                model=self.llm_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.7,
+                max_tokens=300
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"⚠ OpenAI API error: {e}")
+            return None
+
+    def _enhance_with_claude(self, system_prompt: str, user_prompt: str) -> Optional[str]:
+        """Enhance narrative using Anthropic Claude."""
+        try:
+            message = self.llm_client.messages.create(
+                model=self.llm_model,
+                max_tokens=300,
+                temperature=0.7,
+                system=system_prompt,
+                messages=[
+                    {"role": "user", "content": user_prompt}
+                ]
+            )
+            return message.content[0].text.strip()
+        except Exception as e:
+            print(f"⚠ Anthropic API error: {e}")
+            return None
 
 
 # Singleton instance
