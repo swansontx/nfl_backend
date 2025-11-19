@@ -69,13 +69,24 @@ def train_quantile_models(prop_type, train_df):
         'games_played'
     ]
 
+    # CRITICAL: Filter by position based on prop type
+    if prop_type == 'pass_yards':
+        train_df = train_df[train_df['position'] == 'QB'].copy()
+        print(f"Filtering to QBs only...")
+    elif prop_type == 'rush_yards':
+        train_df = train_df[train_df['position'] == 'RB'].copy()
+        print(f"Filtering to RBs only...")
+    elif prop_type == 'rec_yards':
+        train_df = train_df[train_df['position'].isin(['WR', 'RB'])].copy()
+        print(f"Filtering to WRs and pass-catching RBs...")
+
     # Filter to players with at least 3 games
     train_df = train_df[train_df['games_played'] >= 3].copy()
 
     X = train_df[feature_cols].fillna(0)
     y = train_df[target_col]
 
-    print(f"Training set: {len(X)} performances")
+    print(f"Training set: {len(X)} performances (after position filter)")
     print(f"Features: {feature_cols}")
     print()
 
@@ -185,6 +196,14 @@ def backtest_week(prop_type, models, feature_cols, week, player_stats_df):
 
     # Get Week data
     week_df = player_stats_df[player_stats_df['week'] == week].copy()
+
+    # CRITICAL: Filter by position based on prop type
+    if prop_type == 'pass_yards':
+        week_df = week_df[week_df['position'] == 'QB'].copy()
+    elif prop_type == 'rush_yards':
+        week_df = week_df[week_df['position'] == 'RB'].copy()
+    elif prop_type == 'rec_yards':
+        week_df = week_df[week_df['position'].isin(['WR', 'RB'])].copy()
 
     # Calculate features (using data up to week-1)
     week_df = week_df.sort_values(['player_id', 'week'])
