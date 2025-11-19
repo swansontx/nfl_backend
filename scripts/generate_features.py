@@ -39,15 +39,15 @@ except ImportError:
     print()
     sys.exit(1)
 
-# Load play-by-play data for 2024 season
+# Load play-by-play data for 2022-2025 seasons
 print()
 print("📥 Loading play-by-play data from nfl_data_py...")
 print("This will take a few minutes (data is cached locally)")
 print()
 
 try:
-    pbp = nfl.import_pbp_data([2024])
-    print(f"✅ Loaded {len(pbp):,} plays from 2024 season")
+    pbp = nfl.import_pbp_data([2022, 2023, 2024, 2025])
+    print(f"✅ Loaded {len(pbp):,} plays from 2022-2025 seasons")
 except Exception as e:
     print(f"❌ Error loading play-by-play data: {e}")
     sys.exit(1)
@@ -62,7 +62,7 @@ print()
 
 # Get all games from database to match game_ids
 with get_db() as session:
-    games = session.query(Game).filter(Game.season == 2024).all()
+    games = session.query(Game).filter(Game.season.in_([2022, 2023, 2024, 2025])).all()
     game_lookup = {(g.season, g.week, g.away_team, g.home_team): g.game_id for g in games}
 
 features_created = 0

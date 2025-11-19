@@ -42,10 +42,10 @@ print("📥 Fetching NFL data from nfl_data_py...")
 print("This may take a few minutes on first run (data is cached locally)")
 print()
 
-# Load 2024 season schedule
-print("1️⃣ Loading 2024 season schedule...")
+# Load 2022-2025 season schedules
+print("1️⃣ Loading 2022-2025 season schedules...")
 try:
-    schedule = nfl.import_schedules([2024])
+    schedule = nfl.import_schedules([2022, 2023, 2024, 2025])
     print(f"   ✅ Loaded {len(schedule)} games")
 except Exception as e:
     print(f"   ❌ Error: {e}")
@@ -54,7 +54,7 @@ except Exception as e:
 # Load rosters
 print("2️⃣ Loading player rosters...")
 try:
-    rosters = nfl.import_seasonal_rosters([2024])
+    rosters = nfl.import_seasonal_rosters([2022, 2023, 2024, 2025])
     print(f"   ✅ Loaded {len(rosters)} players")
 except Exception as e:
     print(f"   ❌ Error: {e}")
