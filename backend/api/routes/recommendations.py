@@ -40,6 +40,11 @@ def get_recommendations(
         if not game:
             raise HTTPException(status_code=404, detail=f"Game {game_id} not found")
 
+        # Extract game data while session is active
+        game_date = game.game_date
+        home_team = game.home_team
+        away_team = game.away_team
+
     # Generate recommendations
     try:
         scorer = RecommendationScorer(min_confidence=min_confidence)
@@ -82,9 +87,9 @@ def get_recommendations(
 
         return RecommendationsListResponse(
             game_id=game_id,
-            game_time=game.game_date,
-            home_team=game.home_team,
-            away_team=game.away_team,
+            game_time=game_date,
+            home_team=home_team,
+            away_team=away_team,
             recommendations=recommendations,
             total_count=len(recommendations),
             markets_analyzed=markets or ["all"],
@@ -117,6 +122,9 @@ def get_parlays(
 
         if not game:
             raise HTTPException(status_code=404, detail=f"Game {game_id} not found")
+
+        # Game exists, we just need to verify it for now
+        # (no need to extract data since we don't use it in response)
 
     # Generate parlays
     try:
@@ -193,20 +201,23 @@ def get_player_recommendations(
 
         games = query.all()
 
+        # Extract game IDs while session is active
+        game_ids = [g.game_id for g in games]
+
     # Generate recommendations for each game
     all_recs = []
     scorer = RecommendationScorer()
 
-    for game in games:
+    for game_id in game_ids:
         try:
-            recs = scorer.recommend_props(game_id=game.game_id, limit=100)
+            recs = scorer.recommend_props(game_id=game_id, limit=100)
 
             # Filter to this player
             player_recs = [r for r in recs if r.player_id == player_id]
             all_recs.extend(player_recs)
 
         except Exception as e:
-            logger.warning("player_rec_failed", game_id=game.game_id, error=str(e))
+            logger.warning("player_rec_failed", game_id=game_id, error=str(e))
             continue
 
     # Convert to response
