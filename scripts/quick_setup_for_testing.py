@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import numpy as np
 from datetime import datetime, timedelta
 from backend.database.session import get_db
-from backend.database.models import Game, Player, PlayerGameFeatures
+from backend.database.models import Game, Player, PlayerGameFeature
 from backend.config.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -79,10 +79,9 @@ with get_db() as session:
         if not existing:
             player = Player(
                 player_id=p['player_id'],
-                player_name=p['name'],
+                display_name=p['name'],
                 team=p['team'],
-                position=p['position'],
-                status='ACT'
+                position=p['position']
             )
             session.add(player)
 
@@ -97,7 +96,7 @@ with get_db() as session:
     features_created = 0
 
     for p in sample_players:
-        existing = session.query(PlayerGameFeatures).filter_by(
+        existing = session.query(PlayerGameFeature).filter_by(
             player_id=p['player_id'],
             game_id=game_id
         ).first()
@@ -107,7 +106,7 @@ with get_db() as session:
 
         # Generate realistic mock features based on position
         if p['position'] == 'WR':
-            features = PlayerGameFeatures(
+            features = PlayerGameFeature(
                 player_id=p['player_id'],
                 game_id=game_id,
                 season=2024,
@@ -122,7 +121,7 @@ with get_db() as session:
                 route_pct=0.82 + np.random.normal(0, 0.05)
             )
         elif p['position'] == 'RB':
-            features = PlayerGameFeatures(
+            features = PlayerGameFeature(
                 player_id=p['player_id'],
                 game_id=game_id,
                 season=2024,
@@ -137,7 +136,7 @@ with get_db() as session:
                 snaps_pct=0.60 + np.random.normal(0, 0.08)
             )
         elif p['position'] == 'TE':
-            features = PlayerGameFeatures(
+            features = PlayerGameFeature(
                 player_id=p['player_id'],
                 game_id=game_id,
                 season=2024,
@@ -151,7 +150,7 @@ with get_db() as session:
                 snaps_pct=0.68 + np.random.normal(0, 0.06)
             )
         elif p['position'] == 'QB':
-            features = PlayerGameFeatures(
+            features = PlayerGameFeature(
                 player_id=p['player_id'],
                 game_id=game_id,
                 season=2024,
