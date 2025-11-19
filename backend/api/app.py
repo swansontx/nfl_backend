@@ -720,27 +720,71 @@ async def get_trending_props(
         return trends
 
     # Format for frontend (already has icons/colors/strength from get_trending_props)
-    hot_movers = trends.get('hot_movers', [])[:limit]
+    all_movers = trends.get('hot_movers', [])
     sustained_trends = trends.get('sustained_trends', [])[:limit]
+
+    # Categorize hot movers by direction
+    # 🔥 Hottest movers: Biggest absolute line changes (regardless of direction)
+    hottest_movers = sorted(
+        all_movers,
+        key=lambda m: abs(m.get('line_movement', 0)),
+        reverse=True
+    )[:limit]
+
+    # ⬆️ Lines moving up: Harder to hit Over, easier to hit Under
+    lines_moving_up = [
+        m for m in all_movers
+        if m.get('direction') == 'up'
+    ][:limit]
+
+    # ⬇️ Lines moving down: Easier to hit Over, harder to hit Under
+    lines_moving_down = [
+        m for m in all_movers
+        if m.get('direction') == 'down'
+    ][:limit]
 
     return {
         "week": week,
         "snapshot_count": trends.get('snapshots_analyzed', 0),
         "current_timestamp": trends.get('current_timestamp'),
 
-        # Hot movers (immediate action)
-        "hot_movers": hot_movers,
+        # 🔥 Hottest movers (biggest absolute line changes)
+        "hottest_movers": hottest_movers,
 
-        # Sustained trends (pattern validation)
+        # ⬆️ Lines moving up (getting harder to hit Over)
+        "lines_moving_up": lines_moving_up,
+
+        # ⬇️ Lines moving down (getting easier to hit Over)
+        "lines_moving_down": lines_moving_down,
+
+        # Sustained 3-week trends (pattern validation)
         "sustained_trends": sustained_trends,
 
-        # Summary stats
+        # Summary stats with averages and counts for each category
         "summary": {
-            "hot_movers": {
-                "total": len(hot_movers),
-                "strong": len([m for m in hot_movers if abs(m.get('line_movement', 0)) >= 5.0]),
-                "trending_up": len([m for m in hot_movers if m.get('direction') == 'up']),
-                "trending_down": len([m for m in hot_movers if m.get('direction') == 'down'])
+            "hottest_movers": {
+                "total": len(hottest_movers),
+                "strong": len([m for m in hottest_movers if abs(m.get('line_movement', 0)) >= 5.0]),
+                "avg_movement": round(
+                    sum(abs(m.get('line_movement', 0)) for m in hottest_movers) / max(len(hottest_movers), 1),
+                    2
+                )
+            },
+            "lines_moving_up": {
+                "total": len(lines_moving_up),
+                "strong": len([m for m in lines_moving_up if m.get('line_movement', 0) >= 5.0]),
+                "avg_movement": round(
+                    sum(m.get('line_movement', 0) for m in lines_moving_up) / max(len(lines_moving_up), 1),
+                    2
+                )
+            },
+            "lines_moving_down": {
+                "total": len(lines_moving_down),
+                "strong": len([m for m in lines_moving_down if m.get('line_movement', 0) <= -5.0]),
+                "avg_movement": round(
+                    sum(m.get('line_movement', 0) for m in lines_moving_down) / max(len(lines_moving_down), 1),
+                    2
+                )
             },
             "sustained_trends": {
                 "total": len(sustained_trends),
