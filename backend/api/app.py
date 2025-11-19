@@ -9,7 +9,7 @@ import uuid
 from backend.config import settings
 from backend.config.logging_config import setup_logging, get_logger
 from backend.api.schemas import HealthResponse, ErrorResponse
-from backend.api.routes import projections, admin
+from backend.api.routes import projections, admin, recommendations, games, backtest, health
 
 # Setup logging
 setup_logging()
@@ -157,8 +157,16 @@ async def health():
 
 
 # Include routers
+# Health and status (no prefix)
+app.include_router(health.router)
+
+# API v1 routes
+api_prefix = "/api/v1"
 app.include_router(projections.router)
 app.include_router(admin.router)
+app.include_router(recommendations.router, prefix=api_prefix)
+app.include_router(games.router, prefix=api_prefix)
+app.include_router(backtest.router, prefix=api_prefix)
 
 
 # Startup event
