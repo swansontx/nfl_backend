@@ -5,34 +5,31 @@ over time for trending analysis and line shopping.
 
 API Documentation: https://the-odds-api.com/sports-odds-data/betting-markets.html
 
-Prop Markets Tracked (30+ markets):
+Prop Markets Tracked (60+ markets):
 
-PASSING PROPS:
-- player_pass_yds, player_pass_tds, player_pass_completions
-- player_pass_attempts, player_pass_interceptions
-- player_pass_longest_completion
+FULL GAME PROPS:
+- Passing: yards, TDs, completions, attempts, interceptions, longest
+- Rushing: yards, TDs, attempts, longest
+- Receiving: receptions, yards, TDs, longest
+- Kicking: points, field goals, field goals made
+- Touchdowns: anytime, first, last
+- Defense: tackles+assists, sacks, interceptions
+- Combos: pass+rush yards, pass+rush TDs, rush+rec yards
 
-RUSHING PROPS:
-- player_rush_yds, player_rush_tds, player_rush_attempts
-- player_rush_longest
+FIRST HALF (1H) PROPS:
+- Passing: yards, TDs, completions
+- Rushing: yards, TDs
+- Receiving: receptions, yards
+- Touchdowns: anytime TD
 
-RECEIVING PROPS:
-- player_receptions, player_reception_yds, player_reception_tds
-- player_reception_longest
+FIRST QUARTER (1Q) PROPS:
+- Passing: yards, TDs, completions
+- Rushing: yards, TDs
+- Receiving: receptions, yards
+- Touchdowns: anytime TD
 
-KICKING PROPS:
-- player_kicking_points, player_field_goals, player_field_goals_made
-
-TOUCHDOWN PROPS:
-- player_anytime_td, player_first_td, player_last_td
-- 1st_td_scorer, last_td_scorer
-
-DEFENSIVE PROPS:
-- player_tackles_assists, player_sacks, player_interceptions
-
-COMBO PROPS:
-- player_pass_rush_yds, player_pass_tds_rush_tds
-- player_receptions_rush_yds, player_rush_reception_yds
+SECOND HALF (2H), THIRD QUARTER (3Q), FOURTH QUARTER (4Q) PROPS:
+- Passing yards, rushing yards, receiving yards
 
 Line Movement Tracking:
 - Captures historical snapshots with timestamps
@@ -40,11 +37,17 @@ Line Movement Tracking:
 - Calculates line movement (e.g., +2.5 yards over 7 days)
 - Stores vig/juice for both OVER and UNDER sides
 - Identifies "hot movers" (2+ point moves)
-- Compares across 6 sportsbooks for line shopping
+- Detects sharp action (books moving in different directions)
 
-Sportsbooks:
-- DraftKings (primary)
-- FanDuel, Caesars, BetMGM, PointsBet, Unibet (comparison)
+Sportsbooks (DraftKings-only betting):
+- DraftKings (PRIMARY - only book user can bet on)
+- FanDuel, Caesars, BetMGM, PointsBet, Unibet (tracked for sharp action detection)
+
+Sharp Action Detection:
+- If DK moves alone = public money
+- If other books move but DK stays flat = sharp money elsewhere
+- If all books move together = consensus/steam move
+- Track where smart money is going even if you can't bet there
 
 Output: JSON files with timestamped snapshots for trending analysis
 """
@@ -74,7 +77,7 @@ class PropLineFetcher:
 
         # Prop markets to fetch (comprehensive list from Odds API)
         self.prop_markets = [
-            # Passing props
+            # FULL GAME - Passing props
             'player_pass_yds',
             'player_pass_tds',
             'player_pass_completions',
@@ -82,55 +85,95 @@ class PropLineFetcher:
             'player_pass_interceptions',
             'player_pass_longest_completion',
 
-            # Rushing props
+            # FULL GAME - Rushing props
             'player_rush_yds',
             'player_rush_tds',
             'player_rush_attempts',
             'player_rush_longest',
 
-            # Receiving props
+            # FULL GAME - Receiving props
             'player_receptions',
             'player_reception_yds',
             'player_reception_tds',
             'player_reception_longest',
 
-            # Kicking props
+            # FULL GAME - Kicking props
             'player_kicking_points',
             'player_field_goals',
             'player_field_goals_made',
 
-            # Touchdown props
+            # FULL GAME - Touchdown props
             'player_anytime_td',
             'player_first_td',
             'player_last_td',
             '1st_td_scorer',
             'last_td_scorer',
 
-            # Defensive props
+            # FULL GAME - Defensive props
             'player_tackles_assists',
             'player_sacks',
             'player_interceptions',
 
-            # Combo props
+            # FULL GAME - Combo props
             'player_pass_rush_yds',
             'player_pass_tds_rush_tds',
             'player_receptions_rush_yds',
-            'player_rush_reception_yds'
+            'player_rush_reception_yds',
+
+            # FIRST HALF (1H) props
+            'player_1h_pass_yds',
+            'player_1h_pass_tds',
+            'player_1h_pass_completions',
+            'player_1h_rush_yds',
+            'player_1h_rush_tds',
+            'player_1h_receptions',
+            'player_1h_reception_yds',
+            'player_1h_anytime_td',
+
+            # FIRST QUARTER (1Q) props
+            'player_1q_pass_yds',
+            'player_1q_pass_tds',
+            'player_1q_pass_completions',
+            'player_1q_rush_yds',
+            'player_1q_rush_tds',
+            'player_1q_receptions',
+            'player_1q_reception_yds',
+            'player_1q_anytime_td',
+
+            # SECOND HALF (2H) props
+            'player_2h_pass_yds',
+            'player_2h_pass_tds',
+            'player_2h_rush_yds',
+            'player_2h_receptions',
+            'player_2h_reception_yds',
+
+            # THIRD QUARTER (3Q) props
+            'player_3q_pass_yds',
+            'player_3q_rush_yds',
+            'player_3q_reception_yds',
+
+            # FOURTH QUARTER (4Q) props
+            'player_4q_pass_yds',
+            'player_4q_rush_yds',
+            'player_4q_reception_yds'
         ]
 
-        # Sportsbooks to include (DraftKings primary, others for comparison)
-        # Note: User preference is DraftKings but we compare across books for:
-        # - Line shopping (find best available line)
-        # - Movement detection (sharp money vs public)
-        # - Vig comparison (which book has best juice)
+        # Sportsbooks to track
+        # User can ONLY bet on DraftKings, but we track others for:
+        # - Sharp action detection (where is smart money moving?)
+        # - Validation (if all books move together = consensus, if DK alone = public money)
+        # - Steam detection (sudden moves on other books signal sharp action)
         self.bookmakers = [
-            'draftkings',      # Primary book (user preference)
-            'fanduel',         # Compare for line shopping
-            'williamhill_us',  # Caesars - compare for movement
-            'betmgm',          # Compare for sharp action
-            'pointsbetus',     # Compare
-            'unibet_us'        # Compare
+            'draftkings',      # PRIMARY (only book user can bet on)
+            'fanduel',         # Track for sharp action detection
+            'williamhill_us',  # Caesars - track for movement validation
+            'betmgm',          # Track for sharp money signals
+            'pointsbetus',     # Track for consensus
+            'unibet_us'        # Track for consensus
         ]
+
+        # User can only bet on DraftKings
+        self.primary_book = 'draftkings'
 
     def fetch_upcoming_games(self) -> List[Dict]:
         """Fetch list of upcoming NFL games.
@@ -538,45 +581,67 @@ class PropLineFetcher:
                 return prop
         return None
 
-    def compare_books(self, props: List[Dict]) -> Dict:
-        """Compare lines across sportsbooks for line shopping.
+    def analyze_sharp_action(self, props: List[Dict]) -> Dict:
+        """Analyze sharp action across sportsbooks (DraftKings-only betting).
+
+        Since user can only bet on DraftKings, this analyzes where sharp money
+        is moving across other books to inform DK betting decisions.
 
         Args:
             props: List of prop dicts for same player/market (different books)
 
         Returns:
-            Dict with DraftKings line, best line, and line shopping analysis
+            Dict with DraftKings line and sharp action analysis
         """
         dk_line = self.get_draftkings_line(props)
-        best_over = self.get_best_line(props, 'over')
-        best_under = self.get_best_line(props, 'under')
 
-        # Calculate line shopping value
-        line_shopping_value = {}
-        if dk_line and best_over:
-            line_shopping_value['over'] = {
-                'dk_line': dk_line.get('line'),
-                'best_line': best_over.get('line'),
-                'best_book': best_over.get('bookmaker'),
-                'edge': dk_line.get('line') - best_over.get('line'),  # Positive = DK worse
-                'recommendation': 'Shop around' if dk_line.get('line') > best_over.get('line') else 'DK is best'
-            }
+        # Get lines from sharp books (FanDuel, Pinnacle are typically sharp)
+        sharp_lines = [p for p in props if p.get('bookmaker') in ['fanduel', 'pinnacle', 'betmgm']]
 
-        if dk_line and best_under:
-            line_shopping_value['under'] = {
-                'dk_line': dk_line.get('line'),
-                'best_line': best_under.get('line'),
-                'best_book': best_under.get('bookmaker'),
-                'edge': best_under.get('line') - dk_line.get('line'),  # Positive = other book better
-                'recommendation': 'Shop around' if best_under.get('line') > dk_line.get('line') else 'DK is best'
-            }
+        # Calculate sharp action signals
+        sharp_action = {
+            'dk_isolated': False,        # DK moving alone (public money)
+            'dk_with_sharps': False,     # DK moving with sharp books (consensus)
+            'sharps_opposite_dk': False, # Sharp books moving opposite DK (fade DK)
+            'steam_move': False          # All books moving together (steam)
+        }
+
+        if dk_line and sharp_lines:
+            dk_movement = dk_line.get('movement', {}).get('line_movement', 0)
+            sharp_movements = [p.get('movement', {}).get('line_movement', 0) for p in sharp_lines]
+
+            # Detect patterns
+            if abs(dk_movement) >= 2.0:
+                # DK moved significantly
+                if all(abs(m) < 1.0 for m in sharp_movements):
+                    sharp_action['dk_isolated'] = True  # Public money on DK
+                elif all(abs(m) >= 2.0 for m in sharp_movements):
+                    sharp_action['steam_move'] = True   # Everyone moving
+                    sharp_action['dk_with_sharps'] = True
+
+            elif any(abs(m) >= 2.0 for m in sharp_movements):
+                # Sharp books moved but DK didn't
+                sharp_action['sharps_opposite_dk'] = True
 
         return {
             'draftkings': dk_line,
-            'best_over': best_over,
-            'best_under': best_under,
-            'line_shopping': line_shopping_value
+            'sharp_books': sharp_lines,
+            'sharp_action': sharp_action,
+            'interpretation': self._interpret_sharp_action(sharp_action)
         }
+
+    def _interpret_sharp_action(self, signals: Dict) -> str:
+        """Interpret sharp action signals into betting guidance."""
+        if signals['steam_move']:
+            return "STEAM MOVE - All books moving together, strong consensus"
+        elif signals['dk_isolated']:
+            return "PUBLIC MONEY - DK moving alone, sharps staying away, FADE DK"
+        elif signals['sharps_opposite_dk']:
+            return "SHARP DISAGREEMENT - Sharp books moving opposite DK, follow sharps"
+        elif signals['dk_with_sharps']:
+            return "SHARP CONSENSUS - DK aligned with sharp books, good signal"
+        else:
+            return "NO CLEAR SIGNAL - Mixed or minimal movement"
 
     def get_trending_props(
         self,
