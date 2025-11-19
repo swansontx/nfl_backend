@@ -45,11 +45,11 @@ def estimate_team_kicker_stats(team_score):
     # Remaining points must come from FGs
     remaining_points = team_score - td_points
 
-    # FGs = remaining points / 3
-    fg_made = int(remaining_points / 3)
+    # FGs = remaining points / 3 (ensure non-negative)
+    fg_made = max(0, int(remaining_points / 3))
 
     # Total kicker points
-    total_points = (fg_made * 3) + xp_made
+    total_points = max(0, (fg_made * 3) + xp_made)
 
     return {
         'fg_made': fg_made,
