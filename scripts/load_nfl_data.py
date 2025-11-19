@@ -124,6 +124,20 @@ with get_db() as session:
             if birth_date is not None and str(birth_date) == 'NaT':
                 birth_date = None
 
+            # Handle NaN/inf values for numeric fields
+            import math
+            height = player_row.get('height')
+            if height is not None and (math.isnan(height) or math.isinf(height)):
+                height = None
+            elif height is not None:
+                height = int(height)
+
+            weight = player_row.get('weight')
+            if weight is not None and (math.isnan(weight) or math.isinf(weight)):
+                weight = None
+            elif weight is not None:
+                weight = int(weight)
+
             # Create player
             player = Player(
                 player_id=player_id,
@@ -132,8 +146,8 @@ with get_db() as session:
                 last_name=player_row.get('last_name'),
                 team=player_row.get('team'),
                 position=player_row.get('position'),
-                height=player_row.get('height'),
-                weight=player_row.get('weight'),
+                height=height,
+                weight=weight,
                 birth_date=birth_date,
                 college=player_row.get('college')
             )
