@@ -132,7 +132,7 @@ class HomeFieldAdvantageCalculator:
             return features
 
         # Calculate great circle distance
-        distance = cls._calculate_distance(
+        distance = HomeFieldAdvantageCalculator._calculate_distance(
             away_stadium['lat'], away_stadium['lon'],
             home_stadium['lat'], home_stadium['lon']
         )
