@@ -7,11 +7,9 @@ venv/
 .Python
 .DS_Store
 
-# Data directories
-inputs/
+# Data directories (keeping inputs and models tracked)
 outputs/*.csv
 outputs/*.parquet
-outputs/models/
 outputs/odds/
 outputs/predictions/
 outputs/reports/
