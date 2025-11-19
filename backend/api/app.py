@@ -396,22 +396,12 @@ async def get_game_weather(game_id: str):
 
     Returns:
         Weather forecast including temperature, wind, precipitation
-    """
-    # TODO: Get stadium location and game time from schedule
-    # For now, using placeholder coordinates
-    # In production, you'd have a stadium database:
-    # stadium_data = get_stadium_for_game(game_id)
-    # weather = weather_api.get_game_weather(
-    #     stadium_data['lat'],
-    #     stadium_data['lon'],
-    #     stadium_data['game_time']
-    # )
 
-    weather_data = weather_api.get_game_weather(
-        stadium_lat=42.0909,  # Example: Buffalo
-        stadium_lon=-78.7869,
-        game_time="2025-11-24T18:00:00Z"
-    )
+    Note: Now using stadium database for accurate coordinates!
+          Automatically handles dome stadiums (returns controlled conditions)
+    """
+    # Use new convenience method with stadium database
+    weather_data = weather_api.get_weather_for_game(game_id)
 
     return WeatherData(**weather_data)
 

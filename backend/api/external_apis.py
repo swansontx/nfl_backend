@@ -12,6 +12,9 @@ from datetime import datetime
 from pathlib import Path
 import json
 
+from backend.api.cache import cached, CACHE_TTL
+from backend.api.stadium_database import get_stadium_for_game
+
 
 class WeatherAPI:
     """Integration with OpenWeather API for game weather data."""
@@ -25,6 +28,7 @@ class WeatherAPI:
         self.api_key = api_key or os.getenv('OPENWEATHER_API_KEY')
         self.base_url = "https://api.openweathermap.org/data/2.5"
 
+    @cached(ttl_seconds=CACHE_TTL['weather'])  # 1 hour
     def get_game_weather(self,
                         stadium_lat: float,
                         stadium_lon: float,
@@ -86,6 +90,48 @@ class WeatherAPI:
             print(f"Weather API error: {e}")
             return self._get_placeholder_weather()
 
+    def get_weather_for_game(self, game_id: str, game_time: Optional[str] = None) -> Dict:
+        """Get weather for a game using stadium database.
+
+        Args:
+            game_id: Game ID in format {season}_{week}_{away}_{home}
+            game_time: Game time in ISO format (optional, uses placeholder if not provided)
+
+        Returns:
+            Weather data dictionary
+        """
+        # Get stadium from game_id
+        stadium = get_stadium_for_game(game_id)
+
+        if not stadium:
+            return self._get_placeholder_weather()
+
+        # If it's a dome, return dome weather
+        if stadium['is_dome']:
+            return {
+                'temperature': 72,
+                'temp_unit': 'F',
+                'condition': 'Clear',
+                'wind_speed': 0,
+                'wind_unit': 'mph',
+                'humidity': 50,
+                'precipitation_chance': 0,
+                'is_dome': True,
+                'stadium_name': stadium['name']
+            }
+
+        # Get actual weather forecast
+        game_time = game_time or datetime.now().isoformat()
+        weather = self.get_game_weather(
+            stadium['lat'],
+            stadium['lon'],
+            game_time
+        )
+        weather['stadium_name'] = stadium['name']
+        weather['is_dome'] = False
+
+        return weather
+
     def _get_placeholder_weather(self) -> Dict:
         """Return placeholder weather when API is unavailable."""
         return {
@@ -106,14 +152,13 @@ class SleeperAPI:
     def __init__(self):
         """Initialize Sleeper API client."""
         self.base_url = "https://api.sleeper.app/v1"
-        self._players_cache = None
-        self._cache_timestamp = None
 
+    @cached(ttl_seconds=CACHE_TTL['injuries'])  # 15 minutes
     def get_all_players(self, force_refresh: bool = False) -> Dict:
         """Fetch all NFL players from Sleeper API.
 
         Args:
-            force_refresh: Force cache refresh
+            force_refresh: Force cache refresh (note: caching handled by decorator)
 
         Returns:
             Dictionary mapping player_id -> player data
@@ -121,24 +166,11 @@ class SleeperAPI:
         Note: Sleeper uses their own player IDs, not nflverse IDs.
               You'll need to map between them using player names.
         """
-        # Cache for 1 hour
-        cache_valid = (
-            self._players_cache is not None and
-            self._cache_timestamp is not None and
-            (datetime.now() - self._cache_timestamp).seconds < 3600
-        )
-
-        if not force_refresh and cache_valid:
-            return self._players_cache
-
         try:
             url = f"{self.base_url}/players/nfl"
             response = requests.get(url, timeout=10)
             response.raise_for_status()
-
-            self._players_cache = response.json()
-            self._cache_timestamp = datetime.now()
-            return self._players_cache
+            return response.json()
 
         except Exception as e:
             print(f"Sleeper API error: {e}")
