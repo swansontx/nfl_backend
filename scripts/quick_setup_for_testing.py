@@ -106,60 +106,49 @@ with get_db() as session:
             features = PlayerGameFeature(
                 player_id=p['player_id'],
                 game_id=game_id,
-                season=2024,
-                week=12,
-                team=p['team'],
-                position=p['position'],
-                targets_avg=7.5 + np.random.normal(0, 1),
-                receptions_avg=4.8 + np.random.normal(0, 0.5),
-                rec_yards_avg=68.5 + np.random.normal(0, 10),
-                rec_td_avg=0.45 + np.random.normal(0, 0.1),
-                snaps_pct=0.75 + np.random.normal(0, 0.05),
-                route_pct=0.82 + np.random.normal(0, 0.05)
+                targets=int(7.5 + np.random.normal(0, 1)),
+                receptions=int(4.8 + np.random.normal(0, 0.5)),
+                receiving_yards=68.5 + np.random.normal(0, 10),
+                receiving_tds=int(np.random.random() < 0.45),  # 45% chance of TD
+                snaps=int(55 + np.random.normal(0, 5)),
+                routes_run=int(38 + np.random.normal(0, 3)),
+                redzone_targets=int(np.random.random() * 3)
             )
         elif p['position'] == 'RB':
             features = PlayerGameFeature(
                 player_id=p['player_id'],
                 game_id=game_id,
-                season=2024,
-                week=12,
-                team=p['team'],
-                position=p['position'],
-                carries_avg=12.5 + np.random.normal(0, 2),
-                rush_yards_avg=55.5 + np.random.normal(0, 8),
-                rush_td_avg=0.35 + np.random.normal(0, 0.1),
-                targets_avg=3.2 + np.random.normal(0, 0.5),
-                receptions_avg=2.5 + np.random.normal(0, 0.3),
-                snaps_pct=0.60 + np.random.normal(0, 0.08)
+                rush_attempts=int(12.5 + np.random.normal(0, 2)),
+                rushing_yards=55.5 + np.random.normal(0, 8),
+                rushing_tds=int(np.random.random() < 0.35),  # 35% chance of TD
+                targets=int(3.2 + np.random.normal(0, 0.5)),
+                receptions=int(2.5 + np.random.normal(0, 0.3)),
+                receiving_yards=18.5 + np.random.normal(0, 5),
+                snaps=int(42 + np.random.normal(0, 6)),
+                redzone_carries=int(np.random.random() * 4)
             )
         elif p['position'] == 'TE':
             features = PlayerGameFeature(
                 player_id=p['player_id'],
                 game_id=game_id,
-                season=2024,
-                week=12,
-                team=p['team'],
-                position=p['position'],
-                targets_avg=5.5 + np.random.normal(0, 0.8),
-                receptions_avg=3.8 + np.random.normal(0, 0.5),
-                rec_yards_avg=45.5 + np.random.normal(0, 6),
-                rec_td_avg=0.30 + np.random.normal(0, 0.08),
-                snaps_pct=0.68 + np.random.normal(0, 0.06)
+                targets=int(5.5 + np.random.normal(0, 0.8)),
+                receptions=int(3.8 + np.random.normal(0, 0.5)),
+                receiving_yards=45.5 + np.random.normal(0, 6),
+                receiving_tds=int(np.random.random() < 0.30),  # 30% chance of TD
+                snaps=int(48 + np.random.normal(0, 4)),
+                routes_run=int(28 + np.random.normal(0, 3)),
+                redzone_targets=int(np.random.random() * 2)
             )
         elif p['position'] == 'QB':
             features = PlayerGameFeature(
                 player_id=p['player_id'],
                 game_id=game_id,
-                season=2024,
-                week=12,
-                team=p['team'],
-                position=p['position'],
-                pass_attempts_avg=32.5 + np.random.normal(0, 3),
-                completions_avg=21.5 + np.random.normal(0, 2),
-                pass_yards_avg=245.5 + np.random.normal(0, 20),
-                pass_td_avg=1.65 + np.random.normal(0, 0.3),
-                interceptions_avg=0.75 + np.random.normal(0, 0.2),
-                rush_yards_avg=15.5 + np.random.normal(0, 5)
+                pass_attempts=int(32.5 + np.random.normal(0, 3)),
+                passing_yards=245.5 + np.random.normal(0, 20),
+                passing_tds=int(1.65 + np.random.normal(0, 0.5)),
+                rushing_yards=15.5 + np.random.normal(0, 5),
+                rush_attempts=int(3.5 + np.random.normal(0, 1)),
+                snaps=int(62 + np.random.normal(0, 2))
             )
 
         session.add(features)
