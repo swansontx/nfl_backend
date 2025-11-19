@@ -31,6 +31,7 @@ from backend.news.news_fetcher import NewsAnalyzer, PlayerNewsDigest
 from backend.correlation.correlation_engine import CorrelationEngine, ParlayAdjustment
 from backend.calibration.calibrator import ProbabilityCalibrator
 from backend.roster_injury import RosterInjuryService
+from backend.matchup import MatchupAnalyzer
 
 logger = get_logger(__name__)
 
@@ -163,6 +164,7 @@ class RecommendationScorer:
         self.correlation_engine = CorrelationEngine()
         self.calibrator = ProbabilityCalibrator()
         self.roster_service = RosterInjuryService()
+        self.matchup_analyzer = MatchupAnalyzer()
 
     def recommend_props(
         self,
@@ -429,10 +431,45 @@ class RecommendationScorer:
             roster_signal = 0.8  # Default to mostly healthy
             roster_reasoning = []
 
-        # 6. Matchup signal (already in projection, extract from features)
-        # For now, use a simple heuristic based on opponent rank
-        matchup_signal = 0.5  # Neutral default
-        matchup_reasoning = []
+        # 6. Matchup signal (dynamic opponent analysis)
+        try:
+            matchup_metrics = self.matchup_analyzer.analyze_matchup(
+                player_id=player_id,
+                game_id=game_id,
+                market=market
+            )
+
+            if matchup_metrics:
+                matchup_signal = self.matchup_analyzer.get_matchup_signal(matchup_metrics)
+
+                matchup_reasoning = []
+                if matchup_metrics.opponent_rank_percentile > 0.7:
+                    matchup_reasoning.append(
+                        f"Favorable matchup vs {matchup_metrics.opponent_team} "
+                        f"(allows {matchup_metrics.avg_yards_allowed:.1f} yards/game)"
+                    )
+                elif matchup_metrics.opponent_rank_percentile < 0.3:
+                    matchup_reasoning.append(
+                        f"Tough matchup vs {matchup_metrics.opponent_team} "
+                        f"(allows only {matchup_metrics.avg_yards_allowed:.1f} yards/game)"
+                    )
+                else:
+                    matchup_reasoning.append(
+                        f"Neutral matchup vs {matchup_metrics.opponent_team}"
+                    )
+
+                if matchup_metrics.avg_tds_allowed > 1.0:
+                    matchup_reasoning.append(
+                        f"Defense allows {matchup_metrics.avg_tds_allowed:.1f} TDs/game to {position}"
+                    )
+            else:
+                matchup_signal = 0.5  # Neutral if no data
+                matchup_reasoning = []
+
+        except Exception as e:
+            logger.debug("matchup_analysis_failed", player_id=player_id, error=str(e))
+            matchup_signal = 0.5  # Neutral default
+            matchup_reasoning = []
 
         # 7. Combine all signals using weights
         overall_score = (
