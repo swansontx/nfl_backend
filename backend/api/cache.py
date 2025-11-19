@@ -96,4 +96,6 @@ CACHE_TTL = {
     'player_stats': 3600,   # 1 hour - stats are historical
     'sportsbook_lines': 60, # 1 minute - lines move frequently
     'projections': 1800,    # 30 minutes - model outputs
+    'schedule': 3600,       # 1 hour - schedules rarely change
+    'boxscore': 1800,       # 30 minutes - final stats
 }

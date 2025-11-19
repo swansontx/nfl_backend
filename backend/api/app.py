@@ -10,6 +10,9 @@ from backend.api.narrative_generator import narrative_generator
 from backend.api.prop_analyzer import prop_analyzer, PropLine, PropProjection, PropValue
 from backend.api.odds_api import odds_api
 from backend.api.model_loader import model_loader
+from backend.api.team_database import get_team, get_all_teams, get_division_teams, get_conference_teams
+from backend.api.schedule_loader import schedule_loader, Game
+from backend.api.boxscore_generator import boxscore_generator
 
 app = FastAPI(
     title='NFL Props Backend API',
@@ -700,6 +703,265 @@ async def get_game_prop_sheet(game_id: str):
                 "grade": "B+"
             }
         ]
+    }
+
+
+# ============================================================================
+# Team Pages Endpoints
+# ============================================================================
+
+@app.get('/api/v1/teams', tags=['Teams'])
+def get_teams(conference: Optional[str] = None, division: Optional[str] = None):
+    """Get all NFL teams or filter by conference/division.
+
+    Args:
+        conference: Optional conference filter (AFC or NFC)
+        division: Optional division filter (e.g., 'AFC East')
+
+    Returns:
+        List of teams with full metadata
+    """
+    if division:
+        teams = get_division_teams(division)
+        return {'teams': teams, 'count': len(teams)}
+    elif conference:
+        teams = get_conference_teams(conference.upper())
+        return {'teams': teams, 'count': len(teams)}
+    else:
+        teams = get_all_teams()
+        return {'teams': list(teams.values()), 'count': len(teams)}
+
+
+@app.get('/api/v1/teams/{team_id}', tags=['Teams'])
+def get_team_info(team_id: str):
+    """Get detailed info for a specific team.
+
+    Args:
+        team_id: Team abbreviation (e.g., 'KC', 'BUF')
+
+    Returns:
+        Team info with stadium, colors, historical records
+    """
+    team = get_team(team_id.upper())
+
+    if not team:
+        raise HTTPException(status_code=404, detail=f'Team not found: {team_id}')
+
+    return team
+
+
+@app.get('/api/v1/teams/{team_id}/schedule', tags=['Teams'])
+def get_team_schedule_endpoint(
+    team_id: str,
+    year: Optional[int] = None,
+    game_type: str = 'REG'
+):
+    """Get schedule for a team.
+
+    Args:
+        team_id: Team abbreviation
+        year: Season year (defaults to current year)
+        game_type: Game type filter ('REG', 'POST', 'PRE', 'ALL')
+
+    Returns:
+        List of games for this team
+    """
+    if year is None:
+        year = datetime.now().year
+
+    team = get_team(team_id.upper())
+    if not team:
+        raise HTTPException(status_code=404, detail=f'Team not found: {team_id}')
+
+    schedule = schedule_loader.get_team_schedule(team_id.upper(), year, game_type)
+
+    # Convert Game objects to dicts
+    schedule_dicts = []
+    for game in schedule:
+        game_dict = {
+            'game_id': game.game_id,
+            'season': game.season,
+            'week': game.week,
+            'game_type': game.game_type,
+            'gameday': game.gameday,
+            'weekday': game.weekday,
+            'gametime': game.gametime,
+            'away_team': game.away_team,
+            'home_team': game.home_team,
+            'away_score': game.away_score,
+            'home_score': game.home_score,
+            'result': game.result,
+            'is_home': game.home_team == team_id.upper(),
+            'opponent': game.away_team if game.home_team == team_id.upper() else game.home_team,
+            'location': game.location,
+            'stadium': game.stadium,
+        }
+        schedule_dicts.append(game_dict)
+
+    return {
+        'team': team,
+        'season': year,
+        'game_type': game_type,
+        'games': schedule_dicts,
+        'count': len(schedule_dicts)
+    }
+
+
+@app.get('/api/v1/teams/{team_id}/news', tags=['Teams'])
+def get_team_news(team_id: str, limit: int = 20):
+    """Get news for a specific team.
+
+    Args:
+        team_id: Team abbreviation
+        limit: Max number of news items
+
+    Returns:
+        News items filtered for this team
+    """
+    team = get_team(team_id.upper())
+    if not team:
+        raise HTTPException(status_code=404, detail=f'Team not found: {team_id}')
+
+    # Get all news and filter by team
+    all_news = sleeper_api.get_injuries()
+
+    team_news = [
+        item for item in all_news
+        if item.get('team', '').upper() == team_id.upper()
+    ]
+
+    return {
+        'team': team,
+        'news': team_news[:limit],
+        'count': len(team_news[:limit])
+    }
+
+
+@app.get('/api/v1/games/{game_id}/boxscore', tags=['Games'])
+def get_game_boxscore(game_id: str):
+    """Get complete boxscore for a game (similar to ESPN boxscore).
+
+    Args:
+        game_id: Game ID (format: YYYY_WW_AWAY_HOME)
+
+    Returns:
+        Comprehensive boxscore with team stats, player stats, and scoring summary
+
+    Example:
+        /api/v1/games/2024_10_KC_BUF/boxscore
+    """
+    boxscore = boxscore_generator.generate_boxscore(game_id)
+
+    if not boxscore:
+        raise HTTPException(status_code=404, detail=f'Boxscore not found for game: {game_id}')
+
+    # Convert to dict for JSON response
+    def player_stats_to_dict(stats):
+        return {
+            'player_id': stats.player_id,
+            'player_name': stats.player_name,
+            'team': stats.team,
+            'passing': {
+                'attempts': stats.pass_attempts,
+                'completions': stats.pass_completions,
+                'yards': stats.pass_yards,
+                'touchdowns': stats.pass_tds,
+                'interceptions': stats.interceptions,
+                'sacks': stats.sacks,
+                'sack_yards': stats.sack_yards,
+            },
+            'rushing': {
+                'attempts': stats.rush_attempts,
+                'yards': stats.rush_yards,
+                'touchdowns': stats.rush_tds,
+                'fumbles': stats.fumbles,
+                'fumbles_lost': stats.fumbles_lost,
+            },
+            'receiving': {
+                'receptions': stats.receptions,
+                'targets': stats.targets,
+                'yards': stats.rec_yards,
+                'touchdowns': stats.rec_tds,
+            }
+        }
+
+    def team_stats_to_dict(stats):
+        return {
+            'team': stats.team,
+            'score': {
+                'total': stats.total_points,
+                'q1': stats.q1_points,
+                'q2': stats.q2_points,
+                'q3': stats.q3_points,
+                'q4': stats.q4_points,
+                'ot': stats.ot_points,
+            },
+            'offense': {
+                'total_yards': stats.total_yards,
+                'passing_yards': stats.passing_yards,
+                'rushing_yards': stats.rushing_yards,
+                'first_downs': stats.first_downs,
+            },
+            'conversions': {
+                'third_down': f'{stats.third_down_conversions}/{stats.third_down_attempts}',
+                'fourth_down': f'{stats.fourth_down_conversions}/{stats.fourth_down_attempts}',
+            },
+            'turnovers': {
+                'total': stats.turnovers,
+                'fumbles_lost': stats.fumbles_lost,
+                'interceptions': stats.interceptions_thrown,
+            },
+            'penalties': {
+                'count': stats.penalties,
+                'yards': stats.penalty_yards,
+            },
+            'time_of_possession': stats.time_of_possession,
+        }
+
+    # Convert players dicts
+    away_players_list = [player_stats_to_dict(p) for p in boxscore.away_players.values()]
+    home_players_list = [player_stats_to_dict(p) for p in boxscore.home_players.values()]
+
+    # Sort players by position relevance
+    def player_sort_key(p):
+        # Passers first, then rushers, then receivers
+        if p['passing']['attempts'] > 0:
+            return (0, -p['passing']['attempts'])
+        elif p['rushing']['attempts'] > 0:
+            return (1, -p['rushing']['attempts'])
+        else:
+            return (2, -p['receiving']['receptions'])
+
+    away_players_list.sort(key=player_sort_key)
+    home_players_list.sort(key=player_sort_key)
+
+    # Convert scoring plays
+    scoring_plays_list = [
+        {
+            'quarter': play.quarter,
+            'time': play.time,
+            'team': play.team,
+            'description': play.description,
+            'away_score': play.away_score,
+            'home_score': play.home_score,
+            'play_type': play.play_type,
+        }
+        for play in boxscore.scoring_plays
+    ]
+
+    return {
+        'game_id': boxscore.game_id,
+        'away_team': boxscore.away_team,
+        'home_team': boxscore.home_team,
+        'final_score': {
+            'away': boxscore.away_score,
+            'home': boxscore.home_score,
+        },
+        'away_stats': team_stats_to_dict(boxscore.away_stats),
+        'home_stats': team_stats_to_dict(boxscore.home_stats),
+        'away_players': away_players_list,
+        'home_players': home_players_list,
+        'scoring_plays': scoring_plays_list,
     }
 
 
