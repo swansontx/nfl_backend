@@ -8,6 +8,8 @@ from backend.api.external_apis import weather_api, sleeper_api
 from backend.api.insights_engine import insight_generator, PlayerStats, Insight as InsightData
 from backend.api.narrative_generator import narrative_generator
 from backend.api.prop_analyzer import prop_analyzer, PropLine, PropProjection, PropValue
+from backend.api.odds_api import odds_api
+from backend.api.model_loader import model_loader
 
 app = FastAPI(
     title='NFL Props Backend API',
@@ -107,11 +109,44 @@ async def recompute(req: RecomputeRequest):
     return {'status': 'started', 'game_id': req.game_id}
 
 
+@app.get('/admin/odds-api-usage')
+async def check_odds_api_usage():
+    """Check Odds API usage and remaining requests."""
+    usage = odds_api.check_usage()
+    return usage
+
+
+@app.post('/admin/create-sample-projections/{game_id}')
+async def create_sample_projections(game_id: str):
+    """Create sample projection file for development/testing."""
+    model_loader.create_sample_projections(game_id)
+    return {
+        'status': 'created',
+        'game_id': game_id,
+        'file': f'outputs/predictions/props_{game_id}.csv'
+    }
+
+
 @app.get('/game/{game_id}/projections')
 async def get_projections(game_id: str):
     """Get player prop projections for a game."""
-    # TODO: Load from outputs/predictions/props_{game_id}.csv
-    return {'game_id': game_id, 'projections': []}
+    projections = model_loader.load_projections_for_game(game_id)
+
+    return {
+        'game_id': game_id,
+        'total_projections': len(projections),
+        'projections': [
+            {
+                'player_id': p.player_id,
+                'player_name': p.player_name,
+                'prop_type': p.prop_type,
+                'projection': p.projection,
+                'std_dev': p.std_dev,
+                'confidence_interval': p.confidence_interval
+            }
+            for p in projections
+        ]
+    }
 
 
 # ============================================================================
@@ -435,60 +470,55 @@ async def find_prop_value(
         - Bet sizing recommendations
         - Value grades (A+, A, B+, B, C, F)
     """
-    # TODO: Load actual prop lines from sportsbooks
-    # TODO: Load model projections from outputs/predictions/
+    # Load real sportsbook lines from The Odds API
+    prop_lines = odds_api.get_player_props()
 
-    # Placeholder data demonstrating the value finder
-    sample_lines = [
-        PropLine(
-            player_id="player_001",
-            player_name="Patrick Mahomes",
-            prop_type="passing_yards",
-            line=275.5,
-            over_odds=-110,
-            under_odds=-110,
-            book="DraftKings",
-            timestamp=datetime.now().isoformat()
-        ),
-        PropLine(
-            player_id="player_002",
-            player_name="Travis Kelce",
-            prop_type="receiving_yards",
-            line=65.5,
-            over_odds=-115,
-            under_odds=-105,
-            book="FanDuel",
-            timestamp=datetime.now().isoformat()
-        )
-    ]
+    # Filter by game_id if provided
+    if game_id:
+        prop_lines = [line for line in prop_lines if game_id in line.timestamp]  # TODO: Better filtering
 
-    sample_projections = [
-        PropProjection(
-            player_id="player_001",
-            player_name="Patrick Mahomes",
-            prop_type="passing_yards",
-            projection=295.3,
-            std_dev=42.5,
-            confidence_interval=(252.8, 337.8),
-            hit_probability_over=0.68,
-            hit_probability_under=0.32
-        ),
-        PropProjection(
-            player_id="player_002",
-            player_name="Travis Kelce",
-            prop_type="receiving_yards",
-            projection=58.2,
-            std_dev=18.3,
-            confidence_interval=(39.9, 76.5),
-            hit_probability_over=0.35,
-            hit_probability_under=0.65
-        )
-    ]
+    # Load real model projections
+    projections = []
+    if game_id:
+        projections = model_loader.load_projections_for_game(game_id)
+    else:
+        # Load all recent projections if no game_id specified
+        available_games = model_loader.get_available_games()
+        for gid in available_games[:5]:  # Limit to 5 most recent games
+            projections.extend(model_loader.load_projections_for_game(gid))
 
-    # Find value props
+    # If no real data available, use sample data for demo
+    if not prop_lines or not projections:
+        print("No real odds or projections found, using sample data")
+        prop_lines = [
+            PropLine(
+                player_id="player_001",
+                player_name="Patrick Mahomes",
+                prop_type="passing_yards",
+                line=275.5,
+                over_odds=-110,
+                under_odds=-110,
+                book="DraftKings",
+                timestamp=datetime.now().isoformat()
+            )
+        ]
+        projections = [
+            PropProjection(
+                player_id="player_001",
+                player_name="Patrick Mahomes",
+                prop_type="passing_yards",
+                projection=295.3,
+                std_dev=42.5,
+                confidence_interval=(252.8, 337.8),
+                hit_probability_over=0.68,
+                hit_probability_under=0.32
+            )
+        ]
+
+    # Find value props using real data
     value_props = prop_analyzer.find_best_props(
-        sample_lines,
-        sample_projections,
+        prop_lines,
+        projections,
         min_edge=min_edge,
         min_grade=min_grade
     )
