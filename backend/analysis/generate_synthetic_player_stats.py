@@ -172,6 +172,12 @@ def generate_player_stats_from_games():
             attempts = int(pass_yards / 7.5 + np.random.normal(0, 3))
             completions = int(attempts * 0.65)
 
+            # Interceptions: ~2-3% INT rate
+            int_rate = 0.025  # League average
+            interceptions = 0
+            if np.random.random() < int_rate * attempts / 30:  # Scale by attempts
+                interceptions = 1
+
             all_player_stats.append({
                 'player_id': f"qb_{team.lower()}",
                 'player_name': qb_name,
@@ -185,6 +191,7 @@ def generate_player_stats_from_games():
                 'passing_tds': pass_tds,
                 'completions': completions,
                 'attempts': attempts,
+                'interceptions': interceptions,
                 'rushing_yards': 0,
                 'rushing_tds': 0,
                 'carries': 0,
@@ -230,6 +237,7 @@ def generate_player_stats_from_games():
                 'passing_tds': 0,
                 'completions': 0,
                 'attempts': 0,
+                'interceptions': 0,
                 'rushing_yards': rush_yards,
                 'rushing_tds': rush_tds,
                 'carries': carries,
@@ -261,6 +269,7 @@ def generate_player_stats_from_games():
                 'passing_tds': 0,
                 'completions': 0,
                 'attempts': 0,
+                'interceptions': 0,
                 'rushing_yards': 0,
                 'rushing_tds': 0,
                 'carries': 0,
