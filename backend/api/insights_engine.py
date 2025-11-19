@@ -1,12 +1,19 @@
-"""Insight generation engine for matchup analysis and prop recommendations.
+"""Insight generation engine for matchup analysis and prop recommendations with ADVANCED METRICS.
 
 This module generates data-driven insights by analyzing:
-- Player performance trends
-- Matchup advantages/disadvantages
+- Player performance trends (EPA, CPOE, success rate)
+- Advanced matchup analysis (EPA allowed, pressure rates)
 - Weather impact
 - Injury impact
 - Vegas line movement
 - Historical performance patterns
+
+Advanced Metrics Used:
+- EPA (Expected Points Added): Play value metric
+- CPOE (Completion % Over Expected): QB accuracy
+- Success Rate: Percentage of positive EPA plays
+- WPA (Win Probability Added): Clutch performance
+- QB Pressure Rate: Hits, hurries per dropback
 """
 
 from typing import List, Dict, Optional, Tuple
@@ -459,6 +466,296 @@ class InsightGenerator:
         )
 
         return all_insights
+
+    def generate_epa_trend_insight(self, player: PlayerStats, recent_games: List[Dict]) -> Optional[Insight]:
+        """Generate insight based on EPA trends (ADVANCED METRIC).
+
+        Args:
+            player: PlayerStats object
+            recent_games: Recent game data with EPA metrics
+
+        Returns:
+            Insight about EPA performance trends
+        """
+        if len(recent_games) < 3:
+            return None
+
+        epa_values = [game.get('qb_epa', 0) for game in recent_games]
+        trend_data = self.analyzer.calculate_trend(epa_values)
+
+        if trend_data['strength'] < 0.3:
+            return None
+
+        confidence = 0.7 + (trend_data['strength'] * 0.2)
+
+        if trend_data['direction'] == 'increasing':
+            title = f"{player.player_name} EPA Trending Upward - High Value Play"
+            description = (
+                f"{player.player_name} averaging {trend_data['recent_avg']:.2f} EPA/play recently "
+                f"(+{trend_data['pct_change']:.1f}% vs earlier). Positive EPA indicates "
+                f"efficient, high-value plays. Strong predictive signal for continued success."
+            )
+            recommendation = f"STRONG BUY: {player.player_name} props - EPA momentum is bullish"
+        else:
+            title = f"{player.player_name} EPA Declining - Value Fading"
+            description = (
+                f"{player.player_name} averaging {trend_data['recent_avg']:.2f} EPA/play recently "
+                f"({trend_data['pct_change']:+.1f}% vs earlier). Negative trend suggests "
+                f"efficiency issues. Consider fade plays."
+            )
+            recommendation = f"CAUTION: {player.player_name} props - EPA momentum is bearish"
+
+        return Insight(
+            insight_type="epa_trend",
+            title=title,
+            description=description,
+            confidence=confidence,
+            supporting_data={
+                "recent_epa_avg": trend_data['recent_avg'],
+                "earlier_epa_avg": trend_data['earlier_avg'],
+                "pct_change": trend_data['pct_change'],
+                "epa_values": epa_values[-5:],
+                "metric": "Expected Points Added (EPA)"
+            },
+            impact_level="high",
+            recommendation=recommendation
+        )
+
+    def generate_cpoe_consistency_insight(self, player: PlayerStats, recent_games: List[Dict]) -> Optional[Insight]:
+        """Generate insight based on CPOE (Completion % Over Expected) - ADVANCED METRIC.
+
+        Args:
+            player: PlayerStats object
+            recent_games: Recent game data with CPOE metrics
+
+        Returns:
+            Insight about QB accuracy trends
+        """
+        if player.position != 'QB' or len(recent_games) < 3:
+            return None
+
+        cpoe_values = []
+        for game in recent_games:
+            cpoe_sum = game.get('cpoe_sum', 0)
+            cpoe_count = game.get('cpoe_count', 0)
+            if cpoe_count > 0:
+                cpoe_values.append(cpoe_sum / cpoe_count * 100)  # Convert to percentage
+
+        if len(cpoe_values) < 3:
+            return None
+
+        consistency_data = self.analyzer.calculate_consistency(cpoe_values)
+        avg_cpoe = statistics.mean(cpoe_values)
+
+        if avg_cpoe > 2.0 and consistency_data['consistency'] in ['very_consistent', 'consistent']:
+            confidence = 0.75 + (min(avg_cpoe / 10, 0.15))
+
+            title = f"{player.player_name} Accuracy Elite - CPOE at +{avg_cpoe:.1f}%"
+            description = (
+                f"{player.player_name} completing {avg_cpoe:+.1f}% above expected based on "
+                f"throw difficulty, coverage, and depth. Consistently accurate QB with "
+                f"{consistency_data['consistency']} performance. Elite accuracy sustains volume."
+            )
+            recommendation = f"HIGH CONFIDENCE: {player.player_name} passing props - elite accuracy"
+
+            return Insight(
+                insight_type="cpoe_accuracy",
+                title=title,
+                description=description,
+                confidence=confidence,
+                supporting_data={
+                    "avg_cpoe": round(avg_cpoe, 2),
+                    "consistency": consistency_data['consistency'],
+                    "cpoe_values": [round(v, 1) for v in cpoe_values[-5:]],
+                    "metric": "Completion % Over Expected (CPOE)"
+                },
+                impact_level="high",
+                recommendation=recommendation
+            )
+
+        elif avg_cpoe < -2.0:
+            confidence = 0.70
+
+            title = f"{player.player_name} Accuracy Concerns - CPOE at {avg_cpoe:.1f}%"
+            description = (
+                f"{player.player_name} completing {avg_cpoe:.1f}% below expected. "
+                f"Accuracy issues limit upside. Consider fading completion-based props."
+            )
+            recommendation = f"FADE: {player.player_name} completion props - accuracy below expected"
+
+            return Insight(
+                insight_type="cpoe_accuracy",
+                title=title,
+                description=description,
+                confidence=confidence,
+                supporting_data={
+                    "avg_cpoe": round(avg_cpoe, 2),
+                    "cpoe_values": [round(v, 1) for v in cpoe_values[-5:]],
+                    "metric": "Completion % Over Expected (CPOE)"
+                },
+                impact_level="medium",
+                recommendation=recommendation
+            )
+
+        return None
+
+    def generate_success_rate_insight(self, player: PlayerStats, recent_games: List[Dict]) -> Optional[Insight]:
+        """Generate insight based on success rate (EPA > 0) - ADVANCED METRIC.
+
+        Args:
+            player: PlayerStats object
+            recent_games: Recent game data with success rate metrics
+
+        Returns:
+            Insight about play efficiency
+        """
+        if len(recent_games) < 3:
+            return None
+
+        success_rates = []
+        for game in recent_games:
+            success_plays = game.get('success_plays', 0)
+            total_plays = game.get('total_plays', 0)
+            if total_plays > 0:
+                success_rates.append(success_plays / total_plays * 100)
+
+        if len(success_rates) < 3:
+            return None
+
+        avg_success_rate = statistics.mean(success_rates)
+
+        # League average success rate is ~45-50%
+        if avg_success_rate > 55:
+            confidence = 0.70 + (min((avg_success_rate - 55) / 20, 0.15))
+
+            title = f"{player.player_name} High Efficiency - {avg_success_rate:.1f}% Success Rate"
+            description = (
+                f"{player.player_name} achieving positive EPA on {avg_success_rate:.1f}% of plays "
+                f"(league avg ~48%). High success rate indicates consistent, efficient play-making. "
+                f"Strong indicator of sustainable production."
+            )
+            recommendation = f"VALUE PLAY: {player.player_name} props - elite efficiency metrics"
+
+            return Insight(
+                insight_type="success_rate",
+                title=title,
+                description=description,
+                confidence=confidence,
+                supporting_data={
+                    "avg_success_rate": round(avg_success_rate, 1),
+                    "league_avg": 48.0,
+                    "success_rates": [round(v, 1) for v in success_rates[-5:]],
+                    "metric": "Success Rate (EPA > 0)"
+                },
+                impact_level="high",
+                recommendation=recommendation
+            )
+
+        elif avg_success_rate < 40:
+            confidence = 0.65
+
+            title = f"{player.player_name} Efficiency Concerns - {avg_success_rate:.1f}% Success Rate"
+            description = (
+                f"{player.player_name} achieving positive EPA on only {avg_success_rate:.1f}% of plays "
+                f"(below league avg ~48%). Low efficiency limits ceiling."
+            )
+            recommendation = f"FADE: {player.player_name} - below-average efficiency"
+
+            return Insight(
+                insight_type="success_rate",
+                title=title,
+                description=description,
+                confidence=confidence,
+                supporting_data={
+                    "avg_success_rate": round(avg_success_rate, 1),
+                    "league_avg": 48.0,
+                    "success_rates": [round(v, 1) for v in success_rates[-5:]],
+                    "metric": "Success Rate (EPA > 0)"
+                },
+                impact_level="medium",
+                recommendation=recommendation
+            )
+
+        return None
+
+    def generate_pressure_insight(self, player: PlayerStats, recent_games: List[Dict]) -> Optional[Insight]:
+        """Generate insight based on QB pressure trends - ADVANCED METRIC.
+
+        Args:
+            player: PlayerStats object
+            recent_games: Recent game data with pressure metrics
+
+        Returns:
+            Insight about QB pressure and its impact
+        """
+        if player.position != 'QB' or len(recent_games) < 3:
+            return None
+
+        pressure_rates = []
+        for game in recent_games:
+            qb_pressures = game.get('qb_pressures', 0)
+            attempts = game.get('attempts', 0)
+            if attempts > 0:
+                pressure_rates.append(qb_pressures / attempts * 100)
+
+        if len(pressure_rates) < 3:
+            return None
+
+        avg_pressure_rate = statistics.mean(pressure_rates)
+
+        # League average pressure rate is ~25-30%
+        if avg_pressure_rate > 35:
+            confidence = 0.72
+
+            title = f"{player.player_name} Under Heavy Pressure - {avg_pressure_rate:.1f}% Rate"
+            description = (
+                f"{player.player_name} facing pressure on {avg_pressure_rate:.1f}% of dropbacks "
+                f"(league avg ~27%). High pressure correlates with lower completion %, reduced "
+                f"yards/attempt, and more turnovers. Consider fade plays."
+            )
+            recommendation = f"FADE: {player.player_name} passing props - high pressure rate"
+
+            return Insight(
+                insight_type="qb_pressure",
+                title=title,
+                description=description,
+                confidence=confidence,
+                supporting_data={
+                    "avg_pressure_rate": round(avg_pressure_rate, 1),
+                    "league_avg": 27.0,
+                    "pressure_rates": [round(v, 1) for v in pressure_rates[-5:]],
+                    "metric": "QB Pressure Rate"
+                },
+                impact_level="high",
+                recommendation=recommendation
+            )
+
+        elif avg_pressure_rate < 20:
+            confidence = 0.68
+
+            title = f"{player.player_name} Clean Pocket - {avg_pressure_rate:.1f}% Pressure Rate"
+            description = (
+                f"{player.player_name} facing pressure on only {avg_pressure_rate:.1f}% of dropbacks. "
+                f"Clean pocket enables deeper throws, higher completion %, and more explosive plays."
+            )
+            recommendation = f"VALUE: {player.player_name} passing props - exceptional protection"
+
+            return Insight(
+                insight_type="qb_pressure",
+                title=title,
+                description=description,
+                confidence=confidence,
+                supporting_data={
+                    "avg_pressure_rate": round(avg_pressure_rate, 1),
+                    "league_avg": 27.0,
+                    "pressure_rates": [round(v, 1) for v in pressure_rates[-5:]],
+                    "metric": "QB Pressure Rate"
+                },
+                impact_level="medium",
+                recommendation=recommendation
+            )
+
+        return None
 
 
 # Singleton instance
