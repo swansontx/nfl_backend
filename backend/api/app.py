@@ -95,67 +95,6 @@ async def generic_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Routes
-@app.get("/", tags=["root"])
-async def root():
-    """Root endpoint"""
-    return {
-        "name": settings.app_name,
-        "version": settings.app_version,
-        "docs_url": "/docs",
-        "health_url": "/health"
-    }
-
-
-@app.get("/health", response_model=HealthResponse, tags=["health"])
-async def health():
-    """
-    Health check endpoint
-
-    Returns application health and service status
-    """
-    # Check service health
-    services = {
-        "api": "healthy",
-        "database": "unknown",  # Could ping database
-        "redis": "unknown"  # Could ping redis
-    }
-
-    # Try to check database
-    try:
-        from backend.database.session import engine
-        with engine.connect() as conn:
-            conn.execute("SELECT 1")
-        services["database"] = "healthy"
-    except Exception as e:
-        logger.warning("database_health_check_failed", error=str(e))
-        services["database"] = "unhealthy"
-
-    # Try to check Redis
-    try:
-        from backend.roster_injury import RosterInjuryService
-        service = RosterInjuryService(use_cache=True)
-        if service.redis_client:
-            service.redis_client.ping()
-            services["redis"] = "healthy"
-        else:
-            services["redis"] = "disabled"
-    except Exception as e:
-        logger.warning("redis_health_check_failed", error=str(e))
-        services["redis"] = "unhealthy"
-
-    overall_status = "healthy" if all(
-        s in ["healthy", "disabled", "unknown"] for s in services.values()
-    ) else "degraded"
-
-    return HealthResponse(
-        status=overall_status,
-        version=settings.app_version,
-        timestamp=datetime.utcnow(),
-        services=services
-    )
-
-
 # Include routers
 # Health and status (no prefix)
 app.include_router(health.router)

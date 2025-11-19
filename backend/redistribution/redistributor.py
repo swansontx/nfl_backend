@@ -1,13 +1,17 @@
 """Volume redistribution when players are inactive"""
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
 from collections import defaultdict
 
 from backend.config.logging_config import get_logger
-from backend.models.prop_models import PropProjection
 from backend.roster_injury import RosterInjuryService, PlayerGameStatus
 from backend.database.session import get_db
 from backend.database.models import Player
+
+if TYPE_CHECKING:
+    from backend.models.prop_models import PropProjection
 
 logger = get_logger(__name__)
 

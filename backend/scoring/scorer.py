@@ -1,11 +1,15 @@
 """Projection scoring and opportunity ranking"""
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, TYPE_CHECKING
 import numpy as np
 
 from backend.config import settings
 from backend.config.logging_config import get_logger
-from backend.models.prop_models import PropProjection
+
+if TYPE_CHECKING:
+    from backend.models.prop_models import PropProjection
 
 logger = get_logger(__name__)
 

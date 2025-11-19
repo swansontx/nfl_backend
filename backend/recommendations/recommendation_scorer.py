@@ -25,12 +25,12 @@ from backend.database.session import get_db
 from backend.database.models import Player, Game, Projection
 
 # Import all signal generators
-from backend.models.prop_model_runner import PropModelRunner
+from backend.models.prop_models import PropModelRunner
 from backend.trends.trend_analyzer import TrendAnalyzer, TrendSignal
 from backend.news.news_fetcher import NewsAnalyzer, PlayerNewsDigest
 from backend.correlation.correlation_engine import CorrelationEngine, ParlayAdjustment
 from backend.calibration.calibrator import ProbabilityCalibrator
-from backend.services.roster_injury_service import RosterInjuryService
+from backend.roster_injury import RosterInjuryService
 
 logger = get_logger(__name__)
 
