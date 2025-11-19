@@ -54,9 +54,13 @@ with get_db() as session:
 
     data = []
     for f in features:
+        # Extract season from game_id (format: SEASON_WEEK_AWAY_HOME)
+        season = int(f.game_id.split('_')[0]) if '_' in f.game_id else 2024
+
         data.append({
             'player_id': f.player_id,
             'game_id': f.game_id,
+            'season': season,
             'targets': f.targets or 0,
             'receptions': f.receptions or 0,
             'receiving_yards': f.receiving_yards or 0,
@@ -72,6 +76,30 @@ with get_db() as session:
 
 df = pd.DataFrame(data)
 print(f"   Loaded {len(df):,} feature rows")
+
+# Add time-based weights - heavily favor recent seasons
+# 2025: 100%, 2024: 60%, 2023: 35%, 2022: 20%
+def calculate_sample_weight(season):
+    """More recent = higher weight (exponential decay)"""
+    current_year = 2025
+    years_ago = current_year - season
+
+    if years_ago == 0:
+        return 1.0   # 2025: 100%
+    elif years_ago == 1:
+        return 0.6   # 2024: 60%
+    elif years_ago == 2:
+        return 0.35  # 2023: 35%
+    else:
+        return 0.2   # 2022 and older: 20%
+
+df['sample_weight'] = df['season'].apply(calculate_sample_weight)
+
+print(f"   Sample weight distribution:")
+for season in sorted(df['season'].unique(), reverse=True):
+    count = len(df[df['season'] == season])
+    weight = df[df['season'] == season]['sample_weight'].iloc[0]
+    print(f"     {season}: {count:,} samples @ {weight:.0%} weight")
 
 if len(df) < 100:
     print()
@@ -100,18 +128,21 @@ rec_df = df[df['targets'] > 0].copy()
 if len(rec_df) > 50:
     X = rec_df[['targets', 'receptions', 'snaps']].fillna(0)
     y = rec_df['receiving_yards']
+    weights = rec_df['sample_weight']
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test, w_train, w_test = train_test_split(
+        X, y, weights, test_size=0.2, random_state=42
+    )
 
     model = xgb.XGBRegressor(n_estimators=100, max_depth=5, learning_rate=0.1)
-    model.fit(X_train, y_train)
+    model.fit(X_train, y_train, sample_weight=w_train)
 
     y_pred = model.predict(X_test)
     mae = mean_absolute_error(y_test, y_pred)
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 
     model.save_model(str(models_dir / 'receiving_yards.json'))
-    print(f"   ✅ MAE: {mae:.2f}, RMSE: {rmse:.2f}")
+    print(f"   ✅ MAE: {mae:.2f}, RMSE: {rmse:.2f} (2025-weighted)")
 else:
     print(f"   ⚠️  Insufficient data ({len(rec_df)} samples)")
 
@@ -121,18 +152,21 @@ rush_df = df[df['rush_attempts'] > 0].copy()
 if len(rush_df) > 50:
     X = rush_df[['rush_attempts', 'snaps']].fillna(0)
     y = rush_df['rushing_yards']
+    weights = rush_df['sample_weight']
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test, w_train, w_test = train_test_split(
+        X, y, weights, test_size=0.2, random_state=42
+    )
 
     model = xgb.XGBRegressor(n_estimators=100, max_depth=5, learning_rate=0.1)
-    model.fit(X_train, y_train)
+    model.fit(X_train, y_train, sample_weight=w_train)
 
     y_pred = model.predict(X_test)
     mae = mean_absolute_error(y_test, y_pred)
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 
     model.save_model(str(models_dir / 'rushing_yards.json'))
-    print(f"   ✅ MAE: {mae:.2f}, RMSE: {rmse:.2f}")
+    print(f"   ✅ MAE: {mae:.2f}, RMSE: {rmse:.2f} (2025-weighted)")
 else:
     print(f"   ⚠️  Insufficient data ({len(rush_df)} samples)")
 
@@ -142,18 +176,21 @@ pass_df = df[df['pass_attempts'] > 0].copy()
 if len(pass_df) > 50:
     X = pass_df[['pass_attempts', 'snaps']].fillna(0)
     y = pass_df['passing_yards']
+    weights = pass_df['sample_weight']
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test, w_train, w_test = train_test_split(
+        X, y, weights, test_size=0.2, random_state=42
+    )
 
     model = xgb.XGBRegressor(n_estimators=100, max_depth=5, learning_rate=0.1)
-    model.fit(X_train, y_train)
+    model.fit(X_train, y_train, sample_weight=w_train)
 
     y_pred = model.predict(X_test)
     mae = mean_absolute_error(y_test, y_pred)
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 
     model.save_model(str(models_dir / 'passing_yards.json'))
-    print(f"   ✅ MAE: {mae:.2f}, RMSE: {rmse:.2f}")
+    print(f"   ✅ MAE: {mae:.2f}, RMSE: {rmse:.2f} (2025-weighted)")
 else:
     print(f"   ⚠️  Insufficient data ({len(pass_df)} samples)")
 
