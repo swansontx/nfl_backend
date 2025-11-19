@@ -6,3 +6,12 @@ __pycache__/
 venv/
 .Python
 .DS_Store
+
+# Model files (can be regenerated)
+models/
+*.pkl
+*.joblib
+
+# Data cache
+data/cache/
+cache/
