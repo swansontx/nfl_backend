@@ -19,6 +19,9 @@ from .distributions import (
     DistributionParams
 )
 from .distribution_fitter import DistributionFitter
+from .ml_models import AnytimeTDModel, ReceptionsModel
+from .ml_features import MLFeatureBuilder
+from backend.features import MatchupFeatureExtractor
 
 logger = get_logger(__name__)
 
@@ -66,7 +69,7 @@ class PropModelRunner:
     5. Projection generation
     """
 
-    def __init__(self):
+    def __init__(self, use_ml_models: bool = True):
         self.feature_extractor = FeatureExtractor()
         self.feature_smoother = FeatureSmoother()
         self.roster_service = RosterInjuryService(use_cache=True)
@@ -81,6 +84,29 @@ class PropModelRunner:
 
         # Distribution fitter for player-specific parameters
         self.dist_fitter = DistributionFitter()
+
+        # Matchup features
+        self.matchup_extractor = MatchupFeatureExtractor()
+
+        # ML models (optional)
+        self.use_ml_models = use_ml_models
+        self.td_model: Optional[AnytimeTDModel] = None
+        self.receptions_model: Optional[ReceptionsModel] = None
+
+        if use_ml_models:
+            try:
+                self.td_model = AnytimeTDModel()
+                self.td_model.model.load()
+                logger.info("td_model_loaded")
+            except Exception as e:
+                logger.warning("td_model_not_available", error=str(e))
+
+            try:
+                self.receptions_model = ReceptionsModel()
+                self.receptions_model.model.load()
+                logger.info("receptions_model_loaded")
+            except Exception as e:
+                logger.warning("receptions_model_not_available", error=str(e))
 
     def generate_projections(
         self,
@@ -292,11 +318,50 @@ class PropModelRunner:
         game_id: str,
         features: SmoothedFeatures
     ) -> PropProjection:
-        """Project receptions using Poisson"""
-        # Expected receptions from smoothed features
+        """Project receptions using XGBoost or Poisson fallback"""
+
+        # Try XGBoost model first (more accurate for game script)
+        if self.receptions_model is not None:
+            try:
+                # Get matchup features
+                matchup_features = self.matchup_extractor.extract_matchup_features(
+                    player.player_id, game_id
+                )
+
+                # Predict with XGBoost
+                expected_recs = self.receptions_model.predict_receptions(
+                    player.player_id,
+                    game_id,
+                    features,
+                    matchup_features,
+                    player
+                )
+
+                # Use predicted mean with Poisson variance
+                lambda_param = max(expected_recs, 0)
+                params = {'dist_type': 'poisson', 'lambda': lambda_param}
+                dist_params = self.poisson_model.predict(params)
+
+                return PropProjection(
+                    player_id=player.player_id,
+                    player_name=player.display_name,
+                    game_id=game_id,
+                    market='player_receptions',
+                    team=player.team,
+                    position=player.position,
+                    mu=dist_params.mu,
+                    sigma=dist_params.sigma,
+                    dist_params=dist_params.params,
+                    confidence=features.confidence,
+                    usage_norm=features.target_share,
+                    model_version="v2_xgboost"
+                )
+            except Exception as e:
+                logger.warning("xgboost_receptions_failed", error=str(e))
+
+        # Fallback to simple Poisson
         lambda_param = features.receptions_per_game
 
-        # Create simple Poisson params
         params = {'dist_type': 'poisson', 'lambda': lambda_param}
         dist_params = self.poisson_model.predict(params)
 
@@ -438,14 +503,54 @@ class PropModelRunner:
         game_id: str,
         features: SmoothedFeatures
     ) -> PropProjection:
-        """Project anytime TD probability"""
-        # Combine receiving and rushing TD rates
+        """Project anytime TD probability using XGBoost or heuristic fallback"""
+
+        # Try XGBoost model first (captures redzone usage, goal line role)
+        if self.td_model is not None:
+            try:
+                # Get matchup features
+                matchup_features = self.matchup_extractor.extract_matchup_features(
+                    player.player_id, game_id
+                )
+
+                # Predict with XGBoost
+                prob_anytime_td = self.td_model.predict_td_probability(
+                    player.player_id,
+                    game_id,
+                    features,
+                    matchup_features,
+                    player
+                )
+
+                # Clip probability to valid range
+                prob_anytime_td = np.clip(prob_anytime_td, 0.001, 0.999)
+
+                dist_params = {
+                    'p': prob_anytime_td,
+                    'model': 'xgboost'
+                }
+
+                return PropProjection(
+                    player_id=player.player_id,
+                    player_name=player.display_name,
+                    game_id=game_id,
+                    market='player_anytime_td',
+                    team=player.team,
+                    position=player.position,
+                    mu=prob_anytime_td,
+                    sigma=np.sqrt(prob_anytime_td * (1 - prob_anytime_td)),
+                    dist_params=dist_params,
+                    confidence=features.confidence,
+                    usage_norm=(features.target_share or 0) + (features.rush_share or 0),
+                    model_version="v2_xgboost"
+                )
+            except Exception as e:
+                logger.warning("xgboost_td_failed", error=str(e))
+
+        # Fallback to Poisson heuristic
         rec_td_contribution = features.receiving_td_rate * features.targets_per_game
         rush_td_contribution = features.rushing_td_rate * features.rush_attempts_per_game
 
-        # Approximate probability of at least 1 TD
-        # P(TD >= 1) ≈ 1 - P(TD = 0) = 1 - exp(-lambda)
-        # where lambda = expected TDs
         expected_tds = rec_td_contribution + rush_td_contribution
         prob_anytime_td = 1 - np.exp(-expected_tds)
 
