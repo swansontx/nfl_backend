@@ -34,6 +34,9 @@ class WeeksBacktester:
         self.schedules = self._load_schedules()
         self.models = self._load_models()
 
+        # Calculate defensive rankings for opponent adjustments
+        self.def_rankings = self._calculate_defensive_rankings()
+
         # Prop type mappings
         self.prop_map = {
             'passing_yards': 'passing_yards',
@@ -89,6 +92,123 @@ class WeeksBacktester:
         print(f"Loaded {len(models)} models")
         return models
 
+    def _calculate_defensive_rankings(self) -> Dict:
+        """Calculate team defensive rankings based on what they ALLOW to opponents."""
+        rankings = {}
+
+        if len(self.schedules) == 0:
+            return {}
+
+        max_week = int(self.player_stats['week'].max())
+        min_week = max(1, max_week - 5)
+
+        # Track what each team ALLOWS
+        team_allowed = {}
+
+        for _, game in self.schedules[
+            (self.schedules['week'] >= min_week) &
+            (self.schedules['week'] <= max_week) &
+            (self.schedules['game_type'] == 'REG')
+        ].iterrows():
+            home = game['home_team']
+            away = game['away_team']
+            week = game['week']
+
+            # Away team's production = what home team allowed
+            away_stats = self.player_stats[
+                (self.player_stats['team'] == away) & (self.player_stats['week'] == week)
+            ]
+            # Home team's production = what away team allowed
+            home_stats = self.player_stats[
+                (self.player_stats['team'] == home) & (self.player_stats['week'] == week)
+            ]
+
+            # Home team allowed away team's stats
+            if home not in team_allowed:
+                team_allowed[home] = {'games': 0, 'rush': 0, 'rec': 0, 'pass': 0}
+            team_allowed[home]['games'] += 1
+            team_allowed[home]['rush'] += away_stats['rushing_yards'].sum()
+            team_allowed[home]['rec'] += away_stats['receiving_yards'].sum()
+            team_allowed[home]['pass'] += away_stats['passing_yards'].sum()
+
+            # Away team allowed home team's stats
+            if away not in team_allowed:
+                team_allowed[away] = {'games': 0, 'rush': 0, 'rec': 0, 'pass': 0}
+            team_allowed[away]['games'] += 1
+            team_allowed[away]['rush'] += home_stats['rushing_yards'].sum()
+            team_allowed[away]['rec'] += home_stats['receiving_yards'].sum()
+            team_allowed[away]['pass'] += home_stats['passing_yards'].sum()
+
+        # Calculate per-game averages
+        team_avgs = []
+        for team, allowed in team_allowed.items():
+            if allowed['games'] > 0:
+                team_avgs.append({
+                    'team': team,
+                    'rush_avg': allowed['rush'] / allowed['games'],
+                    'rec_avg': allowed['rec'] / allowed['games'],
+                    'pass_avg': allowed['pass'] / allowed['games'],
+                })
+
+        if not team_avgs:
+            return {}
+
+        df = pd.DataFrame(team_avgs)
+        league_rush_avg = df['rush_avg'].mean()
+        league_rec_avg = df['rec_avg'].mean()
+        league_pass_avg = df['pass_avg'].mean()
+
+        for _, row in df.iterrows():
+            rankings[row['team']] = {
+                'avg': {
+                    'rush': row['rush_avg'],
+                    'rec': row['rec_avg'],
+                    'pass': row['pass_avg'],
+                },
+                'league_avg': {
+                    'rush': league_rush_avg,
+                    'rec': league_rec_avg,
+                    'pass': league_pass_avg,
+                }
+            }
+
+        return rankings
+
+    def get_opponent_multiplier(self, opponent: str, stat_col: str) -> float:
+        """Get opponent adjustment multiplier based on defensive quality."""
+        if opponent not in self.def_rankings:
+            return 1.0
+
+        opp_data = self.def_rankings[opponent]
+        if 'avg' not in opp_data or 'league_avg' not in opp_data:
+            return 1.0
+
+        # Map stat to defensive category
+        if stat_col in ['rushing_yards', 'carries', 'rushing_tds']:
+            cat = 'rush'
+        elif stat_col in ['receiving_yards', 'receptions', 'targets', 'receiving_tds']:
+            cat = 'rec'
+        elif stat_col in ['passing_yards', 'completions', 'attempts', 'passing_tds']:
+            cat = 'pass'
+        else:
+            return 1.0
+
+        opp_avg = opp_data['avg'].get(cat, 0)
+        league_avg = opp_data['league_avg'].get(cat, 1)
+
+        if league_avg == 0:
+            return 1.0
+
+        # Calculate multiplier
+        # More aggressive for rushing (0.75-1.35), less for passing (0.85-1.20)
+        multiplier = opp_avg / league_avg
+        if cat == 'rush':
+            return max(0.75, min(1.35, multiplier))
+        elif cat == 'pass':
+            return max(0.85, min(1.20, multiplier))
+        else:
+            return max(0.80, min(1.25, multiplier))
+
     def get_player_features(self, player_id: str, max_week: int) -> Dict:
         """Get rolling average features for a player using only data before max_week."""
         player_df = self.player_stats[
@@ -127,8 +247,8 @@ class WeeksBacktester:
 
         return features
 
-    def generate_projection(self, player_id: str, prop_type: str, features: Dict) -> Optional[float]:
-        """Generate a projection for a specific prop type."""
+    def generate_projection(self, player_id: str, prop_type: str, features: Dict, opponent: str = None) -> Optional[float]:
+        """Generate a projection for a specific prop type, adjusted for opponent."""
         # Get the stat column name
         stat_col = self.prop_map.get(prop_type, prop_type)
 
@@ -141,9 +261,14 @@ class WeeksBacktester:
             return None
 
         # Weighted average: 50% L3, 30% season, 20% last
-        projection = 0.5 * l3_avg + 0.3 * season_avg + 0.2 * last_game
+        base_projection = 0.5 * l3_avg + 0.3 * season_avg + 0.2 * last_game
 
-        return round(projection, 1) if projection > 0 else None
+        # Apply opponent adjustment for yardage stats
+        if opponent and stat_col in ['rushing_yards', 'receiving_yards', 'passing_yards']:
+            multiplier = self.get_opponent_multiplier(opponent, stat_col)
+            base_projection = base_projection * multiplier
+
+        return round(base_projection, 1) if base_projection > 0 else None
 
     def get_actual_result(self, player_id: str, week: int, prop_type: str) -> Optional[float]:
         """Get actual result for a player in a specific week."""
@@ -315,7 +440,8 @@ class WeeksBacktester:
 
             # Generate projections for each relevant prop type
             for prop_type in self.position_props.get(pos_group, []):
-                projection = self.generate_projection(player_id, prop_type, features)
+                # Pass opponent for defensive adjustment
+                projection = self.generate_projection(player_id, prop_type, features, opponent=opponent)
                 if projection is None or projection <= 0:
                     continue
 

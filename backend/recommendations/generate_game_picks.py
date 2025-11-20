@@ -326,6 +326,12 @@ class GamePicksGenerator:
             return self._default_rankings()
 
         df = pd.DataFrame(team_avgs)
+
+        # Calculate league averages for multiplier calculation
+        league_rush_avg = df['rush_avg'].mean()
+        league_rec_avg = df['rec_avg'].mean()
+        league_pass_avg = df['pass_avg'].mean()
+
         # Rank: 1 = best defense (allows least)
         df['rush_rank'] = df['rush_avg'].rank(ascending=True)
         df['rec_rank'] = df['rec_avg'].rank(ascending=True)
@@ -337,6 +343,16 @@ class GamePicksGenerator:
                     'rush': int(row['rush_rank']),
                     'rec': int(row['rec_rank']),
                     'pass': int(row['pass_rank']),
+                },
+                'avg': {
+                    'rush': row['rush_avg'],
+                    'rec': row['rec_avg'],
+                    'pass': row['pass_avg'],
+                },
+                'league_avg': {
+                    'rush': league_rush_avg,
+                    'rec': league_rec_avg,
+                    'pass': league_pass_avg,
                 }
             }
 
@@ -386,8 +402,53 @@ class GamePicksGenerator:
 
         return f"vs {opponent} ({quality} {cat_name}, #{rank})"
 
-    def get_projection(self, player_id: str, stat_col: str, n_weeks: int = 4) -> float:
-        """Get weighted average projection for a player."""
+    def get_opponent_multiplier(self, opponent: str, stat_col: str) -> float:
+        """Get opponent adjustment multiplier based on defensive quality.
+
+        Returns a multiplier > 1 for bad defenses, < 1 for good defenses.
+        """
+        if opponent not in self.def_rankings:
+            return 1.0
+
+        opp_data = self.def_rankings[opponent]
+        if 'avg' not in opp_data or 'league_avg' not in opp_data:
+            return 1.0
+
+        # Map stat to defensive category
+        if stat_col in ['rushing_yards', 'carries', 'rushing_tds']:
+            cat = 'rush'
+        elif stat_col in ['receiving_yards', 'receptions', 'targets', 'receiving_tds']:
+            cat = 'rec'
+        elif stat_col in ['passing_yards', 'completions', 'attempts', 'passing_tds']:
+            cat = 'pass'
+        else:
+            return 1.0
+
+        opp_avg = opp_data['avg'].get(cat, 0)
+        league_avg = opp_data['league_avg'].get(cat, 1)
+
+        if league_avg == 0:
+            return 1.0
+
+        # Calculate multiplier
+        # More aggressive for rushing (0.75-1.35), less for passing (0.85-1.20)
+        multiplier = opp_avg / league_avg
+        if cat == 'rush':
+            return max(0.75, min(1.35, multiplier))
+        elif cat == 'pass':
+            return max(0.85, min(1.20, multiplier))
+        else:
+            return max(0.80, min(1.25, multiplier))
+
+    def get_projection(self, player_id: str, stat_col: str, n_weeks: int = 4, opponent: str = None) -> float:
+        """Get weighted average projection for a player, adjusted for opponent.
+
+        Args:
+            player_id: Player's ID
+            stat_col: Stat column name
+            n_weeks: Number of recent weeks to consider
+            opponent: Optional opponent team for defensive adjustment
+        """
         player_df = self.stats[
             self.stats['player_id'] == player_id
         ].sort_values('week', ascending=False)
@@ -401,7 +462,14 @@ class GamePicksGenerator:
 
         # Recency weighted
         weights = [0.4, 0.3, 0.2, 0.1][:len(values)]
-        return sum(v * w for v, w in zip(values, weights)) / sum(weights)
+        base_projection = sum(v * w for v, w in zip(values, weights)) / sum(weights)
+
+        # Apply opponent adjustment for rushing/receiving yards
+        if opponent and stat_col in ['rushing_yards', 'receiving_yards', 'passing_yards']:
+            multiplier = self.get_opponent_multiplier(opponent, stat_col)
+            return base_projection * multiplier
+
+        return base_projection
 
     def get_player_trend(self, player_id: str, stat_col: str) -> Dict:
         """Get player's recent trend for a stat."""
@@ -507,12 +575,16 @@ class GamePicksGenerator:
             else:
                 continue
 
+            # Determine opponent for this player
+            opponent = team2 if team == team1 else team1
+
             for strategy in self.value_strategies:
                 if strategy['prop'] not in props:
                     continue
 
                 stat_col = self.prop_map.get(strategy['prop'], strategy['prop'])
-                projection = self.get_projection(player_id, stat_col)
+                # Pass opponent for defensive adjustment
+                projection = self.get_projection(player_id, stat_col, opponent=opponent)
 
                 if projection <= 0:
                     continue
@@ -525,9 +597,6 @@ class GamePicksGenerator:
 
                 # Get trend info for justification
                 trend_info = self.get_player_trend(player_id, stat_col)
-
-                # Determine opponent
-                opponent = team2 if team == team1 else team1
 
                 # Calculate the line
                 if strategy['dir'] == 'UNDER':
