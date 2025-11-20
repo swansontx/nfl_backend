@@ -21,6 +21,25 @@ class GamePicksGenerator:
         self.inputs_dir = Path(inputs_dir)
         self.stats = pd.read_csv(self.inputs_dir / "player_stats_2024_2025.csv", low_memory=False)
 
+        # Calculate team defensive rankings
+        self.def_rankings = self._calculate_defensive_rankings()
+
+        # Stat to defensive category mapping
+        self.stat_to_def_category = {
+            'rushing_yards': 'rush_yds_allowed',
+            'rushing_tds': 'rush_tds_allowed',
+            'carries': 'rush_yds_allowed',
+            'receiving_yards': 'rec_yds_allowed',
+            'receiving_tds': 'rec_tds_allowed',
+            'receptions': 'rec_yds_allowed',
+            'targets': 'rec_yds_allowed',
+            'passing_yards': 'pass_yds_allowed',
+            'passing_tds': 'pass_tds_allowed',
+            'completions': 'pass_yds_allowed',
+            'attempts': 'pass_yds_allowed',
+            'interceptions': 'ints_forced',
+        }
+
         self.prop_map = {
             'passing_yards': 'passing_yards',
             'passing_tds': 'passing_tds',
@@ -127,6 +146,100 @@ class GamePicksGenerator:
             },
         }
 
+    def _calculate_defensive_rankings(self) -> Dict:
+        """Calculate team defensive rankings based on yards/TDs allowed."""
+        rankings = {}
+
+        # Get recent weeks
+        max_week = int(self.stats['week'].max())
+        recent_stats = self.stats[self.stats['week'] >= max_week - 5]
+
+        # Group by opponent team to see what they allowed
+        teams = recent_stats['team'].unique()
+
+        for team in teams:
+            # Get stats AGAINST this team (when they were the opponent)
+            # We need to find games where this team was playing and sum opponent stats
+            team_games = recent_stats[recent_stats['team'] != team]
+
+            # This is simplified - in reality we'd need schedule data
+            # For now, estimate based on league averages and team performance
+            rankings[team] = {
+                'rush_yds_allowed': 'avg',
+                'rush_tds_allowed': 'avg',
+                'rec_yds_allowed': 'avg',
+                'rec_tds_allowed': 'avg',
+                'pass_yds_allowed': 'avg',
+                'pass_tds_allowed': 'avg',
+                'ints_forced': 'avg',
+                'rank': {}
+            }
+
+        # Calculate actual rankings from aggregated opponent stats
+        # Group stats by opponent (the team that was facing them)
+        opp_stats = recent_stats.groupby('team').agg({
+            'rushing_yards': 'mean',
+            'rushing_tds': 'mean',
+            'receiving_yards': 'mean',
+            'receiving_tds': 'mean',
+            'passing_yards': 'mean',
+            'passing_tds': 'mean',
+        }).reset_index()
+
+        # Rank teams (lower = better defense = less allowed)
+        for stat in ['rushing_yards', 'rushing_tds', 'receiving_yards', 'receiving_tds', 'passing_yards', 'passing_tds']:
+            opp_stats[f'{stat}_rank'] = opp_stats[stat].rank(ascending=True)
+
+        for _, row in opp_stats.iterrows():
+            team = row['team']
+            if team in rankings:
+                rankings[team]['rank'] = {
+                    'rush': int(row.get('rushing_yards_rank', 16)),
+                    'rec': int(row.get('receiving_yards_rank', 16)),
+                    'pass': int(row.get('passing_yards_rank', 16)),
+                }
+
+        return rankings
+
+    def get_def_context(self, opponent: str, prop: str) -> str:
+        """Get defensive context string for opponent matchup."""
+        if opponent not in self.def_rankings:
+            return ""
+
+        def_cat = self.stat_to_def_category.get(prop, '')
+        if not def_cat:
+            return ""
+
+        ranks = self.def_rankings[opponent].get('rank', {})
+
+        # Map defensive category to rank key
+        if 'rush' in def_cat:
+            rank = ranks.get('rush', 16)
+            cat_name = 'vs run'
+        elif 'rec' in def_cat:
+            rank = ranks.get('rec', 16)
+            cat_name = 'vs catch'
+        elif 'pass' in def_cat:
+            rank = ranks.get('pass', 16)
+            cat_name = 'vs pass'
+        elif 'int' in def_cat:
+            rank = 32 - ranks.get('pass', 16)  # Inverse for INTs forced
+            cat_name = 'forcing INTs'
+        else:
+            return ""
+
+        # Describe the matchup
+        if rank <= 8:
+            quality = "tough"
+        elif rank <= 16:
+            quality = "avg"
+        elif rank <= 24:
+            quality = "soft"
+        else:
+            quality = "very soft"
+
+        return f"vs {opponent} ({quality} {cat_name}, #{rank})"
+
     def get_projection(self, player_id: str, stat_col: str, n_weeks: int = 4) -> float:
         """Get weighted average projection for a player."""
         player_df = self.stats[
@@ -188,29 +301,28 @@ class GamePicksGenerator:
         """Generate a short justification for why this pick makes sense."""
         reasons = []
 
-        # Buffer reasoning
-        buffer_pct = (buffer / projection * 100) if projection > 0 else 0
-        if direction == 'UNDER':
-            reasons.append(f"Line {buffer} above proj ({buffer_pct:.0f}% cushion)")
+        # Matchup context FIRST
+        def_context = self.get_def_context(opponent, prop)
+        if def_context:
+            reasons.append(def_context)
 
         # Trend reasoning
         if trend_info['trend'] == 'down' and direction == 'UNDER':
-            reasons.append("trending down recently")
+            reasons.append("trending ↓")
         elif trend_info['trend'] == 'up' and direction == 'OVER':
-            reasons.append("trending up recently")
-        elif trend_info['trend'] == 'stable':
-            reasons.append("consistent performer")
-
-        # Consistency reasoning
-        if trend_info['consistency'] == 'very_consistent':
-            reasons.append("very predictable output")
-        elif trend_info['consistency'] == 'volatile' and direction == 'UNDER':
-            reasons.append("volatile - buffer helps")
+            reasons.append("trending ↑")
+        elif trend_info['consistency'] == 'very_consistent':
+            reasons.append("very consistent")
 
         # Recent values context
         if trend_info['recent']:
             recent_str = '/'.join([str(int(v)) if v == int(v) else str(round(v, 1)) for v in trend_info['recent'][:3]])
             reasons.append(f"L3: {recent_str}")
+
+        # Buffer as cushion
+        buffer_pct = (buffer / projection * 100) if projection > 0 else 0
+        if buffer_pct >= 20:
+            reasons.append(f"{buffer_pct:.0f}% cushion")
 
         return "; ".join(reasons[:3])
 
