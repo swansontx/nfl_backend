@@ -359,61 +359,76 @@ class InsightGenerator:
         return None
 
     def generate_injury_impact_insight(self, injuries: List[Dict], team: str) -> List[Insight]:
-        """Generate insights about injury impacts.
+        """Generate insights about injury impacts using advanced impact analyzer.
 
         Args:
             injuries: List of injury records
             team: Team abbreviation
 
         Returns:
-            List of Insight objects
+            List of Insight objects with prop redistribution analysis
         """
+        from backend.api.injury_impact_analyzer import injury_analyzer
+
         insights = []
 
-        # Key position injuries
-        key_positions = ['QB', 'RB', 'WR', 'TE', 'OL']
-        key_injuries = [inj for inj in injuries if inj.get('position') in key_positions and inj.get('injury_status') in ['Out', 'Doubtful']]
+        # Use the advanced injury analyzer for team-wide analysis
+        report = injury_analyzer.analyze_team_injuries(team, injuries)
 
-        for injury in key_injuries:
-            position = injury.get('position')
-            player_name = injury.get('player_name')
-            status = injury.get('injury_status')
-
-            if position == 'QB':
+        # Generate insights from key injuries with prop implications
+        for impact in report.key_injuries:
+            # Determine confidence and impact level
+            if impact.position == 'QB':
                 confidence = 0.9
-                impact = "critical"
-                title = f"Critical: {team} Starting QB {player_name} {status}"
-                description = (
-                    f"{player_name} is {status}. Backup QB typically sees significant "
-                    f"performance drop-off. Expect conservative game plan and increased "
-                    f"reliance on running game."
-                )
-                recommendation = f"Fade {team} passing props, consider {team} rushing OVER"
-            elif position in ['RB', 'WR']:
+                impact_level = "critical"
+            elif impact.position in ['RB', 'WR']:
                 confidence = 0.75
-                impact = "high"
-                title = f"Key Absence: {team} {position} {player_name} {status}"
-                description = (
-                    f"{player_name} ({position}) is {status}. Expect increased target/touch "
-                    f"share for remaining skill players."
-                )
-                recommendation = f"Look for value on {team} secondary {position}s"
+                impact_level = "high"
+            elif impact.position == 'TE':
+                confidence = 0.65
+                impact_level = "medium"
             else:
-                continue
+                confidence = 0.6
+                impact_level = "medium"
 
+            # Build supporting data with prop redistributions
+            supporting_data = {
+                "player": impact.injured_player,
+                "position": impact.position,
+                "status": impact.status,
+                "team": team,
+                "replacement": impact.replacement,
+                "replacement_depth": impact.replacement_depth,
+                "team_impact_score": impact.team_impact_score,
+                "prop_implications": impact.prop_implications
+            }
+
+            # Generate insight with narrative from analyzer
             insights.append(Insight(
                 insight_type="injury",
-                title=title,
-                description=description,
+                title=f"{team} {impact.position} {impact.injured_player} - {impact.status}",
+                description=impact.narrative,
                 confidence=confidence,
+                supporting_data=supporting_data,
+                impact_level=impact_level,
+                recommendation=impact.betting_recommendations[0] if impact.betting_recommendations else None
+            ))
+
+        # Add team-level summary insight if significant impact
+        if report.total_impact_score >= 30:
+            insights.append(Insight(
+                insight_type="injury_summary",
+                title=f"{team} Injury Situation - Impact Score: {report.total_impact_score:.0f}/100",
+                description=report.summary,
+                confidence=0.8,
                 supporting_data={
-                    "player": player_name,
-                    "position": position,
-                    "status": status,
-                    "team": team
+                    "team": team,
+                    "total_impact_score": report.total_impact_score,
+                    "key_injuries_count": len(report.key_injuries),
+                    "prop_redistributions": report.prop_redistributions
                 },
-                impact_level=impact,
-                recommendation=recommendation
+                impact_level="high" if report.total_impact_score >= 50 else "medium",
+                recommendation=report.betting_angle
             ))
 
         return insights

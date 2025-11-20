@@ -13,6 +13,7 @@ from backend.api.model_loader import model_loader
 from backend.api.team_database import get_team, get_all_teams, get_division_teams, get_conference_teams
 from backend.api.schedule_loader import schedule_loader, Game
 from backend.api.boxscore_generator import boxscore_generator
+from backend.api.injury_impact_analyzer import injury_analyzer, get_injury_impact_for_game
 from backend.config import settings, check_environment
 
 app = FastAPI(
@@ -319,6 +320,144 @@ async def get_game_injuries(game_id: str):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching injuries: {str(e)}")
+
+
+@app.get('/api/v1/games/{game_id}/injury-impact', tags=['Games', 'Injuries'])
+async def get_game_injury_impact(game_id: str):
+    """Get comprehensive injury impact analysis for betting.
+
+    Analyzes injuries and their cascading effects on:
+    - Team performance and game outcomes
+    - Player prop redistribution (targets, carries, etc.)
+    - Backup player opportunities
+    - Betting recommendations
+
+    Args:
+        game_id: Game ID in format {season}_{week}_{away}_{home}
+
+    Returns:
+        Full injury impact analysis including:
+        - Team impact scores (0-100)
+        - Replacement players from depth chart
+        - Prop redistribution predictions (who gets more targets/carries)
+        - Specific betting recommendations
+        - High-confidence prop plays
+    """
+    try:
+        # Get injury data
+        injury_data = sleeper_api.get_injuries_for_game(game_id)
+
+        # Analyze impact for both teams
+        impact_analysis = get_injury_impact_for_game(
+            game_id=game_id,
+            home_injuries=injury_data['home_injuries'],
+            away_injuries=injury_data['away_injuries']
+        )
+
+        # Convert dataclass objects to dicts for JSON serialization
+        home_report = impact_analysis['home_report']
+        away_report = impact_analysis['away_report']
+
+        def serialize_injury_impact(impact):
+            return {
+                'injured_player': impact.injured_player,
+                'position': impact.position,
+                'team': impact.team,
+                'status': impact.status,
+                'replacement': impact.replacement,
+                'replacement_depth': impact.replacement_depth,
+                'team_impact_score': impact.team_impact_score,
+                'prop_implications': impact.prop_implications,
+                'narrative': impact.narrative,
+                'betting_recommendations': impact.betting_recommendations
+            }
+
+        def serialize_team_report(report):
+            return {
+                'team': report.team,
+                'total_impact_score': report.total_impact_score,
+                'key_injuries': [serialize_injury_impact(i) for i in report.key_injuries],
+                'prop_redistributions': report.prop_redistributions,
+                'summary': report.summary,
+                'betting_angle': report.betting_angle
+            }
+
+        return {
+            'game_id': game_id,
+            'home_team': impact_analysis['home_team'],
+            'away_team': impact_analysis['away_team'],
+            'home_impact': serialize_team_report(home_report),
+            'away_impact': serialize_team_report(away_report),
+            'injury_edge': impact_analysis['injury_edge'],
+            'lean': impact_analysis['lean'],
+            'impact_differential': impact_analysis['impact_differential'],
+            'top_prop_plays': impact_analysis['all_prop_plays'][:10],
+            'last_updated': datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error analyzing injury impact: {str(e)}")
+
+
+@app.get('/api/v1/teams/{team_id}/injury-impact', tags=['Teams', 'Injuries'])
+async def get_team_injury_impact(team_id: str):
+    """Get injury impact analysis for a specific team.
+
+    Args:
+        team_id: Team abbreviation (e.g., 'KC', 'BUF')
+
+    Returns:
+        Team injury impact including:
+        - Total impact score
+        - Key injuries with replacements
+        - Prop redistribution analysis
+        - Betting angle
+    """
+    try:
+        team = get_team(team_id.upper())
+        if not team:
+            raise HTTPException(status_code=404, detail=f'Team not found: {team_id}')
+
+        # Get team injuries from Sleeper
+        all_injuries = sleeper_api.get_injuries()
+        team_injuries = [
+            inj for inj in all_injuries
+            if inj.get('team', '').upper() == team_id.upper()
+        ]
+
+        # Analyze team injuries
+        report = injury_analyzer.analyze_team_injuries(team_id.upper(), team_injuries)
+
+        # Serialize response
+        def serialize_injury_impact(impact):
+            return {
+                'injured_player': impact.injured_player,
+                'position': impact.position,
+                'status': impact.status,
+                'replacement': impact.replacement,
+                'replacement_depth': impact.replacement_depth,
+                'team_impact_score': impact.team_impact_score,
+                'prop_implications': impact.prop_implications,
+                'narrative': impact.narrative,
+                'betting_recommendations': impact.betting_recommendations
+            }
+
+        return {
+            'team': team_id.upper(),
+            'team_name': team.get('name'),
+            'total_impact_score': report.total_impact_score,
+            'key_injuries': [serialize_injury_impact(i) for i in report.key_injuries],
+            'prop_redistributions': report.prop_redistributions,
+            'summary': report.summary,
+            'betting_angle': report.betting_angle,
+            'injury_count': len(team_injuries),
+            'last_updated': datetime.now().isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error analyzing team injuries: {str(e)}")
 
 
 # ============================================================================
