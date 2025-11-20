@@ -280,20 +280,31 @@ class ImprovedBacktester:
             'confidence': round(confidence, 2)
         }
 
-    def generate_betting_line(self, projection: float, prop_type: str, variance: float) -> float:
-        """Generate realistic betting line."""
-        # Add small random variance to simulate market inefficiency
-        noise = np.random.normal(0, min(variance * 0.1, projection * 0.03))
+    def load_historical_props(self, week: int) -> Dict:
+        """Load real historical props data."""
+        props_file = Path("outputs/backtest_props_nov9_2025.json")
+        if not props_file.exists():
+            return {}
 
-        # Round to common increments
-        if prop_type in ['passing_yards']:
-            line = round((projection + noise) / 5) * 5
-        elif prop_type in ['rushing_yards', 'receiving_yards']:
-            line = round((projection + noise) / 2.5) * 2.5
-        else:
-            line = round(projection + noise, 1)
+        try:
+            with open(props_file) as f:
+                data = json.load(f)
 
-        return line
+            historical = {}
+            for prop in data.get('props', []):
+                key = (prop['player'], prop['prop_type'])
+                historical[key] = prop['line']
+            return historical
+        except Exception:
+            return {}
+
+    def get_historical_line(self, player_name: str, prop_type: str, historical_props: Dict) -> Optional[float]:
+        """Get real historical line for backtesting.
+
+        Returns None if no real line is available - prop should be skipped.
+        """
+        prop_key = (player_name, prop_type)
+        return historical_props.get(prop_key)
 
     def run_backtest(self, weeks: List[int] = [9, 10]) -> Dict:
         """Run improved backtest."""
@@ -343,6 +354,14 @@ class ImprovedBacktester:
             return results
 
         teams_playing = set(week_games['home_team'].tolist() + week_games['away_team'].tolist())
+
+        # Load real historical props for this week
+        historical_props = self.load_historical_props(week)
+        if historical_props:
+            print(f"  Loaded {len(historical_props)} real historical lines")
+        else:
+            print(f"  WARNING: No historical props data - skipping all props for week {week}")
+            return results
 
         recent_players = self.player_stats[
             (self.player_stats['week'] >= week - 4) &
@@ -403,8 +422,10 @@ class ImprovedBacktester:
                 if actual is None:
                     continue
 
-                # Generate line
-                line = self.generate_betting_line(projection, prop_type, variance)
+                # Get real historical line - skip if not available
+                line = self.get_historical_line(player_name, prop_type, historical_props)
+                if line is None:
+                    continue  # No real line available
 
                 # Calculate metrics
                 error = projection - actual

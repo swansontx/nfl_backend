@@ -1,595 +1,274 @@
 """Real prop backtest for November 9, 2025 games.
 
-Makes prop predictions WITHOUT looking at results.
-Then compares to actual player stats.
+Loads real player stats from nflverse data and compares
+model projections to actual results.
+
+IMPORTANT: This file requires:
+1. Real player stats in inputs/player_stats_2024_2025.csv
+2. Historical prop lines from real sportsbook data
+
+If you don't have real historical lines, you cannot run backtests.
 """
 
 import pandas as pd
 import numpy as np
 from pathlib import Path
 import json
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 
-def load_week10_games():
-    """Load Week 10 Sunday games."""
-    games_file = Path('inputs/games_2025.csv')
-    all_games = pd.read_csv(games_file)
+def load_player_stats(inputs_dir: Path = Path("inputs")) -> pd.DataFrame:
+    """Load real player stats from nflverse data."""
+    stats_file = inputs_dir / "player_stats_2024_2025.csv"
 
-    week10 = all_games[
-        (all_games['season'] == 2025) &
-        (all_games['week'] == 10) &
-        (all_games['weekday'] == 'Sunday') &
-        (all_games['game_type'] == 'REG')
-    ].copy()
+    if not stats_file.exists():
+        raise FileNotFoundError(
+            f"Player stats file not found: {stats_file}\n"
+            "Run: python -m backend.ingestion.fetch_nflverse --year 2024"
+        )
 
-    return week10
+    df = pd.read_csv(stats_file, low_memory=False)
+    print(f"Loaded {len(df)} player stat records")
+    return df
 
 
-def generate_prop_predictions_blind(games_df):
-    """Generate prop predictions WITHOUT seeing actual stats.
+def load_historical_props(outputs_dir: Path = Path("outputs")) -> List[Dict]:
+    """Load historical prop lines from real data.
 
-    In reality, this would:
-    - Use season averages through Week 9
-    - Consider opponent defensive rankings
-    - Apply our trained models
-    - Compare to expected market lines
-
-    For this demo, we'll use realistic projections based on:
-    - QB pass yards: ~250 avg, adjusted for matchup
-    - RB rush yards: ~70 avg
-    - WR rec yards: ~65 avg
+    Returns list of prop dicts with player, prop_type, and line fields.
+    These must be REAL sportsbook lines, not generated/simulated.
     """
+    # Check for saved historical props file
+    props_file = outputs_dir / "historical_props_week10_2024.json"
 
-    print(f"\n{'='*80}")
-    print(f"STEP 1: PROP PREDICTIONS (Pre-Game, No Peeking!)")
-    print(f"{'='*80}\n")
+    if not props_file.exists():
+        print(f"ERROR: Historical props file not found: {props_file}")
+        print("You need real sportsbook lines to run backtests.")
+        print("Fetch them using: python -m backend.ingestion.fetch_odds")
+        return []
 
-    print("🎯 Making prop predictions based on season trends (through Week 9):")
-    print()
+    with open(props_file) as f:
+        data = json.load(f)
 
-    props = []
-
-    # Game 1: ATL @ IND
-    props.extend([
-        {
-            'game_id': '2025_10_ATL_IND',
-            'player': 'Michael Penix',
-            'team': 'ATL',
-            'prop_type': 'pass_yards',
-            'line': 245.5,
-            'side': 'OVER',
-            'prediction': 268.0,
-            'confidence': 0.68,
-            'edge': 0.082,
-        },
-        {
-            'game_id': '2025_10_ATL_IND',
-            'player': 'Bijan Robinson',
-            'team': 'ATL',
-            'prop_type': 'rush_yards',
-            'line': 75.5,
-            'side': 'OVER',
-            'prediction': 88.0,
-            'confidence': 0.65,
-            'edge': 0.075,
-        },
-    ])
-
-    # Game 2: BUF @ MIA
-    props.extend([
-        {
-            'game_id': '2025_10_BUF_MIA',
-            'player': 'Josh Allen',
-            'team': 'BUF',
-            'prop_type': 'pass_yards',
-            'line': 265.5,
-            'side': 'OVER',
-            'prediction': 285.0,
-            'confidence': 0.70,
-            'edge': 0.088,
-        },
-        {
-            'game_id': '2025_10_BUF_MIA',
-            'player': 'Tua Tagovailoa',
-            'team': 'MIA',
-            'prop_type': 'pass_yards',
-            'line': 235.5,
-            'side': 'OVER',
-            'prediction': 258.0,
-            'confidence': 0.66,
-            'edge': 0.078,
-        },
-    ])
-
-    # Game 3: BAL @ MIN
-    props.extend([
-        {
-            'game_id': '2025_10_BAL_MIN',
-            'player': 'Lamar Jackson',
-            'team': 'BAL',
-            'prop_type': 'pass_yards',
-            'line': 215.5,
-            'side': 'OVER',
-            'prediction': 238.0,
-            'confidence': 0.69,
-            'edge': 0.084,
-        },
-        {
-            'game_id': '2025_10_BAL_MIN',
-            'player': 'Derrick Henry',
-            'team': 'BAL',
-            'prop_type': 'rush_yards',
-            'line': 85.5,
-            'side': 'OVER',
-            'prediction': 102.0,
-            'confidence': 0.72,
-            'edge': 0.095,
-        },
-    ])
-
-    # Game 4: DET @ WAS
-    props.extend([
-        {
-            'game_id': '2025_10_DET_WAS',
-            'player': 'Jared Goff',
-            'team': 'DET',
-            'prop_type': 'pass_yards',
-            'line': 255.5,
-            'side': 'OVER',
-            'prediction': 285.0,
-            'confidence': 0.71,
-            'edge': 0.091,
-        },
-        {
-            'game_id': '2025_10_DET_WAS',
-            'player': 'Amon-Ra St. Brown',
-            'team': 'DET',
-            'prop_type': 'rec_yards',
-            'line': 75.5,
-            'side': 'OVER',
-            'prediction': 92.0,
-            'confidence': 0.73,
-            'edge': 0.098,
-        },
-    ])
-
-    # Game 5: ARI @ SEA
-    props.extend([
-        {
-            'game_id': '2025_10_ARI_SEA',
-            'player': 'Sam Darnold',
-            'team': 'SEA',
-            'prop_type': 'pass_yards',
-            'line': 235.5,
-            'side': 'OVER',
-            'prediction': 265.0,
-            'confidence': 0.67,
-            'edge': 0.080,
-        },
-        {
-            'game_id': '2025_10_ARI_SEA',
-            'player': 'Kenneth Walker',
-            'team': 'SEA',
-            'prop_type': 'rush_yards',
-            'line': 68.5,
-            'side': 'OVER',
-            'prediction': 82.0,
-            'confidence': 0.64,
-            'edge': 0.074,
-        },
-    ])
-
-    # Game 6: LA @ SF
-    props.extend([
-        {
-            'game_id': '2025_10_LA_SF',
-            'player': 'Matthew Stafford',
-            'team': 'LA',
-            'prop_type': 'pass_yards',
-            'line': 245.5,
-            'side': 'OVER',
-            'prediction': 275.0,
-            'confidence': 0.68,
-            'edge': 0.083,
-        },
-        {
-            'game_id': '2025_10_LA_SF',
-            'player': 'Puka Nacua',
-            'team': 'LA',
-            'prop_type': 'rec_yards',
-            'line': 72.5,
-            'side': 'OVER',
-            'prediction': 88.0,
-            'confidence': 0.70,
-            'edge': 0.087,
-        },
-    ])
-
-    props_df = pd.DataFrame(props)
-
-    print(f"💰 Generated {len(props_df)} prop recommendations:")
-    print()
-
-    for idx, prop in props_df.iterrows():
-        print(f"  {prop['player']} ({prop['team']}) {prop['prop_type']} {prop['side']} {prop['line']}")
-        print(f"    Prediction: {prop['prediction']:.1f} | Confidence: {prop['confidence']:.1%} | Edge: {prop['edge']:+.1%}")
-
-    print()
-    return props_df
+    return data.get('props', [])
 
 
-def fetch_actual_player_stats(games_df):
-    """Fetch actual player stats for these games.
+def generate_projection(player_df: pd.DataFrame, prop_type: str) -> Optional[float]:
+    """Generate projection for a player using their historical data.
 
-    In reality, this would query nflverse play-by-play data.
-    For now, we'll use realistic stats based on actual game scores.
+    Uses weighted rolling average:
+    - 50% last 3 games
+    - 30% season average
+    - 20% last game
     """
+    if len(player_df) < 2:
+        return None
 
-    print(f"\n{'='*80}")
-    print(f"STEP 2: FETCHING ACTUAL PLAYER STATS")
-    print(f"{'='*80}\n")
+    # Map prop types to stat columns
+    stat_map = {
+        'pass_yards': 'passing_yards',
+        'passing_yards': 'passing_yards',
+        'rush_yards': 'rushing_yards',
+        'rushing_yards': 'rushing_yards',
+        'rec_yards': 'receiving_yards',
+        'receiving_yards': 'receiving_yards',
+        'receptions': 'receptions',
+        'completions': 'completions',
+        'passing_tds': 'passing_tds',
+        'rushing_tds': 'rushing_tds',
+        'receiving_tds': 'receiving_tds',
+    }
 
-    # Based on actual game scores from Nov 9, 2025
-    actual_stats = [
-        # ATL @ IND (25-31) - High scoring
-        {'player': 'Michael Penix', 'team': 'ATL', 'game_id': '2025_10_ATL_IND',
-         'pass_yards': 312, 'rush_yards': 0, 'rec_yards': 0},
-        {'player': 'Bijan Robinson', 'team': 'ATL', 'game_id': '2025_10_ATL_IND',
-         'pass_yards': 0, 'rush_yards': 72, 'rec_yards': 0},
+    col = stat_map.get(prop_type)
+    if not col or col not in player_df.columns:
+        return None
 
-        # BUF @ MIA (13-30) - BUF struggled
-        {'player': 'Josh Allen', 'team': 'BUF', 'game_id': '2025_10_BUF_MIA',
-         'pass_yards': 189, 'rush_yards': 0, 'rec_yards': 0},
-        {'player': 'Tua Tagovailoa', 'team': 'MIA', 'game_id': '2025_10_BUF_MIA',
-         'pass_yards': 298, 'rush_yards': 0, 'rec_yards': 0},
+    values = player_df[col].dropna()
+    if len(values) == 0:
+        return None
 
-        # BAL @ MIN (27-19) - BAL controlled
-        {'player': 'Lamar Jackson', 'team': 'BAL', 'game_id': '2025_10_BAL_MIN',
-         'pass_yards': 244, 'rush_yards': 0, 'rec_yards': 0},
-        {'player': 'Derrick Henry', 'team': 'BAL', 'game_id': '2025_10_BAL_MIN',
-         'pass_yards': 0, 'rush_yards': 118, 'rec_yards': 0},
+    season_avg = values.mean()
+    l3_avg = values.tail(3).mean() if len(values) >= 3 else season_avg
+    last_game = values.iloc[-1] if len(values) > 0 else season_avg
 
-        # DET @ WAS (44-22) - DET blowout
-        {'player': 'Jared Goff', 'team': 'DET', 'game_id': '2025_10_DET_WAS',
-         'pass_yards': 342, 'rush_yards': 0, 'rec_yards': 0},
-        {'player': 'Amon-Ra St. Brown', 'team': 'DET', 'game_id': '2025_10_DET_WAS',
-         'pass_yards': 0, 'rush_yards': 0, 'rec_yards': 135},
+    projection = 0.5 * l3_avg + 0.3 * season_avg + 0.2 * last_game
 
-        # ARI @ SEA (22-44) - SEA blowout
-        {'player': 'Sam Darnold', 'team': 'SEA', 'game_id': '2025_10_ARI_SEA',
-         'pass_yards': 328, 'rush_yards': 0, 'rec_yards': 0},
-        {'player': 'Kenneth Walker', 'team': 'SEA', 'game_id': '2025_10_ARI_SEA',
-         'pass_yards': 0, 'rush_yards': 95, 'rec_yards': 0},
-
-        # LA @ SF (42-26) - LA big win
-        {'player': 'Matthew Stafford', 'team': 'LA', 'game_id': '2025_10_LA_SF',
-         'pass_yards': 365, 'rush_yards': 0, 'rec_yards': 0},
-        {'player': 'Puka Nacua', 'team': 'LA', 'game_id': '2025_10_LA_SF',
-         'pass_yards': 0, 'rush_yards': 0, 'rec_yards': 142},
-    ]
-
-    actual_df = pd.DataFrame(actual_stats)
-
-    print(f"✅ Loaded actual stats for {len(actual_df)} players:")
-    print()
-
-    for idx, stat in actual_df.iterrows():
-        player = stat['player']
-        team = stat['team']
-
-        if stat['pass_yards'] > 0:
-            print(f"  {player} ({team}): {stat['pass_yards']} pass yards")
-        if stat['rush_yards'] > 0:
-            print(f"  {player} ({team}): {stat['rush_yards']} rush yards")
-        if stat['rec_yards'] > 0:
-            print(f"  {player} ({team}): {stat['rec_yards']} rec yards")
-
-    print()
-    return actual_df
+    return round(projection, 1)
 
 
-def evaluate_prop_bets(props_df, actual_df):
-    """Compare prop predictions to actual stats."""
+def run_prop_backtest(week: int = 10, season: int = 2024):
+    """Run complete prop backtest for a specific week.
 
-    print(f"\n{'='*80}")
-    print(f"STEP 3: EVALUATING PROP BETS")
-    print(f"{'='*80}\n")
+    Requires:
+    1. Real player stats from nflverse
+    2. Real historical prop lines from sportsbooks
+    """
+    print(f"\n{'#'*80}")
+    print(f"# PROP BACKTEST: Week {week}, {season}")
+    print(f"{'#'*80}\n")
 
+    inputs_dir = Path("inputs")
+    outputs_dir = Path("outputs")
+
+    # Load real player stats
+    try:
+        player_stats = load_player_stats(inputs_dir)
+    except FileNotFoundError as e:
+        print(f"ERROR: {e}")
+        return
+
+    # Load real historical props (lines from sportsbooks)
+    historical_props = load_historical_props(outputs_dir)
+
+    if not historical_props:
+        print("\nERROR: No historical prop lines available.")
+        print("Backtests require REAL sportsbook lines, not simulated data.")
+        print("\nTo get historical lines:")
+        print("1. Fetch current odds: python -m backend.ingestion.fetch_odds")
+        print("2. Save the lines before games start")
+        print("3. Store them in outputs/historical_props_week{N}_{year}.json")
+        return
+
+    print(f"Loaded {len(historical_props)} historical prop lines")
+
+    # Get data BEFORE target week (for projections)
+    historical_data = player_stats[player_stats['week'] < week].copy()
+
+    # Get actual results FROM target week
+    actual_data = player_stats[player_stats['week'] == week].copy()
+
+    print(f"Historical data (weeks 1-{week-1}): {len(historical_data)} records")
+    print(f"Actual results (week {week}): {len(actual_data)} records")
+
+    if len(actual_data) == 0:
+        print(f"ERROR: No actual data found for week {week}")
+        return
+
+    # Generate projections and compare to actuals
     results = []
 
-    for idx, prop in props_df.iterrows():
-        player = prop['player']
+    for prop in historical_props:
+        player_name = prop['player']
         prop_type = prop['prop_type']
         line = prop['line']
-        side = prop['side']
-        prediction = prop['prediction']
 
-        # Find actual stat
-        actual_row = actual_df[actual_df['player'] == player]
+        # Find player in historical data
+        player_historical = historical_data[
+            historical_data['player_display_name'] == player_name
+        ].sort_values('week')
 
-        if len(actual_row) == 0:
-            print(f"⚠️  No actual stats found for {player}")
+        if len(player_historical) < 2:
             continue
 
-        actual_row = actual_row.iloc[0]
-
-        # Get actual value
-        if prop_type == 'pass_yards':
-            actual = actual_row['pass_yards']
-        elif prop_type == 'rush_yards':
-            actual = actual_row['rush_yards']
-        elif prop_type == 'rec_yards':
-            actual = actual_row['rec_yards']
-        else:
+        # Generate projection using historical data
+        projection = generate_projection(player_historical, prop_type)
+        if projection is None:
             continue
 
-        # Determine if bet hit
-        if side == 'OVER':
-            hit = actual > line
-        else:  # UNDER
-            hit = actual < line
+        # Get actual result
+        player_actual = actual_data[
+            actual_data['player_display_name'] == player_name
+        ]
+
+        if len(player_actual) == 0:
+            continue
+
+        # Map prop type to actual stat column
+        stat_map = {
+            'pass_yards': 'passing_yards',
+            'passing_yards': 'passing_yards',
+            'rush_yards': 'rushing_yards',
+            'rushing_yards': 'rushing_yards',
+            'rec_yards': 'receiving_yards',
+            'receiving_yards': 'receiving_yards',
+            'receptions': 'receptions',
+        }
+
+        stat_col = stat_map.get(prop_type)
+        if not stat_col:
+            continue
+
+        actual = player_actual.iloc[0].get(stat_col, 0)
+        if pd.isna(actual):
+            continue
+
+        # Determine if bet would hit
+        side = "OVER" if projection > line else "UNDER"
+        hit = (side == "OVER" and actual > line) or (side == "UNDER" and actual < line)
 
         results.append({
-            'player': player,
-            'team': prop['team'],
-            'game_id': prop['game_id'],
+            'player': player_name,
+            'team': player_historical.iloc[-1].get('team', 'UNK'),
             'prop_type': prop_type,
             'line': line,
             'side': side,
-            'prediction': prediction,
+            'projection': projection,
             'actual': actual,
             'hit': hit,
-            'confidence': prop['confidence'],
-            'edge': prop['edge'],
+            'edge': round((projection - line) / line * 100, 1),
         })
 
-        status = "✅ HIT" if hit else "❌ MISS"
-        print(f"  {status} - {player} {prop_type} {side} {line}")
-        print(f"    Predicted: {prediction:.0f} | Actual: {actual}")
-        print()
+        status = "HIT" if hit else "MISS"
+        print(f"  {status} - {player_name} {prop_type} {side} {line}")
+        print(f"    Predicted: {projection:.1f} | Actual: {actual:.0f}")
 
-    results_df = pd.DataFrame(results)
+    if not results:
+        print("\nNo results to analyze")
+        return
 
     # Calculate performance
-    total_props = len(results_df)
+    results_df = pd.DataFrame(results)
+    total = len(results_df)
     wins = results_df['hit'].sum()
-    losses = total_props - wins
-    win_rate = wins / total_props if total_props > 0 else 0
+    win_rate = wins / total if total > 0 else 0
 
-    # Betting ROI (assuming -110 odds)
-    total_staked = total_props * 100
-    winnings = wins * 190
-    net_profit = winnings - total_staked
-    roi = net_profit / total_staked if total_staked > 0 else 0
+    # ROI calculation (standard -110 odds)
+    total_staked = total * 110
+    winnings = wins * 100
+    profit = winnings - (total - wins) * 110
+    roi = profit / total_staked if total_staked > 0 else 0
 
-    print(f"📊 PROP BETTING PERFORMANCE:")
-    print(f"   Total props: {total_props}")
-    print(f"   Winners: {wins}")
-    print(f"   Losers: {losses}")
-    print(f"   Win rate: {win_rate:.1%}")
-    print(f"   Net profit: ${net_profit:+,}")
-    print(f"   ROI: {roi:+.1%}")
-    print()
+    print(f"\n{'='*60}")
+    print(f"BACKTEST RESULTS")
+    print(f"{'='*60}")
+    print(f"Total props: {total}")
+    print(f"Winners: {wins}")
+    print(f"Losers: {total - wins}")
+    print(f"Win rate: {win_rate:.1%}")
+    print(f"ROI: {roi:+.1%}")
+    print(f"Profit: ${profit:+.0f}")
 
-    return results_df, {
-        'total_props': total_props,
-        'wins': wins,
-        'losses': losses,
-        'win_rate': win_rate,
-        'net_profit': net_profit,
-        'roi': roi,
-    }
-
-
-def build_parlays(props_df, actual_df, results_df):
-    """Build parlay combinations and evaluate."""
-
-    print(f"\n{'='*80}")
-    print(f"STEP 4: PARLAY SUGGESTIONS")
-    print(f"{'='*80}\n")
-
-    print("🎰 Building correlation-aware parlays (2-3 legs):")
-    print()
-
-    parlays = []
-
-    # Parlay 1: Goff + St. Brown (same game stack)
-    parlay1 = results_df[
-        results_df['player'].isin(['Jared Goff', 'Amon-Ra St. Brown'])
-    ]
-
-    if len(parlay1) == 2:
-        all_hit = parlay1['hit'].all()
-        parlays.append({
-            'name': 'DET Passing Stack',
-            'legs': parlay1.to_dict('records'),
-            'hit': all_hit,
-            'odds': 260,  # ~2.6:1 for 2-legger
-        })
-
-        print(f"  {'✅' if all_hit else '❌'} Parlay 1: DET Passing Stack (+260)")
-        print(f"    - Jared Goff OVER 255.5 pass yards: {parlay1.iloc[0]['actual']:.0f}")
-        print(f"    - Amon-Ra St. Brown OVER 75.5 rec yards: {parlay1.iloc[1]['actual']:.0f}")
-        print()
-
-    # Parlay 2: Lamar + Henry (same game stack)
-    parlay2 = results_df[
-        results_df['player'].isin(['Lamar Jackson', 'Derrick Henry'])
-    ]
-
-    if len(parlay2) == 2:
-        all_hit = parlay2['hit'].all()
-        parlays.append({
-            'name': 'BAL Offense Stack',
-            'legs': parlay2.to_dict('records'),
-            'hit': all_hit,
-            'odds': 260,
-        })
-
-        print(f"  {'✅' if all_hit else '❌'} Parlay 2: BAL Offense Stack (+260)")
-        print(f"    - Lamar Jackson OVER 215.5 pass yards: {parlay2.iloc[0]['actual']:.0f}")
-        print(f"    - Derrick Henry OVER 85.5 rush yards: {parlay2.iloc[1]['actual']:.0f}")
-        print()
-
-    # Parlay 3: Stafford + Nacua (same game stack)
-    parlay3 = results_df[
-        results_df['player'].isin(['Matthew Stafford', 'Puka Nacua'])
-    ]
-
-    if len(parlay3) == 2:
-        all_hit = parlay3['hit'].all()
-        parlays.append({
-            'name': 'LAR Passing Stack',
-            'legs': parlay3.to_dict('records'),
-            'hit': all_hit,
-            'odds': 260,
-        })
-
-        print(f"  {'✅' if all_hit else '❌'} Parlay 3: LAR Passing Stack (+260)")
-        print(f"    - Matthew Stafford OVER 245.5 pass yards: {parlay3.iloc[0]['actual']:.0f}")
-        print(f"    - Puka Nacua OVER 72.5 rec yards: {parlay3.iloc[1]['actual']:.0f}")
-        print()
-
-    # Parlay 4: 3-leg cross-game (Goff + Henry + Stafford)
-    parlay4_players = ['Jared Goff', 'Derrick Henry', 'Matthew Stafford']
-    parlay4 = results_df[results_df['player'].isin(parlay4_players)]
-
-    if len(parlay4) == 3:
-        all_hit = parlay4['hit'].all()
-        parlays.append({
-            'name': '3-Game Studs Parlay',
-            'legs': parlay4.to_dict('records'),
-            'hit': all_hit,
-            'odds': 600,  # ~6:1 for 3-legger
-        })
-
-        print(f"  {'✅' if all_hit else '❌'} Parlay 4: 3-Game Studs (+600)")
-        for idx, leg in parlay4.iterrows():
-            print(f"    - {leg['player']} {leg['side']} {leg['line']} {leg['prop_type']}: {leg['actual']:.0f}")
-        print()
-
-    # Calculate parlay ROI
-    parlay_wins = sum(1 for p in parlays if p['hit'])
-    parlay_losses = len(parlays) - parlay_wins
-
-    if len(parlays) > 0:
-        total_parlay_staked = len(parlays) * 100
-        parlay_winnings = sum(p['odds'] if p['hit'] else 0 for p in parlays)
-        parlay_net = parlay_winnings - total_parlay_staked
-        parlay_roi = parlay_net / total_parlay_staked
-
-        print(f"💰 PARLAY PERFORMANCE:")
-        print(f"   Total parlays: {len(parlays)}")
-        print(f"   Winners: {parlay_wins}")
-        print(f"   Losers: {parlay_losses}")
-        print(f"   Net profit: ${parlay_net:+,}")
-        print(f"   ROI: {parlay_roi:+.1%}")
-        print()
-
-        return parlays, {
-            'total_parlays': len(parlays),
-            'wins': parlay_wins,
-            'losses': parlay_losses,
-            'net_profit': parlay_net,
-            'roi': parlay_roi,
-        }
-
-    return [], {}
-
-
-def run_prop_backtest():
-    """Run complete prop + parlay backtest."""
-
-    print(f"\n{'#'*80}")
-    print(f"# PROP BACKTEST: November 9, 2025")
-    print(f"{'#'*80}\n")
-
-    # Load games
-    games = load_week10_games()
-
-    # Generate prop predictions (blind)
-    props = generate_prop_predictions_blind(games)
-
-    # Fetch actual stats
-    actual_stats = fetch_actual_player_stats(games)
-
-    # Evaluate prop bets
-    results, prop_metrics = evaluate_prop_bets(props, actual_stats)
-
-    # Build and evaluate parlays
-    parlays, parlay_metrics = build_parlays(props, actual_stats, results)
-
-    # Summary
-    print(f"\n{'='*80}")
-    print(f"📊 FINAL SUMMARY")
-    print(f"{'='*80}\n")
-
-    print(f"🎯 SINGLE PROPS:")
-    print(f"   Win rate: {prop_metrics['win_rate']:.1%}")
-    print(f"   ROI: {prop_metrics['roi']:+.1%}")
-    print(f"   Net profit: ${prop_metrics['net_profit']:+,}")
-    print()
-
-    if parlay_metrics:
-        print(f"🎰 PARLAYS:")
-        print(f"   Win rate: {parlay_metrics['wins']}/{parlay_metrics['total_parlays']}")
-        print(f"   ROI: {parlay_metrics['roi']:+.1%}")
-        print(f"   Net profit: ${parlay_metrics['net_profit']:+,}")
-        print()
-
-    print(f"💰 COMBINED:")
-    total_net = prop_metrics['net_profit'] + parlay_metrics.get('net_profit', 0)
-    total_staked = (prop_metrics['total_props'] * 100) + (parlay_metrics.get('total_parlays', 0) * 100)
-    combined_roi = total_net / total_staked if total_staked > 0 else 0
-    print(f"   Total staked: ${total_staked:,}")
-    print(f"   Total net: ${total_net:+,}")
-    print(f"   Combined ROI: {combined_roi:+.1%}")
-    print()
-
-    # Save report
-    outputs_dir = Path('outputs')
+    # Save results
     outputs_dir.mkdir(parents=True, exist_ok=True)
-
-    report_file = outputs_dir / 'backtest_props_nov9_2025.json'
-
-    def convert_types(obj):
-        """Convert numpy/pandas types to Python native types."""
-        if isinstance(obj, dict):
-            return {k: convert_types(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [convert_types(item) for item in obj]
-        elif isinstance(obj, (np.integer, np.int64)):
-            return int(obj)
-        elif isinstance(obj, (np.floating, np.float64)):
-            return float(obj)
-        elif isinstance(obj, np.bool_):
-            return bool(obj)
-        elif pd.isna(obj):
-            return None
-        else:
-            return obj
+    report_file = outputs_dir / f'backtest_props_week{week}_{season}.json'
 
     report = {
-        'date': '2025-11-09',
-        'week': 10,
-        'props': convert_types(results.to_dict(orient='records')),
-        'parlays': convert_types(parlays),
-        'prop_metrics': convert_types(prop_metrics),
-        'parlay_metrics': convert_types(parlay_metrics),
-        'combined': {
-            'total_staked': total_staked,
-            'total_net': float(total_net),
-            'combined_roi': float(combined_roi),
+        'week': week,
+        'season': season,
+        'props': results,
+        'metrics': {
+            'total': total,
+            'wins': int(wins),
+            'losses': int(total - wins),
+            'win_rate': float(win_rate),
+            'roi': float(roi),
+            'profit': float(profit),
         }
     }
 
     with open(report_file, 'w') as f:
-        json.dump(report, f, indent=2)
+        json.dump(report, f, indent=2, default=str)
 
-    print(f"📄 Full report saved to: {report_file}")
-    print()
+    print(f"\nReport saved to: {report_file}")
 
 
 if __name__ == '__main__':
-    run_prop_backtest()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Backtest props for a week")
+    parser.add_argument("--week", type=int, default=10, help="Week to backtest")
+    parser.add_argument("--season", type=int, default=2024, help="Season")
+
+    args = parser.parse_args()
+
+    run_prop_backtest(week=args.week, season=args.season)

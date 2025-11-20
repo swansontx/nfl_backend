@@ -159,25 +159,15 @@ class WeeksBacktester:
 
         return player_week.iloc[0].get(stat_col, None)
 
-    def generate_betting_line(self, projection: float, prop_type: str) -> float:
-        """Generate a simulated betting line based on projection.
+    def get_default_line(self, prop_type: str, projection: float) -> Optional[float]:
+        """Get a default line based on prop type when no historical data exists.
 
-        NOTE: This is a fallback. Prefer loading real historical lines from
-        outputs/backtest_props_*.json when available.
+        Returns None if we should skip this prop due to lack of real data.
+        Only used for props where we have strong priors about typical lines.
         """
-        # Add some noise to simulate Vegas inefficiency
-        variance = projection * 0.05  # 5% variance
-        noise = np.random.uniform(-variance, variance)
-
-        # Round to common betting increments
-        if prop_type in ['passing_yards']:
-            line = round((projection + noise) / 5) * 5  # Round to nearest 5
-        elif prop_type in ['rushing_yards', 'receiving_yards']:
-            line = round((projection + noise) / 2.5) * 2.5  # Round to nearest 2.5
-        else:
-            line = round(projection + noise, 1)
-
-        return line
+        # For backtesting, we REQUIRE real historical lines
+        # Return None to indicate this prop should be skipped
+        return None
 
     def load_historical_props(self, week: int) -> Dict:
         """Load real historical props data if available.
@@ -318,13 +308,14 @@ class WeeksBacktester:
                 if actual is None:
                     continue  # Player didn't play
 
-                # Try to get real historical line first
+                # Get real historical line - skip if not available
                 prop_key = (player_name, prop_type)
                 if prop_key in historical_props:
                     line = historical_props[prop_key]
                 else:
-                    # Fallback to simulated line
-                    line = self.generate_betting_line(projection, prop_type)
+                    # No real line available - skip this prop
+                    # We don't use simulated lines for backtesting
+                    continue
 
                 # Calculate prediction accuracy
                 error = projection - actual
