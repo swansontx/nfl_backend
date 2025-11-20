@@ -241,6 +241,109 @@ class DataRefreshManager:
         self.inputs_dir = settings.inputs_dir
         self.last_refresh: Dict[str, datetime] = {}
         self.refresh_in_progress: Dict[str, bool] = {}
+        self._ensure_timestamps_table()
+        self._load_timestamps()
+
+    def _ensure_timestamps_table(self):
+        """Create refresh_timestamps table if it doesn't exist."""
+        from backend.database.local_db import get_db
+
+        try:
+            with get_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS refresh_timestamps (
+                        data_type TEXT PRIMARY KEY,
+                        last_refresh TEXT,
+                        record_count INTEGER DEFAULT 0
+                    )
+                """)
+                logger.info("Refresh timestamps table ensured")
+        except Exception as e:
+            logger.warning(f"Could not create timestamps table: {e}")
+
+    def _load_timestamps(self):
+        """Load last refresh timestamps from SQLite."""
+        from backend.database.local_db import get_db
+
+        try:
+            with get_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT data_type, last_refresh FROM refresh_timestamps")
+                rows = cursor.fetchall()
+
+                for data_type, last_refresh_str in rows:
+                    if last_refresh_str:
+                        try:
+                            self.last_refresh[data_type] = datetime.fromisoformat(last_refresh_str)
+                        except:
+                            pass
+
+                if self.last_refresh:
+                    logger.info(f"Loaded {len(self.last_refresh)} refresh timestamps from database")
+        except Exception as e:
+            logger.warning(f"Could not load timestamps: {e}")
+
+    def _save_timestamp(self, data_type: str, count: int = 0):
+        """Save refresh timestamp to SQLite."""
+        from backend.database.local_db import get_db
+
+        try:
+            with get_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT OR REPLACE INTO refresh_timestamps (data_type, last_refresh, record_count)
+                    VALUES (?, ?, ?)
+                """, (data_type, datetime.now().isoformat(), count))
+        except Exception as e:
+            logger.warning(f"Could not save timestamp for {data_type}: {e}")
+
+    def _has_data(self, data_type: str, season: int = None) -> bool:
+        """Check if data already exists in SQLite tables for current season.
+
+        Args:
+            data_type: Type of data to check
+            season: Season to check for (defaults to current season)
+        """
+        from backend.database.local_db import get_db
+
+        if season is None:
+            now = datetime.now()
+            season = now.year if now.month >= 9 else now.year - 1
+
+        table_map = {
+            'injuries': ('injuries', 'season'),
+            'schedules': ('schedules', 'season'),
+            'player_stats': ('player_stats', 'season'),
+            'team_stats': ('team_stats', 'season'),
+            'rosters': ('rosters', 'season'),
+            'play_by_play': ('play_by_play', 'season'),
+            'odds': ('odds_snapshots', 'season'),
+            'snap_counts': ('snap_counts', 'season'),
+            'ftn_charting': ('ftn_charting', 'season'),
+            'pfr_advanced': ('pfr_advanced', 'season')
+        }
+
+        table_info = table_map.get(data_type)
+        if not table_info:
+            return False
+
+        table_name, season_col = table_info
+
+        try:
+            with get_db() as conn:
+                cursor = conn.cursor()
+                # Check for data in current season
+                cursor.execute(f"SELECT COUNT(*) FROM {table_name} WHERE {season_col} = ?", (season,))
+                count = cursor.fetchone()[0]
+
+                if count > 0:
+                    logger.info(f"{data_type}: Found {count} records for {season} season")
+                    return True
+                return False
+        except Exception as e:
+            logger.debug(f"Could not check {data_type}: {e}")
+            return False
 
     def is_stale(self, data_type: str) -> bool:
         """Check if data type is stale and needs refresh.
@@ -249,16 +352,31 @@ class DataRefreshManager:
             data_type: Type of data to check
 
         Returns:
-            True if data is stale or never refreshed
+            True if data is stale, missing, or never refreshed
         """
+        # First check if data exists at all for current season
+        if not self._has_data(data_type):
+            logger.info(f"{data_type}: No data found for current season, needs refresh")
+            return True
+
+        # Check timestamp
         last = self.last_refresh.get(data_type)
         if not last:
-            return True
+            # Data exists but no timestamp - set timestamp and skip refresh
+            logger.info(f"{data_type}: Data exists but no timestamp, marking as fresh")
+            self._save_timestamp(data_type, 0)
+            self.last_refresh[data_type] = datetime.now()
+            return False
 
         threshold_hours = STALENESS_THRESHOLDS.get(data_type, 24)
         age_hours = (datetime.now() - last).total_seconds() / 3600
 
-        return age_hours > threshold_hours
+        if age_hours > threshold_hours:
+            logger.info(f"{data_type}: Data is {age_hours:.1f}h old (threshold: {threshold_hours}h), needs refresh")
+            return True
+
+        logger.info(f"{data_type}: Data is fresh ({age_hours:.1f}h old), skipping")
+        return False
 
     async def refresh_all(self, force: bool = False) -> Dict:
         """Refresh all data sources with smart staleness checking.
@@ -397,6 +515,7 @@ class DataRefreshManager:
             count = OddsRepository.insert_snapshot(all_props, week, season)
 
             self.last_refresh['odds'] = datetime.now()
+            self._save_timestamp('odds', count)
 
             return {
                 'status': 'success',
@@ -460,6 +579,7 @@ class DataRefreshManager:
             count = InjuriesRepository.insert_injuries(all_injuries, week, season)
 
             self.last_refresh['injuries'] = datetime.now()
+            self._save_timestamp('injuries', count)
 
             return {
                 'status': 'success',
@@ -528,6 +648,7 @@ class DataRefreshManager:
             count = SchedulesRepository.upsert_schedules(all_schedules)
 
             self.last_refresh['schedules'] = datetime.now()
+            self._save_timestamp('schedules', count)
 
             return {
                 'status': 'success',
@@ -590,6 +711,7 @@ class DataRefreshManager:
             count = PlayerStatsRepository.upsert_player_stats(all_stats)
 
             self.last_refresh['player_stats'] = datetime.now()
+            self._save_timestamp('player_stats', count)
 
             return {
                 'status': 'success',
@@ -653,6 +775,7 @@ class DataRefreshManager:
             count = TeamStatsRepository.upsert_team_stats(all_stats)
 
             self.last_refresh['team_stats'] = datetime.now()
+            self._save_timestamp('team_stats', count)
 
             return {
                 'status': 'success',
@@ -716,6 +839,7 @@ class DataRefreshManager:
             count = RostersRepository.upsert_rosters(all_rosters)
 
             self.last_refresh['rosters'] = datetime.now()
+            self._save_timestamp('rosters', count)
 
             return {
                 'status': 'success',
@@ -869,6 +993,7 @@ class DataRefreshManager:
                     logger.warning(f"Error reading PBP file {file}: {e}")
 
             self.last_refresh['play_by_play'] = datetime.now()
+            self._save_timestamp('play_by_play', total_plays)
 
             return {
                 'status': 'success',
@@ -950,6 +1075,7 @@ class DataRefreshManager:
                     logger.warning(f"Error reading snap counts file {file}: {e}")
 
             self.last_refresh['snap_counts'] = datetime.now()
+            self._save_timestamp('snap_counts', total_records)
 
             return {
                 'status': 'success',
@@ -1029,6 +1155,7 @@ class DataRefreshManager:
                     logger.warning(f"Error reading FTN charting file {file}: {e}")
 
             self.last_refresh['ftn_charting'] = datetime.now()
+            self._save_timestamp('ftn_charting', total_records)
 
             return {
                 'status': 'success',
@@ -1131,6 +1258,7 @@ class DataRefreshManager:
                     logger.warning(f"Error reading PFR file {file}: {e}")
 
             self.last_refresh['pfr_advanced'] = datetime.now()
+            self._save_timestamp('pfr_advanced', total_records)
 
             return {
                 'status': 'success',
