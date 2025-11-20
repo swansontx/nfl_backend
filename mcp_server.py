@@ -117,6 +117,24 @@ async def list_tools():
             }
         ),
         Tool(
+            name="get_weather_impact",
+            description="Get weather forecast with prop impact analysis for a game. Uses Open-Meteo (FREE). Shows temperature, wind, precipitation and their expected impact on passing, rushing, kicking props and game totals. Essential for outdoor games!",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "game_id": {
+                        "type": "string",
+                        "description": "Game ID in format {season}_{week}_{away}_{home} (e.g., 2025_12_KC_BUF)"
+                    },
+                    "game_time": {
+                        "type": "string",
+                        "description": "Game time in ISO format (e.g., 2025-11-24T13:00:00). Optional - uses current time if not provided."
+                    }
+                },
+                "required": ["game_id"]
+            }
+        ),
+        Tool(
             name="auto_refresh",
             description="Automatically refresh only stale data sources. Smart refresh that skips fresh data.",
             inputSchema={
@@ -801,6 +819,18 @@ async def call_tool(name: str, arguments: dict):
 
             elif name == "check_data_freshness":
                 response = await client.get(f"{API_BASE}/refresh/check")
+
+            elif name == "get_weather_impact":
+                game_id = arguments.get("game_id")
+                game_time = arguments.get("game_time")
+                # Call local API endpoint for weather
+                params = {"game_id": game_id}
+                if game_time:
+                    params["game_time"] = game_time
+                response = await client.get(
+                    f"{API_BASE}/weather/impact",
+                    params=params
+                )
 
             elif name == "auto_refresh":
                 week = arguments.get("week", 12)

@@ -76,88 +76,138 @@ class PropLineFetcher:
         self.sport = "americanfootball_nfl"
 
         # Prop markets to fetch (comprehensive list from Odds API)
-        # All prop markets we want to fetch
+        # All prop markets we want to fetch - 80+ markets
         # We'll dynamically check which are available per event
         self.prop_markets = [
-            # FULL GAME - Passing props
+            # FULL GAME - Passing props (8)
             'player_pass_yds',
             'player_pass_tds',
             'player_pass_completions',
             'player_pass_attempts',
             'player_pass_interceptions',
             'player_pass_longest_completion',
+            'player_passer_rating',
+            'player_pass_first_downs',
 
-            # FULL GAME - Rushing props
+            # FULL GAME - Rushing props (6)
             'player_rush_yds',
             'player_rush_tds',
             'player_rush_attempts',
             'player_rush_longest',
+            'player_rush_first_downs',
+            'player_rush_yds_longest',
 
-            # FULL GAME - Receiving props
+            # FULL GAME - Receiving props (7)
             'player_receptions',
             'player_reception_yds',
             'player_reception_tds',
             'player_reception_longest',
+            'player_targets',
+            'player_rec_first_downs',
+            'player_reception_yds_longest',
 
-            # FULL GAME - Kicking props
+            # FULL GAME - Kicking props (5)
             'player_kicking_points',
             'player_field_goals',
             'player_field_goals_made',
+            'player_extra_points_made',
+            'player_longest_field_goal',
 
-            # FULL GAME - Touchdown props
+            # FULL GAME - Touchdown props (8)
             'player_anytime_td',
             'player_first_td',
             'player_last_td',
+            'player_2_plus_tds',
+            'player_3_plus_tds',
             '1st_td_scorer',
             'last_td_scorer',
+            'player_anytime_td_scorer',
 
-            # FULL GAME - Defensive props
+            # FULL GAME - Defensive props (12)
             'player_tackles_assists',
+            'player_solo_tackles',
             'player_sacks',
             'player_interceptions',
+            'player_def_tds',
+            'player_forced_fumbles',
+            'player_fumble_recoveries',
+            'player_passes_defended',
+            'player_qb_hits',
+            'player_tackles_for_loss',
+            'player_blocked_kicks',
+            'player_safeties',
 
-            # FULL GAME - Combo props
+            # FULL GAME - Combo props (8)
             'player_pass_rush_yds',
             'player_pass_tds_rush_tds',
             'player_receptions_rush_yds',
             'player_rush_reception_yds',
+            'player_rush_rec_tds',
+            'player_rush_rec_yds',
+            'player_pass_rush_tds',
+            'player_total_tds',
 
-            # FIRST HALF (1H) props
+            # FULL GAME - Turnover props (4)
+            'player_turnovers',
+            'player_fumbles',
+            'player_fumbles_lost',
+            'player_ints_thrown',
+
+            # FIRST HALF (1H) props (12)
             'player_1h_pass_yds',
             'player_1h_pass_tds',
             'player_1h_pass_completions',
+            'player_1h_pass_attempts',
             'player_1h_rush_yds',
             'player_1h_rush_tds',
+            'player_1h_rush_attempts',
             'player_1h_receptions',
             'player_1h_reception_yds',
+            'player_1h_reception_tds',
             'player_1h_anytime_td',
+            'player_1h_tackles_assists',
 
-            # FIRST QUARTER (1Q) props
+            # FIRST QUARTER (1Q) props (12)
             'player_1q_pass_yds',
             'player_1q_pass_tds',
             'player_1q_pass_completions',
+            'player_1q_pass_attempts',
             'player_1q_rush_yds',
             'player_1q_rush_tds',
+            'player_1q_rush_attempts',
             'player_1q_receptions',
             'player_1q_reception_yds',
+            'player_1q_reception_tds',
             'player_1q_anytime_td',
+            'player_1q_tackles_assists',
 
-            # SECOND HALF (2H) props
+            # SECOND HALF (2H) props (10)
             'player_2h_pass_yds',
             'player_2h_pass_tds',
+            'player_2h_pass_completions',
             'player_2h_rush_yds',
+            'player_2h_rush_tds',
             'player_2h_receptions',
             'player_2h_reception_yds',
+            'player_2h_reception_tds',
+            'player_2h_anytime_td',
+            'player_2h_tackles_assists',
 
-            # THIRD QUARTER (3Q) props
+            # THIRD QUARTER (3Q) props (6)
             'player_3q_pass_yds',
+            'player_3q_pass_tds',
             'player_3q_rush_yds',
+            'player_3q_rush_tds',
             'player_3q_reception_yds',
+            'player_3q_anytime_td',
 
-            # FOURTH QUARTER (4Q) props
+            # FOURTH QUARTER (4Q) props (6)
             'player_4q_pass_yds',
+            'player_4q_pass_tds',
             'player_4q_rush_yds',
-            'player_4q_reception_yds'
+            'player_4q_rush_tds',
+            'player_4q_reception_yds',
+            'player_4q_anytime_td'
         ]
 
         # Sportsbooks to track

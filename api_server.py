@@ -31,6 +31,9 @@ from backend.database.local_db import (
 from backend.ingestion.fetch_prop_lines import PropLineFetcher
 from backend.ingestion.fetch_injuries import InjuryFetcher
 
+# Import external APIs
+from backend.api.external_apis import open_meteo_api
+
 # Project root
 PROJECT_ROOT = Path(__file__).parent
 
@@ -82,6 +85,85 @@ async def root():
 async def health():
     """Health check."""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+
+# ============ WEATHER ENDPOINTS ============
+
+@app.get("/weather/impact")
+async def get_weather_impact(
+    game_id: str = Query(..., description="Game ID in format {season}_{week}_{away}_{home}"),
+    game_time: Optional[str] = Query(None, description="Game time in ISO format")
+):
+    """Get weather forecast with prop impact analysis for a game.
+
+    Uses Open-Meteo (FREE, no API key needed) to get:
+    - Temperature, wind, precipitation forecast
+    - Impact analysis on passing, rushing, kicking props
+    - Expected total points adjustment
+    - Notes on weather conditions
+
+    Essential for outdoor games - skip for dome games.
+    """
+    try:
+        weather = open_meteo_api.get_weather_for_game(game_id, game_time)
+
+        return {
+            "game_id": game_id,
+            "weather": weather,
+            "betting_notes": _generate_weather_betting_notes(weather),
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching weather: {str(e)}")
+
+
+def _generate_weather_betting_notes(weather: dict) -> list:
+    """Generate betting notes based on weather conditions."""
+    notes = []
+    impact = weather.get('weather_impact', {})
+
+    # Dome check
+    if weather.get('is_dome'):
+        notes.append("Indoor dome - weather is not a factor")
+        return notes
+
+    # Wind notes
+    wind = weather.get('wind_speed', 0)
+    gusts = weather.get('wind_gusts', 0)
+    if gusts >= 30 or wind >= 20:
+        notes.append(f"HIGH WIND ALERT: {wind} mph (gusts {gusts}) - AVOID long FGs and deep passing props")
+        notes.append("Consider UNDER on passing yards props")
+        notes.append("QB interceptions may increase")
+    elif gusts >= 20 or wind >= 15:
+        notes.append(f"Moderate winds ({wind} mph) may affect 45+ yard FGs")
+
+    # Precipitation notes
+    precip_chance = weather.get('precipitation_chance', 0)
+    precip_mm = weather.get('precipitation_mm', 0)
+    if precip_chance >= 60 or precip_mm >= 2:
+        notes.append(f"Rain/Snow likely ({precip_chance}%) - rushing props may have value")
+        notes.append("Completion percentage will likely decrease")
+
+    # Temperature notes
+    temp = weather.get('temperature', 70)
+    if temp <= 32:
+        notes.append(f"Freezing conditions ({temp}F) - ball handling issues possible")
+        notes.append("Consider UNDER on game total")
+    elif temp >= 90:
+        notes.append(f"Hot weather ({temp}F) - fatigue factor in 4th quarter")
+
+    # Total points adjustment
+    total_adj = impact.get('total_adjustment', 0)
+    if total_adj <= -2:
+        notes.append(f"Weather suggests {abs(total_adj):.1f} fewer points than expected - lean UNDER")
+    elif total_adj >= 1:
+        notes.append(f"Favorable conditions may add {total_adj:.1f} points")
+
+    if not notes:
+        notes.append("Weather conditions are favorable - no significant impact expected")
+
+    return notes
 
 
 # ============ FETCH ENDPOINTS (append to DB) ============
