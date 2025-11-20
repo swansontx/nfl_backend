@@ -88,7 +88,7 @@ class WeeksBacktester:
                     model_name = model_file.stem
                     models[model_name] = joblib.load(model_file)
                 except Exception as e:
-                    pass  # Skip models that can't be loaded
+                    print(f"  Warning: Failed to load {model_file.name}: {e}")
         print(f"Loaded {len(models)} models")
         return models
 

@@ -164,7 +164,9 @@ def train_usage_model(
 
     train_rmse = np.sqrt(np.mean((train_pred - y_train) ** 2))
     val_rmse = np.sqrt(np.mean((val_pred - y_val) ** 2))
-    val_r2 = 1 - (np.sum((y_val - val_pred) ** 2) / np.sum((y_val - np.mean(y_val)) ** 2))
+    # Guard against division by zero when y_val has no variance
+    ss_tot = np.sum((y_val - np.mean(y_val)) ** 2)
+    val_r2 = 1 - (np.sum((y_val - val_pred) ** 2) / max(ss_tot, 1e-10))
 
     print(f"\n✓ Train RMSE: {train_rmse:.2f}")
     print(f"✓ Val RMSE: {val_rmse:.2f}")
@@ -319,7 +321,9 @@ def train_efficiency_model(
     # Evaluate
     val_pred = model.predict(X_val)
     val_rmse = np.sqrt(np.mean((val_pred - y_val) ** 2))
-    val_r2 = 1 - (np.sum((y_val - val_pred) ** 2) / np.sum((y_val - np.mean(y_val)) ** 2))
+    # Guard against division by zero when y_val has no variance
+    ss_tot = np.sum((y_val - np.mean(y_val)) ** 2)
+    val_r2 = 1 - (np.sum((y_val - val_pred) ** 2) / max(ss_tot, 1e-10))
 
     print(f"\n✓ Val RMSE: {val_rmse:.2f}")
     print(f"✓ Val R²: {val_r2:.3f}")

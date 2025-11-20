@@ -465,9 +465,14 @@ class PicksPipeline:
 
         prop_type = prop_type_map.get(market_key, market_key.replace('player_', ''))
 
+        # Validate player name
+        if not player_name or not player_name.strip():
+            return None
+
         # Find player in features
+        first_name = player_name.split()[0] if player_name.split() else player_name
         player_df = player_features[
-            player_features['player_display_name'].str.contains(player_name.split()[0], case=False, na=False)
+            player_features['player_display_name'].str.contains(first_name, case=False, na=False)
         ]
 
         if len(player_df) == 0:
@@ -633,6 +638,10 @@ class PicksPipeline:
             else:
                 dec = 1 + (100 / abs(leg.odds))
             decimal_odds *= dec
+
+        # Guard against division by zero
+        if decimal_odds <= 1.0:
+            return None  # Invalid odds
 
         if decimal_odds >= 2.0:
             combined_odds = int((decimal_odds - 1) * 100)
