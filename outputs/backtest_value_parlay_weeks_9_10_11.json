@@ -1,0 +1,1169 @@
+{
+  "backtest_info": {
+    "season": 2024,
+    "weeks": [
+      9,
+      10,
+      11
+    ],
+    "strategy": "value_optimized",
+    "max_odds": -400
+  },
+  "base_rates": {
+    "passing_yards": {
+      "over": 51.4,
+      "under": 48.6,
+      "sample": 146
+    },
+    "passing_tds": {
+      "over": 43.6,
+      "under": 48.9,
+      "sample": 133
+    },
+    "rushing_yards": {
+      "over": 37.5,
+      "under": 62.5,
+      "sample": 347
+    },
+    "rushing_tds": {
+      "over": 23.6,
+      "under": 73.9,
+      "sample": 165
+    },
+    "receiving_yards": {
+      "over": 42.0,
+      "under": 57.7,
+      "sample": 1124
+    },
+    "receptions": {
+      "over": 41.6,
+      "under": 52.7,
+      "sample": 1130
+    },
+    "receiving_tds": {
+      "over": 20.1,
+      "under": 79.7,
+      "sample": 399
+    },
+    "completions": {
+      "over": 55.5,
+      "under": 40.4,
+      "sample": 146
+    },
+    "attempts": {
+      "over": 54.8,
+      "under": 41.8,
+      "sample": 146
+    },
+    "interceptions": {
+      "over": 34.2,
+      "under": 60.8,
+      "sample": 120
+    },
+    "carries": {
+      "over": 37.6,
+      "under": 60.1,
+      "sample": 351
+    },
+    "targets": {
+      "over": 44.3,
+      "under": 50.4,
+      "sample": 831
+    }
+  },
+  "value_strategies": [
+    {
+      "prop_type": "passing_yards",
+      "direction": "OVER",
+      "buffer": 10,
+      "hit_rate": 57.5,
+      "odds": -140,
+      "ev": -1.4,
+      "description": "passing_yards OVER (proj - 10)",
+      "sample": 146
+    },
+    {
+      "prop_type": "passing_yards",
+      "direction": "UNDER",
+      "buffer": 10,
+      "hit_rate": 55.5,
+      "odds": -140,
+      "ev": -4.9,
+      "description": "passing_yards UNDER (proj + 10)",
+      "sample": 146
+    },
+    {
+      "prop_type": "passing_yards",
+      "direction": "OVER",
+      "buffer": 15,
+      "hit_rate": 61.0,
+      "odds": -140,
+      "ev": 4.5,
+      "description": "passing_yards OVER (proj - 15)",
+      "sample": 146
+    },
+    {
+      "prop_type": "passing_yards",
+      "direction": "UNDER",
+      "buffer": 15,
+      "hit_rate": 58.9,
+      "odds": -165,
+      "ev": -5.4,
+      "description": "passing_yards UNDER (proj + 15)",
+      "sample": 146
+    },
+    {
+      "prop_type": "passing_yards",
+      "direction": "OVER",
+      "buffer": 20,
+      "hit_rate": 61.6,
+      "odds": -165,
+      "ev": -1.0,
+      "description": "passing_yards OVER (proj - 20)",
+      "sample": 146
+    },
+    {
+      "prop_type": "passing_yards",
+      "direction": "UNDER",
+      "buffer": 20,
+      "hit_rate": 61.0,
+      "odds": -165,
+      "ev": -2.1,
+      "description": "passing_yards UNDER (proj + 20)",
+      "sample": 146
+    },
+    {
+      "prop_type": "passing_yards",
+      "direction": "OVER",
+      "buffer": 25,
+      "hit_rate": 63.0,
+      "odds": -165,
+      "ev": 1.2,
+      "description": "passing_yards OVER (proj - 25)",
+      "sample": 146
+    },
+    {
+      "prop_type": "passing_yards",
+      "direction": "UNDER",
+      "buffer": 25,
+      "hit_rate": 63.0,
+      "odds": -165,
+      "ev": 1.2,
+      "description": "passing_yards UNDER (proj + 25)",
+      "sample": 146
+    },
+    {
+      "prop_type": "passing_yards",
+      "direction": "OVER",
+      "buffer": 30,
+      "hit_rate": 66.4,
+      "odds": -200,
+      "ev": -0.3,
+      "description": "passing_yards OVER (proj - 30)",
+      "sample": 146
+    },
+    {
+      "prop_type": "passing_yards",
+      "direction": "UNDER",
+      "buffer": 30,
+      "hit_rate": 65.8,
+      "odds": -200,
+      "ev": -1.4,
+      "description": "passing_yards UNDER (proj + 30)",
+      "sample": 146
+    },
+    {
+      "prop_type": "passing_tds",
+      "direction": "OVER",
+      "buffer": 0.5,
+      "hit_rate": 62.4,
+      "odds": -200,
+      "ev": -6.4,
+      "description": "passing_tds OVER (proj - 0.5)",
+      "sample": 133
+    },
+    {
+      "prop_type": "passing_tds",
+      "direction": "UNDER",
+      "buffer": 0.5,
+      "hit_rate": 63.2,
+      "odds": -165,
+      "ev": 1.4,
+      "description": "passing_tds UNDER (proj + 0.5)",
+      "sample": 133
+    },
+    {
+      "prop_type": "rushing_yards",
+      "direction": "OVER",
+      "buffer": 5,
+      "hit_rate": 53.0,
+      "odds": -200,
+      "ev": -20.5,
+      "description": "rushing_yards OVER (proj - 5)",
+      "sample": 347
+    },
+    {
+      "prop_type": "rushing_yards",
+      "direction": "UNDER",
+      "buffer": 5,
+      "hit_rate": 70.9,
+      "odds": -140,
+      "ev": 21.5,
+      "description": "rushing_yards UNDER (proj + 5)",
+      "sample": 347
+    },
+    {
+      "prop_type": "rushing_yards",
+      "direction": "OVER",
+      "buffer": 7.5,
+      "hit_rate": 57.3,
+      "odds": -200,
+      "ev": -14.0,
+      "description": "rushing_yards OVER (proj - 7.5)",
+      "sample": 347
+    },
+    {
+      "prop_type": "rushing_yards",
+      "direction": "UNDER",
+      "buffer": 7.5,
+      "hit_rate": 74.4,
+      "odds": -165,
+      "ev": 19.4,
+      "description": "rushing_yards UNDER (proj + 7.5)",
+      "sample": 347
+    },
+    {
+      "prop_type": "rushing_yards",
+      "direction": "OVER",
+      "buffer": 10,
+      "hit_rate": 64.6,
+      "odds": -300,
+      "ev": -13.9,
+      "description": "rushing_yards OVER (proj - 10)",
+      "sample": 347
+    },
+    {
+      "prop_type": "rushing_yards",
+      "direction": "UNDER",
+      "buffer": 10,
+      "hit_rate": 77.8,
+      "odds": -200,
+      "ev": 16.7,
+      "description": "rushing_yards UNDER (proj + 10)",
+      "sample": 347
+    },
+    {
+      "prop_type": "rushing_yards",
+      "direction": "OVER",
+      "buffer": 12.5,
+      "hit_rate": 70.6,
+      "odds": -350,
+      "ev": -9.2,
+      "description": "rushing_yards OVER (proj - 12.5)",
+      "sample": 347
+    },
+    {
+      "prop_type": "rushing_yards",
+      "direction": "UNDER",
+      "buffer": 12.5,
+      "hit_rate": 79.0,
+      "odds": -200,
+      "ev": 18.4,
+      "description": "rushing_yards UNDER (proj + 12.5)",
+      "sample": 347
+    },
+    {
+      "prop_type": "rushing_yards",
+      "direction": "OVER",
+      "buffer": 15,
+      "hit_rate": 74.4,
+      "odds": -400,
+      "ev": -7.1,
+      "description": "rushing_yards OVER (proj - 15)",
+      "sample": 347
+    },
+    {
+      "prop_type": "rushing_yards",
+      "direction": "UNDER",
+      "buffer": 15,
+      "hit_rate": 81.0,
+      "odds": -200,
+      "ev": 21.5,
+      "description": "rushing_yards UNDER (proj + 15)",
+      "sample": 347
+    },
+    {
+      "prop_type": "rushing_tds",
+      "direction": "OVER",
+      "buffer": 0.5,
+      "hit_rate": 63.6,
+      "odds": -400,
+      "ev": -20.5,
+      "description": "rushing_tds OVER (proj - 0.5)",
+      "sample": 165
+    },
+    {
+      "prop_type": "rushing_tds",
+      "direction": "UNDER",
+      "buffer": 0.5,
+      "hit_rate": 79.4,
+      "odds": -140,
+      "ev": 36.1,
+      "description": "rushing_tds UNDER (proj + 0.5)",
+      "sample": 165
+    },
+    {
+      "prop_type": "receiving_yards",
+      "direction": "OVER",
+      "buffer": 5,
+      "hit_rate": 57.0,
+      "odds": -200,
+      "ev": -14.5,
+      "description": "receiving_yards OVER (proj - 5)",
+      "sample": 1124
+    },
+    {
+      "prop_type": "receiving_yards",
+      "direction": "UNDER",
+      "buffer": 5,
+      "hit_rate": 65.7,
+      "odds": -140,
+      "ev": 12.6,
+      "description": "receiving_yards UNDER (proj + 5)",
+      "sample": 1124
+    },
+    {
+      "prop_type": "receiving_yards",
+      "direction": "OVER",
+      "buffer": 7.5,
+      "hit_rate": 62.8,
+      "odds": -250,
+      "ev": -12.1,
+      "description": "receiving_yards OVER (proj - 7.5)",
+      "sample": 1124
+    },
+    {
+      "prop_type": "receiving_yards",
+      "direction": "UNDER",
+      "buffer": 7.5,
+      "hit_rate": 70.9,
+      "odds": -165,
+      "ev": 13.9,
+      "description": "receiving_yards UNDER (proj + 7.5)",
+      "sample": 1124
+    },
+    {
+      "prop_type": "receiving_yards",
+      "direction": "OVER",
+      "buffer": 10,
+      "hit_rate": 68.2,
+      "odds": -300,
+      "ev": -9.0,
+      "description": "receiving_yards OVER (proj - 10)",
+      "sample": 1124
+    },
+    {
+      "prop_type": "receiving_yards",
+      "direction": "UNDER",
+      "buffer": 10,
+      "hit_rate": 73.9,
+      "odds": -200,
+      "ev": 10.9,
+      "description": "receiving_yards UNDER (proj + 10)",
+      "sample": 1124
+    },
+    {
+      "prop_type": "receiving_yards",
+      "direction": "OVER",
+      "buffer": 12.5,
+      "hit_rate": 73.3,
+      "odds": -350,
+      "ev": -5.7,
+      "description": "receiving_yards OVER (proj - 12.5)",
+      "sample": 1124
+    },
+    {
+      "prop_type": "receiving_yards",
+      "direction": "UNDER",
+      "buffer": 12.5,
+      "hit_rate": 77.0,
+      "odds": -200,
+      "ev": 15.6,
+      "description": "receiving_yards UNDER (proj + 12.5)",
+      "sample": 1124
+    },
+    {
+      "prop_type": "receiving_yards",
+      "direction": "OVER",
+      "buffer": 15,
+      "hit_rate": 77.1,
+      "odds": -400,
+      "ev": -3.6,
+      "description": "receiving_yards OVER (proj - 15)",
+      "sample": 1124
+    },
+    {
+      "prop_type": "receiving_yards",
+      "direction": "UNDER",
+      "buffer": 15,
+      "hit_rate": 78.8,
+      "odds": -250,
+      "ev": 10.4,
+      "description": "receiving_yards UNDER (proj + 15)",
+      "sample": 1124
+    },
+    {
+      "prop_type": "receptions",
+      "direction": "OVER",
+      "buffer": 0.5,
+      "hit_rate": 57.4,
+      "odds": -200,
+      "ev": -13.8,
+      "description": "receptions OVER (proj - 0.5)",
+      "sample": 1130
+    },
+    {
+      "prop_type": "receptions",
+      "direction": "UNDER",
+      "buffer": 0.5,
+      "hit_rate": 63.8,
+      "odds": -165,
+      "ev": 2.5,
+      "description": "receptions UNDER (proj + 0.5)",
+      "sample": 1130
+    },
+    {
+      "prop_type": "receptions",
+      "direction": "OVER",
+      "buffer": 1,
+      "hit_rate": 72.2,
+      "odds": -350,
+      "ev": -7.2,
+      "description": "receptions OVER (proj - 1)",
+      "sample": 1130
+    },
+    {
+      "prop_type": "receptions",
+      "direction": "UNDER",
+      "buffer": 1,
+      "hit_rate": 76.8,
+      "odds": -250,
+      "ev": 7.5,
+      "description": "receptions UNDER (proj + 1)",
+      "sample": 1130
+    },
+    {
+      "prop_type": "receptions",
+      "direction": "OVER",
+      "buffer": 1.5,
+      "hit_rate": 82.9,
+      "odds": -400,
+      "ev": 3.7,
+      "description": "receptions OVER (proj - 1.5)",
+      "sample": 1130
+    },
+    {
+      "prop_type": "receptions",
+      "direction": "UNDER",
+      "buffer": 1.5,
+      "hit_rate": 81.6,
+      "odds": -300,
+      "ev": 8.8,
+      "description": "receptions UNDER (proj + 1.5)",
+      "sample": 1130
+    },
+    {
+      "prop_type": "receptions",
+      "direction": "OVER",
+      "buffer": 2,
+      "hit_rate": 90.3,
+      "odds": -400,
+      "ev": 12.8,
+      "description": "receptions OVER (proj - 2)",
+      "sample": 1130
+    },
+    {
+      "prop_type": "receptions",
+      "direction": "UNDER",
+      "buffer": 2,
+      "hit_rate": 85.9,
+      "odds": -350,
+      "ev": 10.5,
+      "description": "receptions UNDER (proj + 2)",
+      "sample": 1130
+    },
+    {
+      "prop_type": "receiving_tds",
+      "direction": "OVER",
+      "buffer": 0.5,
+      "hit_rate": 66.2,
+      "odds": -400,
+      "ev": -17.3,
+      "description": "receiving_tds OVER (proj - 0.5)",
+      "sample": 399
+    },
+    {
+      "prop_type": "receiving_tds",
+      "direction": "UNDER",
+      "buffer": 0.5,
+      "hit_rate": 82.2,
+      "odds": -120,
+      "ev": 50.7,
+      "description": "receiving_tds UNDER (proj + 0.5)",
+      "sample": 399
+    },
+    {
+      "prop_type": "completions",
+      "direction": "OVER",
+      "buffer": 1,
+      "hit_rate": 67.1,
+      "odds": -165,
+      "ev": 7.8,
+      "description": "completions OVER (proj - 1)",
+      "sample": 146
+    },
+    {
+      "prop_type": "completions",
+      "direction": "UNDER",
+      "buffer": 1,
+      "hit_rate": 47.9,
+      "odds": -140,
+      "ev": -17.8,
+      "description": "completions UNDER (proj + 1)",
+      "sample": 146
+    },
+    {
+      "prop_type": "completions",
+      "direction": "OVER",
+      "buffer": 2,
+      "hit_rate": 68.5,
+      "odds": -165,
+      "ev": 10.0,
+      "description": "completions OVER (proj - 2)",
+      "sample": 146
+    },
+    {
+      "prop_type": "completions",
+      "direction": "UNDER",
+      "buffer": 2,
+      "hit_rate": 62.3,
+      "odds": -250,
+      "ev": -12.7,
+      "description": "completions UNDER (proj + 2)",
+      "sample": 146
+    },
+    {
+      "prop_type": "completions",
+      "direction": "OVER",
+      "buffer": 3,
+      "hit_rate": 74.0,
+      "odds": -200,
+      "ev": 11.0,
+      "description": "completions OVER (proj - 3)",
+      "sample": 146
+    },
+    {
+      "prop_type": "completions",
+      "direction": "UNDER",
+      "buffer": 3,
+      "hit_rate": 67.8,
+      "odds": -300,
+      "ev": -9.6,
+      "description": "completions UNDER (proj + 3)",
+      "sample": 146
+    },
+    {
+      "prop_type": "attempts",
+      "direction": "OVER",
+      "buffer": 1,
+      "hit_rate": 61.0,
+      "odds": -140,
+      "ev": 4.5,
+      "description": "attempts OVER (proj - 1)",
+      "sample": 146
+    },
+    {
+      "prop_type": "attempts",
+      "direction": "UNDER",
+      "buffer": 1,
+      "hit_rate": 47.3,
+      "odds": -140,
+      "ev": -19.0,
+      "description": "attempts UNDER (proj + 1)",
+      "sample": 146
+    },
+    {
+      "prop_type": "attempts",
+      "direction": "OVER",
+      "buffer": 2,
+      "hit_rate": 63.0,
+      "odds": -140,
+      "ev": 8.0,
+      "description": "attempts OVER (proj - 2)",
+      "sample": 146
+    },
+    {
+      "prop_type": "attempts",
+      "direction": "UNDER",
+      "buffer": 2,
+      "hit_rate": 50.7,
+      "odds": -140,
+      "ev": -13.1,
+      "description": "attempts UNDER (proj + 2)",
+      "sample": 146
+    },
+    {
+      "prop_type": "attempts",
+      "direction": "OVER",
+      "buffer": 3,
+      "hit_rate": 67.1,
+      "odds": -165,
+      "ev": 7.8,
+      "description": "attempts OVER (proj - 3)",
+      "sample": 146
+    },
+    {
+      "prop_type": "attempts",
+      "direction": "UNDER",
+      "buffer": 3,
+      "hit_rate": 54.1,
+      "odds": -165,
+      "ev": -13.1,
+      "description": "attempts UNDER (proj + 3)",
+      "sample": 146
+    },
+    {
+      "prop_type": "interceptions",
+      "direction": "OVER",
+      "buffer": 0.5,
+      "hit_rate": 56.7,
+      "odds": -250,
+      "ev": -20.7,
+      "description": "interceptions OVER (proj - 0.5)",
+      "sample": 120
+    },
+    {
+      "prop_type": "interceptions",
+      "direction": "UNDER",
+      "buffer": 0.5,
+      "hit_rate": 73.3,
+      "odds": -165,
+      "ev": 17.8,
+      "description": "interceptions UNDER (proj + 0.5)",
+      "sample": 120
+    },
+    {
+      "prop_type": "carries",
+      "direction": "OVER",
+      "buffer": 1,
+      "hit_rate": 55.6,
+      "odds": -200,
+      "ev": -16.7,
+      "description": "carries OVER (proj - 1)",
+      "sample": 351
+    },
+    {
+      "prop_type": "carries",
+      "direction": "UNDER",
+      "buffer": 1,
+      "hit_rate": 70.7,
+      "odds": -165,
+      "ev": 13.5,
+      "description": "carries UNDER (proj + 1)",
+      "sample": 351
+    },
+    {
+      "prop_type": "carries",
+      "direction": "OVER",
+      "buffer": 2,
+      "hit_rate": 65.8,
+      "odds": -300,
+      "ev": -12.3,
+      "description": "carries OVER (proj - 2)",
+      "sample": 351
+    },
+    {
+      "prop_type": "carries",
+      "direction": "UNDER",
+      "buffer": 2,
+      "hit_rate": 74.6,
+      "odds": -165,
+      "ev": 19.9,
+      "description": "carries UNDER (proj + 2)",
+      "sample": 351
+    },
+    {
+      "prop_type": "carries",
+      "direction": "OVER",
+      "buffer": 3,
+      "hit_rate": 76.1,
+      "odds": -400,
+      "ev": -4.9,
+      "description": "carries OVER (proj - 3)",
+      "sample": 351
+    },
+    {
+      "prop_type": "carries",
+      "direction": "UNDER",
+      "buffer": 3,
+      "hit_rate": 80.1,
+      "odds": -200,
+      "ev": 20.1,
+      "description": "carries UNDER (proj + 3)",
+      "sample": 351
+    },
+    {
+      "prop_type": "carries",
+      "direction": "OVER",
+      "buffer": 4,
+      "hit_rate": 83.8,
+      "odds": -400,
+      "ev": 4.7,
+      "description": "carries OVER (proj - 4)",
+      "sample": 351
+    },
+    {
+      "prop_type": "carries",
+      "direction": "UNDER",
+      "buffer": 4,
+      "hit_rate": 84.0,
+      "odds": -250,
+      "ev": 17.7,
+      "description": "carries UNDER (proj + 4)",
+      "sample": 351
+    },
+    {
+      "prop_type": "targets",
+      "direction": "OVER",
+      "buffer": 0.5,
+      "hit_rate": 57.2,
+      "odds": -165,
+      "ev": -8.2,
+      "description": "targets OVER (proj - 0.5)",
+      "sample": 831
+    },
+    {
+      "prop_type": "targets",
+      "direction": "UNDER",
+      "buffer": 0.5,
+      "hit_rate": 59.2,
+      "odds": -140,
+      "ev": 1.5,
+      "description": "targets UNDER (proj + 0.5)",
+      "sample": 831
+    },
+    {
+      "prop_type": "targets",
+      "direction": "OVER",
+      "buffer": 1,
+      "hit_rate": 68.5,
+      "odds": -250,
+      "ev": -4.1,
+      "description": "targets OVER (proj - 1)",
+      "sample": 831
+    },
+    {
+      "prop_type": "targets",
+      "direction": "UNDER",
+      "buffer": 1,
+      "hit_rate": 69.2,
+      "odds": -200,
+      "ev": 3.8,
+      "description": "targets UNDER (proj + 1)",
+      "sample": 831
+    },
+    {
+      "prop_type": "targets",
+      "direction": "OVER",
+      "buffer": 1.5,
+      "hit_rate": 77.4,
+      "odds": -350,
+      "ev": -0.5,
+      "description": "targets OVER (proj - 1.5)",
+      "sample": 831
+    },
+    {
+      "prop_type": "targets",
+      "direction": "UNDER",
+      "buffer": 1.5,
+      "hit_rate": 76.9,
+      "odds": -300,
+      "ev": 2.5,
+      "description": "targets UNDER (proj + 1.5)",
+      "sample": 831
+    },
+    {
+      "prop_type": "targets",
+      "direction": "OVER",
+      "buffer": 2,
+      "hit_rate": 81.9,
+      "odds": -400,
+      "ev": 2.4,
+      "description": "targets OVER (proj - 2)",
+      "sample": 831
+    },
+    {
+      "prop_type": "targets",
+      "direction": "UNDER",
+      "buffer": 2,
+      "hit_rate": 82.1,
+      "odds": -350,
+      "ev": 5.5,
+      "description": "targets UNDER (proj + 2)",
+      "sample": 831
+    }
+  ],
+  "optimal_picks": [
+    {
+      "prop_type": "receiving_tds",
+      "direction": "UNDER",
+      "buffer": 0.5,
+      "hit_rate": 82.2,
+      "odds": -120,
+      "ev": 50.7,
+      "description": "receiving_tds UNDER (proj + 0.5)",
+      "sample": 399
+    },
+    {
+      "prop_type": "rushing_tds",
+      "direction": "UNDER",
+      "buffer": 0.5,
+      "hit_rate": 79.4,
+      "odds": -140,
+      "ev": 36.1,
+      "description": "rushing_tds UNDER (proj + 0.5)",
+      "sample": 165
+    },
+    {
+      "prop_type": "rushing_yards",
+      "direction": "UNDER",
+      "buffer": 5,
+      "hit_rate": 70.9,
+      "odds": -140,
+      "ev": 21.5,
+      "description": "rushing_yards UNDER (proj + 5)",
+      "sample": 347
+    },
+    {
+      "prop_type": "rushing_yards",
+      "direction": "UNDER",
+      "buffer": 15,
+      "hit_rate": 81.0,
+      "odds": -200,
+      "ev": 21.5,
+      "description": "rushing_yards UNDER (proj + 15)",
+      "sample": 347
+    },
+    {
+      "prop_type": "carries",
+      "direction": "UNDER",
+      "buffer": 3,
+      "hit_rate": 80.1,
+      "odds": -200,
+      "ev": 20.1,
+      "description": "carries UNDER (proj + 3)",
+      "sample": 351
+    },
+    {
+      "prop_type": "carries",
+      "direction": "UNDER",
+      "buffer": 2,
+      "hit_rate": 74.6,
+      "odds": -165,
+      "ev": 19.9,
+      "description": "carries UNDER (proj + 2)",
+      "sample": 351
+    },
+    {
+      "prop_type": "rushing_yards",
+      "direction": "UNDER",
+      "buffer": 7.5,
+      "hit_rate": 74.4,
+      "odds": -165,
+      "ev": 19.4,
+      "description": "rushing_yards UNDER (proj + 7.5)",
+      "sample": 347
+    },
+    {
+      "prop_type": "rushing_yards",
+      "direction": "UNDER",
+      "buffer": 12.5,
+      "hit_rate": 79.0,
+      "odds": -200,
+      "ev": 18.4,
+      "description": "rushing_yards UNDER (proj + 12.5)",
+      "sample": 347
+    },
+    {
+      "prop_type": "interceptions",
+      "direction": "UNDER",
+      "buffer": 0.5,
+      "hit_rate": 73.3,
+      "odds": -165,
+      "ev": 17.8,
+      "description": "interceptions UNDER (proj + 0.5)",
+      "sample": 120
+    },
+    {
+      "prop_type": "carries",
+      "direction": "UNDER",
+      "buffer": 4,
+      "hit_rate": 84.0,
+      "odds": -250,
+      "ev": 17.7,
+      "description": "carries UNDER (proj + 4)",
+      "sample": 351
+    },
+    {
+      "prop_type": "rushing_yards",
+      "direction": "UNDER",
+      "buffer": 10,
+      "hit_rate": 77.8,
+      "odds": -200,
+      "ev": 16.7,
+      "description": "rushing_yards UNDER (proj + 10)",
+      "sample": 347
+    },
+    {
+      "prop_type": "receiving_yards",
+      "direction": "UNDER",
+      "buffer": 12.5,
+      "hit_rate": 77.0,
+      "odds": -200,
+      "ev": 15.6,
+      "description": "receiving_yards UNDER (proj + 12.5)",
+      "sample": 1124
+    },
+    {
+      "prop_type": "receiving_yards",
+      "direction": "UNDER",
+      "buffer": 7.5,
+      "hit_rate": 70.9,
+      "odds": -165,
+      "ev": 13.9,
+      "description": "receiving_yards UNDER (proj + 7.5)",
+      "sample": 1124
+    },
+    {
+      "prop_type": "carries",
+      "direction": "UNDER",
+      "buffer": 1,
+      "hit_rate": 70.7,
+      "odds": -165,
+      "ev": 13.5,
+      "description": "carries UNDER (proj + 1)",
+      "sample": 351
+    },
+    {
+      "prop_type": "receptions",
+      "direction": "OVER",
+      "buffer": 2,
+      "hit_rate": 90.3,
+      "odds": -400,
+      "ev": 12.8,
+      "description": "receptions OVER (proj - 2)",
+      "sample": 1130
+    },
+    {
+      "prop_type": "receiving_yards",
+      "direction": "UNDER",
+      "buffer": 5,
+      "hit_rate": 65.7,
+      "odds": -140,
+      "ev": 12.6,
+      "description": "receiving_yards UNDER (proj + 5)",
+      "sample": 1124
+    },
+    {
+      "prop_type": "completions",
+      "direction": "OVER",
+      "buffer": 3,
+      "hit_rate": 74.0,
+      "odds": -200,
+      "ev": 11.0,
+      "description": "completions OVER (proj - 3)",
+      "sample": 146
+    },
+    {
+      "prop_type": "receiving_yards",
+      "direction": "UNDER",
+      "buffer": 10,
+      "hit_rate": 73.9,
+      "odds": -200,
+      "ev": 10.9,
+      "description": "receiving_yards UNDER (proj + 10)",
+      "sample": 1124
+    },
+    {
+      "prop_type": "receptions",
+      "direction": "UNDER",
+      "buffer": 2,
+      "hit_rate": 85.9,
+      "odds": -350,
+      "ev": 10.5,
+      "description": "receptions UNDER (proj + 2)",
+      "sample": 1130
+    },
+    {
+      "prop_type": "receiving_yards",
+      "direction": "UNDER",
+      "buffer": 15,
+      "hit_rate": 78.8,
+      "odds": -250,
+      "ev": 10.4,
+      "description": "receiving_yards UNDER (proj + 15)",
+      "sample": 1124
+    },
+    {
+      "prop_type": "completions",
+      "direction": "OVER",
+      "buffer": 2,
+      "hit_rate": 68.5,
+      "odds": -165,
+      "ev": 10.0,
+      "description": "completions OVER (proj - 2)",
+      "sample": 146
+    },
+    {
+      "prop_type": "receptions",
+      "direction": "UNDER",
+      "buffer": 1.5,
+      "hit_rate": 81.6,
+      "odds": -300,
+      "ev": 8.8,
+      "description": "receptions UNDER (proj + 1.5)",
+      "sample": 1130
+    },
+    {
+      "prop_type": "completions",
+      "direction": "OVER",
+      "buffer": 1,
+      "hit_rate": 67.1,
+      "odds": -165,
+      "ev": 7.8,
+      "description": "completions OVER (proj - 1)",
+      "sample": 146
+    },
+    {
+      "prop_type": "attempts",
+      "direction": "OVER",
+      "buffer": 3,
+      "hit_rate": 67.1,
+      "odds": -165,
+      "ev": 7.8,
+      "description": "attempts OVER (proj - 3)",
+      "sample": 146
+    },
+    {
+      "prop_type": "receptions",
+      "direction": "UNDER",
+      "buffer": 1,
+      "hit_rate": 76.8,
+      "odds": -250,
+      "ev": 7.5,
+      "description": "receptions UNDER (proj + 1)",
+      "sample": 1130
+    },
+    {
+      "prop_type": "targets",
+      "direction": "UNDER",
+      "buffer": 2,
+      "hit_rate": 82.1,
+      "odds": -350,
+      "ev": 5.5,
+      "description": "targets UNDER (proj + 2)",
+      "sample": 831
+    },
+    {
+      "prop_type": "carries",
+      "direction": "OVER",
+      "buffer": 4,
+      "hit_rate": 83.8,
+      "odds": -400,
+      "ev": 4.7,
+      "description": "carries OVER (proj - 4)",
+      "sample": 351
+    },
+    {
+      "prop_type": "targets",
+      "direction": "UNDER",
+      "buffer": 1,
+      "hit_rate": 69.2,
+      "odds": -200,
+      "ev": 3.8,
+      "description": "targets UNDER (proj + 1)",
+      "sample": 831
+    },
+    {
+      "prop_type": "receptions",
+      "direction": "OVER",
+      "buffer": 1.5,
+      "hit_rate": 82.9,
+      "odds": -400,
+      "ev": 3.7,
+      "description": "receptions OVER (proj - 1.5)",
+      "sample": 1130
+    },
+    {
+      "prop_type": "targets",
+      "direction": "UNDER",
+      "buffer": 1.5,
+      "hit_rate": 76.9,
+      "odds": -300,
+      "ev": 2.5,
+      "description": "targets UNDER (proj + 1.5)",
+      "sample": 831
+    },
+    {
+      "prop_type": "targets",
+      "direction": "OVER",
+      "buffer": 2,
+      "hit_rate": 81.9,
+      "odds": -400,
+      "ev": 2.4,
+      "description": "targets OVER (proj - 2)",
+      "sample": 831
+    }
+  ],
+  "parlay_simulations": {
+    "2_leg": {
+      "legs": 2,
+      "picks": [
+        "receiving_tds UNDER (proj + 0.5)",
+        "rushing_tds UNDER (proj + 0.5)"
+      ],
+      "avg_hit_rate": 80.8,
+      "avg_odds": -130,
+      "parlay_prob": 65.3,
+      "parlay_odds": 214,
+      "ev": 104.9
+    },
+    "3_leg": {
+      "legs": 3,
+      "picks": [
+        "receiving_tds UNDER (proj + 0.5)",
+        "rushing_tds UNDER (proj + 0.5)",
+        "rushing_yards UNDER (proj + 5)"
+      ],
+      "avg_hit_rate": 77.5,
+      "avg_odds": -133,
+      "parlay_prob": 46.3,
+      "parlay_odds": 438,
+      "ev": 149.0
+    },
+    "4_leg": {
+      "legs": 4,
+      "picks": [
+        "receiving_tds UNDER (proj + 0.5)",
+        "rushing_tds UNDER (proj + 0.5)",
+        "rushing_yards UNDER (proj + 5)",
+        "rushing_yards UNDER (proj + 15)"
+      ],
+      "avg_hit_rate": 78.4,
+      "avg_odds": -150,
+      "parlay_prob": 37.5,
+      "parlay_odds": 708,
+      "ev": 202.9
+    }
+  }
+}
