@@ -78,6 +78,9 @@ def fetch_player_props(api_key: str,
 
     response = requests.get(url, params=params)
 
+    if response.status_code == 422:
+        # Props not available yet for this game
+        return {}
     if response.status_code != 200:
         print(f"Error fetching props for {event_id}: {response.status_code}")
         return {}
