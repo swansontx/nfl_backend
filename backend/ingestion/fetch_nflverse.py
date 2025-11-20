@@ -30,13 +30,38 @@ import requests
 import time
 from typing import Optional
 import json
+import os
+from datetime import datetime, timedelta
+
+
+def _get_file_age_days(file_path: Path) -> float:
+    """Get age of file in days.
+
+    Args:
+        file_path: Path to file
+
+    Returns:
+        Age in days, or float('inf') if file doesn't exist
+    """
+    if not file_path.exists():
+        return float('inf')
+
+    mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
+    age = datetime.now() - mtime
+    return age.total_seconds() / 86400  # Convert to days
 
 
 def fetch_nflverse(year: int, out_dir: Path, cache_dir: Optional[Path] = None,
-                  include_all: bool = True):
-    """Fetch nflverse data for a given season.
+                  include_all: bool = True, max_age_days: int = 7, force: bool = False):
+    """Fetch nflverse data for a given season with incremental updates.
 
-    Downloads ALL available nflverse datasets by default:
+    Downloads ALL available nflverse datasets by default.
+    Uses smart caching to avoid unnecessary re-downloads:
+    - Skips files that exist and are less than max_age_days old
+    - Re-downloads files older than max_age_days to get updated data
+    - Use force=True to always re-download everything
+
+    Datasets downloaded:
     - Play-by-play data (with EPA, WPA, CPOE, air yards, etc.)
     - Player stats by week
     - Weekly rosters
@@ -50,6 +75,8 @@ def fetch_nflverse(year: int, out_dir: Path, cache_dir: Optional[Path] = None,
         out_dir: Output directory for processed data
         cache_dir: Optional cache directory to avoid re-downloading
         include_all: Download all available datasets (default: True)
+        max_age_days: Re-download files older than this (default: 7 days)
+        force: Force re-download even if files are fresh (default: False)
 
     Data will be saved to:
         - {out_dir}/player_stats_{year}.csv - Weekly player statistics
@@ -154,6 +181,10 @@ def fetch_nflverse(year: int, out_dir: Path, cache_dir: Optional[Path] = None,
         print(f"Mode: FULL (all available datasets)")
     else:
         print(f"Mode: CORE ONLY (play-by-play, stats, rosters)")
+    if force:
+        print(f"Update: FORCE (re-downloading all files)")
+    else:
+        print(f"Update: INCREMENTAL (re-download files older than {max_age_days} days)")
     print(f"{'='*60}\n")
 
     downloaded_count = 0
@@ -163,21 +194,29 @@ def fetch_nflverse(year: int, out_dir: Path, cache_dir: Optional[Path] = None,
     for dataset_name, dataset_info in datasets.items():
         output_file = out_dir / dataset_info['output']
 
-        # Check if already exists (skip download)
-        if output_file.exists():
-            print(f"✓ {dataset_info['description']} already exists: {output_file}")
-            cached_count += 1
-            continue
-
-        # Check cache
-        if cache_dir:
-            cache_file = cache_dir / dataset_info['output']
-            if cache_file.exists():
-                print(f"✓ Using cached {dataset_info['description']}: {cache_file}")
-                # Copy from cache to output
-                output_file.write_bytes(cache_file.read_bytes())
+        # Check if file exists and is fresh enough
+        if output_file.exists() and not force:
+            file_age = _get_file_age_days(output_file)
+            if file_age < max_age_days:
+                size_mb = output_file.stat().st_size / (1024 * 1024)
+                print(f"✓ {dataset_info['description']} is fresh ({file_age:.1f} days old, {size_mb:.1f} MB)")
                 cached_count += 1
                 continue
+            else:
+                print(f"↻ {dataset_info['description']} is stale ({file_age:.1f} days old), re-downloading...")
+                # Continue to download section below
+
+        # Check cache (only if file doesn't exist or we're not forcing)
+        if cache_dir and not force:
+            cache_file = cache_dir / dataset_info['output']
+            if cache_file.exists():
+                cache_age = _get_file_age_days(cache_file)
+                if cache_age < max_age_days:
+                    print(f"✓ Using cached {dataset_info['description']}: {cache_file}")
+                    # Copy from cache to output
+                    output_file.write_bytes(cache_file.read_bytes())
+                    cached_count += 1
+                    continue
 
         # Download the file
         print(f"⬇ Downloading {dataset_info['description']}...")
@@ -226,9 +265,10 @@ def fetch_nflverse(year: int, out_dir: Path, cache_dir: Optional[Path] = None,
     print(f"\n{'='*60}")
     print(f"nflverse data fetch complete for {year}")
     print(f"  Downloaded: {downloaded_count} files")
-    print(f"  Cached: {cached_count} files")
+    print(f"  Fresh/Cached: {cached_count} files")
     if failed_count > 0:
         print(f"  ⚠ Unavailable: {failed_count} files (may not exist for {year})")
+    print(f"  Next update: files older than {max_age_days} days will be refreshed")
     print(f"{'='*60}\n")
 
 
@@ -312,7 +352,7 @@ def _build_player_lookup(out_dir: Path, year: int) -> None:
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser(
-        description='Fetch nflverse data for a season (downloads ALL datasets by default)'
+        description='Fetch nflverse data for a season with incremental updates'
     )
     p.add_argument('--year', type=int, default=2024,
                    help='NFL season year (default: 2024)')
@@ -322,6 +362,17 @@ if __name__ == '__main__':
                    help='Optional cache directory to avoid re-downloading')
     p.add_argument('--core-only', action='store_true',
                    help='Download only core datasets (PBP, stats, rosters) - skip Next Gen, PFR, etc.')
+    p.add_argument('--max-age', type=int, default=7,
+                   help='Re-download files older than N days (default: 7)')
+    p.add_argument('--force', action='store_true',
+                   help='Force re-download all files regardless of age')
     args = p.parse_args()
 
-    fetch_nflverse(args.year, args.out, args.cache, include_all=not args.core_only)
+    fetch_nflverse(
+        args.year,
+        args.out,
+        args.cache,
+        include_all=not args.core_only,
+        max_age_days=args.max_age,
+        force=args.force
+    )

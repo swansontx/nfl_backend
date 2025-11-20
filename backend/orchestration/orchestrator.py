@@ -124,11 +124,11 @@ class NFLPropsPipeline:
             args=["--season", str(self.season)]
         ))
 
-        # Stage 1c: Fetch injuries
+        # Stage 1c: Fetch injuries (saves to inputs/injuries/)
         self.stages.append(PipelineStage(
             name="Fetch injury reports",
             script_path=str(backend_dir / "ingestion" / "fetch_injuries.py"),
-            args=["--season", str(self.season), "--output", "inputs"]
+            args=[]  # Uses default output: inputs/injuries/
         ))
 
         # Stage 2: Feature Extraction

@@ -12,15 +12,30 @@ import argparse
 import requests
 import time
 from typing import Optional
+from datetime import datetime
 
 
-def fetch_schedule(year: int, out_dir: Path, cache_dir: Optional[Path] = None):
-    """Fetch NFL schedule for a season.
+def _get_file_age_days(file_path: Path) -> float:
+    """Get age of file in days."""
+    if not file_path.exists():
+        return float('inf')
+    mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
+    age = datetime.now() - mtime
+    return age.total_seconds() / 86400
+
+
+def fetch_schedule(year: int, out_dir: Path, cache_dir: Optional[Path] = None,
+                   max_age_days: int = 7, force: bool = False):
+    """Fetch NFL schedule for a season with incremental updates.
+
+    Schedules are updated weekly with new scores, so default refresh is 7 days.
 
     Args:
         year: NFL season year (e.g., 2023, 2024, 2025)
         out_dir: Output directory for schedule data
         cache_dir: Optional cache directory to avoid re-downloading
+        max_age_days: Re-download if file is older than N days (default: 7)
+        force: Force re-download even if file is fresh (default: False)
 
     Downloads:
         - inputs/schedule_{year}.csv - Full season schedule with results
@@ -34,23 +49,34 @@ def fetch_schedule(year: int, out_dir: Path, cache_dir: Optional[Path] = None):
     schedule_url = f'https://github.com/nflverse/nflverse-data/releases/download/schedules/schedules.csv'
 
     print(f"\n{'='*60}")
-    print(f"Fetching NFL schedules (all seasons)")
+    print(f"Fetching NFL schedule for {year}")
+    if force:
+        print(f"Update: FORCE (re-downloading)")
+    else:
+        print(f"Update: INCREMENTAL (refresh if older than {max_age_days} days)")
     print(f"{'='*60}\n")
 
     output_file = out_dir / f'schedule_{year}.csv'
 
-    # Check if already exists
-    if output_file.exists():
-        print(f"✓ Schedule already exists: {output_file}")
-        return
+    # Check if file exists and is fresh enough
+    if output_file.exists() and not force:
+        file_age = _get_file_age_days(output_file)
+        if file_age < max_age_days:
+            size_kb = output_file.stat().st_size / 1024
+            print(f"✓ Schedule is fresh ({file_age:.1f} days old, {size_kb:.1f} KB)")
+            return
+        else:
+            print(f"↻ Schedule is stale ({file_age:.1f} days old), re-downloading...")
 
     # Check cache
-    if cache_dir:
+    if cache_dir and not force:
         cache_file = cache_dir / f'schedule_{year}.csv'
         if cache_file.exists():
-            print(f"✓ Using cached schedule: {cache_file}")
-            output_file.write_bytes(cache_file.read_bytes())
-            return
+            cache_age = _get_file_age_days(cache_file)
+            if cache_age < max_age_days:
+                print(f"✓ Using cached schedule: {cache_file}")
+                output_file.write_bytes(cache_file.read_bytes())
+                return
 
     # Download the full schedules file
     print(f"⬇ Downloading NFL schedules...")
@@ -130,13 +156,17 @@ def _filter_schedule_by_year(input_file: Path, output_file: Path, year: int):
 
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser(description='Fetch NFL schedules from nflverse')
+    p = argparse.ArgumentParser(description='Fetch NFL schedules from nflverse with incremental updates')
     p.add_argument('--year', type=int, default=2024,
                    help='NFL season year (default: 2024)')
     p.add_argument('--out', type=Path, default=Path('inputs'),
                    help='Output directory (default: inputs/)')
     p.add_argument('--cache', type=Path, default=None,
                    help='Optional cache directory to avoid re-downloading')
+    p.add_argument('--max-age', type=int, default=7,
+                   help='Re-download files older than N days (default: 7)')
+    p.add_argument('--force', action='store_true',
+                   help='Force re-download regardless of file age')
     args = p.parse_args()
 
-    fetch_schedule(args.year, args.out, args.cache)
+    fetch_schedule(args.year, args.out, args.cache, args.max_age, args.force)
