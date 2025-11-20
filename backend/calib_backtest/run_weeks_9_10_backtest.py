@@ -162,8 +162,8 @@ class WeeksBacktester:
     def generate_betting_line(self, projection: float, prop_type: str) -> float:
         """Generate a simulated betting line based on projection.
 
-        In reality, we'd use actual Vegas lines, but for this backtest
-        we'll simulate lines that are slightly different from our projections.
+        NOTE: This is a fallback. Prefer loading real historical lines from
+        outputs/backtest_props_*.json when available.
         """
         # Add some noise to simulate Vegas inefficiency
         variance = projection * 0.05  # 5% variance
@@ -178,6 +178,26 @@ class WeeksBacktester:
             line = round(projection + noise, 1)
 
         return line
+
+    def load_historical_props(self, week: int) -> Dict:
+        """Load real historical props data if available.
+
+        Returns dict keyed by (player, prop_type) -> line
+        """
+        props_file = Path(f"outputs/backtest_props_nov9_2025.json")
+        if not props_file.exists():
+            return {}
+
+        with open(props_file) as f:
+            data = json.load(f)
+
+        # Build lookup
+        historical = {}
+        for prop in data.get('props', []):
+            key = (prop['player'], prop['prop_type'])
+            historical[key] = prop['line']
+
+        return historical
 
     def run_backtest(self, weeks: List[int] = [9, 10]) -> Dict:
         """Run complete backtest for specified weeks.
@@ -240,6 +260,11 @@ class WeeksBacktester:
         # Get unique teams playing
         teams_playing = set(week_games['home_team'].tolist() + week_games['away_team'].tolist())
 
+        # Load real historical props for this week
+        historical_props = self.load_historical_props(week)
+        if historical_props:
+            print(f"  Loaded {len(historical_props)} real historical lines")
+
         # Get players who played in weeks before this one
         recent_players = self.player_stats[
             (self.player_stats['week'] >= week - 4) &
@@ -293,8 +318,13 @@ class WeeksBacktester:
                 if actual is None:
                     continue  # Player didn't play
 
-                # Generate simulated betting line
-                line = self.generate_betting_line(projection, prop_type)
+                # Try to get real historical line first
+                prop_key = (player_name, prop_type)
+                if prop_key in historical_props:
+                    line = historical_props[prop_key]
+                else:
+                    # Fallback to simulated line
+                    line = self.generate_betting_line(projection, prop_type)
 
                 # Calculate prediction accuracy
                 error = projection - actual
