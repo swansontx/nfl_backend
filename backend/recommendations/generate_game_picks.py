@@ -547,6 +547,120 @@ class GamePicksGenerator:
 
         return "; ".join(reasons[:3])
 
+    def calculate_alt_line_suggestion(self, projection: float, line: float,
+                                       direction: str, prop_type: str,
+                                       trend_info: Dict, consistency: str) -> Dict:
+        """Calculate if an alternate line should be suggested for better hit rate.
+
+        Returns suggestion dict with:
+        - use_alt: bool
+        - alt_line: recommended alternate line
+        - alt_odds: expected odds at alt line
+        - reason: why alt is recommended
+        - confidence: estimated hit rate
+        """
+        edge = abs(projection - line)
+        edge_pct = (edge / line * 100) if line > 0 else 0
+
+        # Default - use standard line
+        result = {
+            'use_alt': False,
+            'alt_line': line,
+            'alt_odds': -110,
+            'reason': None,
+            'confidence': 'medium',
+            'estimated_hit_rate': 55
+        }
+
+        # If edge is already large (>15%), no need for alt line
+        if edge_pct > 15:
+            result['confidence'] = 'high'
+            result['estimated_hit_rate'] = min(75 + edge_pct * 0.5, 85)
+            return result
+
+        # Factors that suggest using an alternate line:
+        # 1. Small edge (< 5%) - projection close to line
+        # 2. High volatility player (only for yards props)
+        # 3. Strong trend mismatch
+
+        should_use_alt = False
+        buffer_pct = 0
+        reasons = []
+
+        # Check edge size - primary reason for alt lines
+        if edge_pct < 3:
+            should_use_alt = True
+            buffer_pct = 0.10  # 10% buffer
+            reasons.append("small edge")
+        elif edge_pct < 5:
+            should_use_alt = True
+            buffer_pct = 0.05  # 5% buffer
+            reasons.append("marginal edge")
+
+        # Check volatility (only for yards props, not TDs)
+        if consistency == 'volatile' and 'yards' in prop_type and edge_pct < 10:
+            should_use_alt = True
+            buffer_pct = max(buffer_pct, 0.10)  # 10% buffer for volatile
+            reasons.append("volatile player")
+
+        # Check strong trend mismatch (only if edge is small-medium)
+        if edge_pct < 10:
+            if direction == 'OVER' and trend_info.get('trend') == 'down':
+                should_use_alt = True
+                buffer_pct = max(buffer_pct, 0.08)
+                reasons.append("against trend")
+            elif direction == 'UNDER' and trend_info.get('trend') == 'up':
+                should_use_alt = True
+                buffer_pct = max(buffer_pct, 0.08)
+                reasons.append("against trend")
+
+        if not should_use_alt:
+            # High confidence - no alt needed
+            result['confidence'] = 'high'
+            result['estimated_hit_rate'] = 65 + min(edge_pct * 2, 15)
+            return result
+
+        # Calculate alternate line
+        if direction == 'OVER':
+            # Lower the line for OVER
+            alt_line = line * (1 - buffer_pct)
+        else:
+            # Raise the line for UNDER
+            alt_line = line * (1 + buffer_pct)
+
+        # Round to standard increments
+        if prop_type in ['passing_yards']:
+            alt_line = round(alt_line / 5) * 5
+        elif prop_type in ['rushing_yards', 'receiving_yards']:
+            alt_line = round(alt_line / 2.5) * 2.5
+        else:
+            alt_line = round(alt_line * 2) / 2
+
+        # Estimate odds at alt line
+        odds_map = {
+            0.05: -130,
+            0.10: -150,
+            0.15: -180,
+            0.20: -220,
+        }
+        alt_odds = odds_map.get(buffer_pct, -150)
+
+        # Estimate hit rate at alt line
+        base_hit_rate = 55 + min(edge_pct * 2, 10)
+        alt_hit_rate = base_hit_rate + (buffer_pct * 100)  # Each % buffer adds ~1% hit rate
+
+        result.update({
+            'use_alt': True,
+            'alt_line': alt_line,
+            'alt_odds': alt_odds,
+            'reason': ", ".join(reasons),
+            'confidence': 'high' if alt_hit_rate >= 70 else 'medium',
+            'estimated_hit_rate': round(min(alt_hit_rate, 85), 0),
+            'buffer_pct': buffer_pct * 100
+        })
+
+        return result
+
     def generate_picks(self, team1: str, team2: str) -> List[Dict]:
         """Generate value picks for a matchup."""
         picks = []
@@ -636,7 +750,13 @@ class GamePicksGenerator:
                     projection, line, strategy['buffer'], trend_info, opponent
                 )
 
-                picks.append({
+                # Calculate alternate line suggestion
+                alt_suggestion = self.calculate_alt_line_suggestion(
+                    projection, line, strategy['dir'], strategy['prop'],
+                    trend_info, trend_info.get('consistency', 'unknown')
+                )
+
+                pick_data = {
                     'player': player_name,
                     'team': team,
                     'position': position,
@@ -653,7 +773,22 @@ class GamePicksGenerator:
                     'justification': justification,
                     'trend': trend_info['trend'],
                     'recent_values': trend_info['recent'][:3],
-                })
+                }
+
+                # Add alt line info if recommended
+                if alt_suggestion['use_alt']:
+                    pick_data['alt_line_recommended'] = True
+                    pick_data['alt_line'] = alt_suggestion['alt_line']
+                    pick_data['alt_odds'] = alt_suggestion['alt_odds']
+                    pick_data['alt_reason'] = alt_suggestion['reason']
+                    pick_data['alt_hit_rate'] = alt_suggestion['estimated_hit_rate']
+                    pick_data['confidence'] = alt_suggestion['confidence']
+                else:
+                    pick_data['alt_line_recommended'] = False
+                    pick_data['confidence'] = alt_suggestion['confidence']
+                    pick_data['alt_hit_rate'] = alt_suggestion['estimated_hit_rate']
+
+                picks.append(pick_data)
 
         # Sort by EV
         picks.sort(key=lambda x: -x['est_ev'])
