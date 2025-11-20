@@ -18,6 +18,15 @@ from typing import List, Dict, Optional
 import csv
 from datetime import datetime
 
+# Import injury adjustments
+try:
+    from backend.data.injury_adjustments import adjust_projection_for_injury, injury_adjuster
+    INJURY_ADJUSTMENTS_AVAILABLE = True
+except ImportError:
+    INJURY_ADJUSTMENTS_AVAILABLE = False
+    def adjust_projection_for_injury(name, prop_type, proj, std):
+        return proj, std
+
 
 class ProjectionGenerator:
     """Generate prop projections using trained models."""
@@ -149,6 +158,19 @@ class ProjectionGenerator:
 
         # Calculate std_dev and confidence interval
         std_dev = max(projection * 0.20, 5.0)
+
+        # Apply injury adjustments if available
+        if INJURY_ADJUSTMENTS_AVAILABLE:
+            # Get player name from features
+            player_name = features.get('player_display_name', '')
+            if player_name:
+                projection, std_dev = adjust_projection_for_injury(
+                    player_name, prop_type, projection, std_dev
+                )
+
+        if projection <= 0:
+            return None
+
         conf_lower = max(0, projection - 1.96 * std_dev)
         conf_upper = projection + 1.96 * std_dev
 
@@ -230,6 +252,7 @@ class ProjectionGenerator:
             features['is_home'] = 1 if game['home_team'] == team else 0
             features['spread_line'] = game.get('spread_line', 0)
             features['total_line'] = game.get('total_line', 45)
+            features['player_display_name'] = player_name  # For injury adjustments
 
             # Get opponent
             opponent = game['away_team'] if game['home_team'] == team else game['home_team']
@@ -342,6 +365,25 @@ def main():
     parser.add_argument("--season", type=int, default=2025, help="Season year")
 
     args = parser.parse_args()
+
+    # Show injury report if available
+    if INJURY_ADJUSTMENTS_AVAILABLE:
+        report = injury_adjuster.get_injury_report()
+        print(f"\n{'='*60}")
+        print("INJURY REPORT")
+        print(f"{'='*60}")
+        print(f"Total injured players: {report['total_injuries']}")
+        if report['by_status']:
+            for status, count in sorted(report['by_status'].items(), key=lambda x: -x[1]):
+                print(f"  {status}: {count}")
+
+        # Show questionable players
+        questionable = injury_adjuster.get_questionable_players()
+        if questionable:
+            print(f"\nQuestionable players ({len(questionable)}):")
+            for p in questionable[:10]:  # Show top 10
+                print(f"  {p['name']} ({p['team']} {p['position']}) - {p['body_part']}")
+        print()
 
     generator = ProjectionGenerator()
     output_file = generator.generate_for_week(args.week, args.season)
