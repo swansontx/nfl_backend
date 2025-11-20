@@ -1,17 +1,17 @@
-"""Fetch NFL injury reports from ESPN API.
+"""Fetch NFL injury reports from Sleeper API.
 
 Downloads official injury reports (Out, Doubtful, Questionable) for all teams.
 Critical for adjusting predictions based on player availability.
 
 Data Sources:
-1. ESPN API (primary) - Official injury designations
-2. nflverse injuries (backup) - Historical injury data
+1. Sleeper API (primary) - All NFL players with injury status
+2. ESPN API (deprecated) - Was blocked, kept as reference
 
 Injury Statuses:
 - OUT: Player will not play
 - DOUBTFUL: ~25% chance of playing
 - QUESTIONABLE: ~50% chance of playing
-- PROBABLE: Deprecated (no longer used)
+- IR: Player on Injured Reserve
 
 Output: JSON files with injury reports by team and week
 """
@@ -26,13 +26,13 @@ import time
 
 
 class InjuryFetcher:
-    """Fetches NFL injury reports from ESPN API."""
+    """Fetches NFL injury reports from Sleeper API."""
 
     def __init__(self):
         """Initialize injury fetcher."""
-        self.espn_api_base = "https://site.api.espn.com/apis/site/v2/sports/football/nfl"
+        self.sleeper_api_base = "https://api.sleeper.app/v1"
 
-        # NFL team abbreviations (ESPN format)
+        # NFL team abbreviations
         self.nfl_teams = [
             'ARI', 'ATL', 'BAL', 'BUF', 'CAR', 'CHI', 'CIN', 'CLE',
             'DAL', 'DEN', 'DET', 'GB', 'HOU', 'IND', 'JAX', 'KC',
@@ -40,61 +40,106 @@ class InjuryFetcher:
             'NYJ', 'PHI', 'PIT', 'SEA', 'SF', 'TB', 'TEN', 'WAS'
         ]
 
-    def fetch_team_injuries(self, team_abbr: str) -> List[Dict]:
-        """Fetch injury report for a specific team.
+        # Cache for all players data
+        self._players_cache = None
+
+    def fetch_all_players(self) -> Dict:
+        """Fetch all NFL players from Sleeper API.
+
+        Returns:
+            Dictionary of player_id -> player data
+        """
+        if self._players_cache is not None:
+            return self._players_cache
+
+        url = f"{self.sleeper_api_base}/players/nfl"
+
+        try:
+            print("Fetching all players from Sleeper API...")
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'application/json',
+            }
+            response = requests.get(url, headers=headers, timeout=30)
+            response.raise_for_status()
+
+            self._players_cache = response.json()
+            print(f"✓ Retrieved {len(self._players_cache)} players")
+            return self._players_cache
+
+        except requests.exceptions.RequestException as e:
+            print(f"✗ Error fetching players from Sleeper: {e}")
+            print("  Note: If running in a restricted environment, try running locally.")
+            return {}
+
+    def fetch_team_injuries(self, team_abbr: str, all_players: Optional[Dict] = None) -> List[Dict]:
+        """Get injury report for a specific team from cached data.
 
         Args:
             team_abbr: Team abbreviation (e.g., 'KC', 'BUF')
+            all_players: Optional pre-fetched players dict
 
         Returns:
             List of injury dictionaries
         """
-        # ESPN team endpoint
-        url = f"{self.espn_api_base}/teams/{team_abbr}/injuries"
+        if all_players is None:
+            all_players = self.fetch_all_players()
 
-        try:
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-
-            data = response.json()
-            injuries = []
-
-            # Parse injuries from response
-            for category in data.get('injuries', []):
-                for athlete in category.get('athletes', []):
-                    player_name = athlete.get('athlete', {}).get('displayName', '')
-                    player_id = athlete.get('athlete', {}).get('id', '')
-                    position = athlete.get('position', {}).get('abbreviation', '')
-
-                    # Injury details
-                    for injury in athlete.get('injuries', []):
-                        status = injury.get('status', '')  # OUT, DOUBTFUL, QUESTIONABLE
-                        injury_type = injury.get('type', '')
-                        details = injury.get('details', {})
-                        description = details.get('detail', '')
-                        practice_status = details.get('fantasyStatus', '')
-
-                        injuries.append({
-                            'player_id': player_id,
-                            'player_name': player_name,
-                            'team': team_abbr,
-                            'position': position,
-                            'injury_status': status,
-                            'injury_type': injury_type,
-                            'description': description,
-                            'practice_status': practice_status,
-                            'timestamp': datetime.now().isoformat()
-                        })
-
-            return injuries
-
-        except requests.exceptions.RequestException as e:
-            print(f"  ✗ Error fetching injuries for {team_abbr}: {e}")
+        if not all_players:
             return []
 
-        except (KeyError, ValueError) as e:
-            print(f"  ⚠️  Error parsing injury data for {team_abbr}: {e}")
-            return []
+        injuries = []
+
+        for player_id, player in all_players.items():
+            # Skip if not on this team
+            if player.get('team') != team_abbr:
+                continue
+
+            # Check for injury status
+            injury_status = player.get('injury_status')
+            status = player.get('status', '')
+
+            # Include players with injury designation or on IR
+            has_injury = injury_status and injury_status.lower() not in ['', 'null', 'none']
+            on_ir = status == 'Injured Reserve'
+
+            if has_injury or on_ir:
+                # Normalize injury status
+                if on_ir and not has_injury:
+                    normalized_status = 'IR'
+                else:
+                    # Normalize to uppercase
+                    normalized_status = injury_status.upper() if injury_status else 'IR'
+                    # Handle variations
+                    if normalized_status in ['OUT', 'O']:
+                        normalized_status = 'OUT'
+                    elif normalized_status in ['DOUBTFUL', 'D']:
+                        normalized_status = 'DOUBTFUL'
+                    elif normalized_status in ['QUESTIONABLE', 'Q']:
+                        normalized_status = 'QUESTIONABLE'
+                    elif normalized_status in ['PROBABLE', 'P']:
+                        normalized_status = 'PROBABLE'
+
+                # Get player info
+                first_name = player.get('first_name', '')
+                last_name = player.get('last_name', '')
+                player_name = f"{first_name} {last_name}".strip()
+
+                injuries.append({
+                    'player_id': player_id,
+                    'player_name': player_name,
+                    'team': team_abbr,
+                    'position': player.get('position', ''),
+                    'injury_status': normalized_status,
+                    'injury_type': player.get('injury_body_part', ''),
+                    'description': player.get('injury_notes', ''),
+                    'practice_status': player.get('practice_participation', ''),
+                    'injury_start_date': player.get('injury_start_date'),
+                    'roster_status': status,
+                    'timestamp': datetime.now().isoformat()
+                })
+
+        return injuries
 
     def fetch_all_injuries(self, output_dir: Path, week: Optional[int] = None) -> Dict:
         """Fetch injury reports for all NFL teams.
@@ -109,16 +154,23 @@ class InjuryFetcher:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         print(f"\n{'='*60}")
-        print(f"Fetching NFL Injury Reports")
+        print(f"Fetching NFL Injury Reports from Sleeper API")
         print(f"{'='*60}\n")
+
+        # Fetch all players once
+        all_players = self.fetch_all_players()
+
+        if not all_players:
+            print("✗ Failed to fetch player data")
+            return {'error': 'Failed to fetch player data'}
 
         all_injuries = {}
         total_injuries = 0
 
         for team in self.nfl_teams:
-            print(f"Fetching {team}...", end=' ')
+            print(f"Processing {team}...", end=' ')
 
-            injuries = self.fetch_team_injuries(team)
+            injuries = self.fetch_team_injuries(team, all_players)
 
             if injuries:
                 all_injuries[team] = injuries
@@ -128,13 +180,22 @@ class InjuryFetcher:
                 out_count = sum(1 for inj in injuries if inj['injury_status'] == 'OUT')
                 doubtful_count = sum(1 for inj in injuries if inj['injury_status'] == 'DOUBTFUL')
                 questionable_count = sum(1 for inj in injuries if inj['injury_status'] == 'QUESTIONABLE')
+                ir_count = sum(1 for inj in injuries if inj['injury_status'] == 'IR')
 
-                print(f"✓ {len(injuries)} injuries (OUT: {out_count}, D: {doubtful_count}, Q: {questionable_count})")
+                status_parts = []
+                if out_count:
+                    status_parts.append(f"OUT: {out_count}")
+                if doubtful_count:
+                    status_parts.append(f"D: {doubtful_count}")
+                if questionable_count:
+                    status_parts.append(f"Q: {questionable_count}")
+                if ir_count:
+                    status_parts.append(f"IR: {ir_count}")
+
+                status_str = ', '.join(status_parts) if status_parts else ''
+                print(f"✓ {len(injuries)} injuries ({status_str})")
             else:
                 print("✓ No injuries")
-
-            # Rate limit
-            time.sleep(0.2)
 
         # Save to file
         week_str = f"week_{week}" if week else "current"
@@ -146,6 +207,7 @@ class InjuryFetcher:
         # Generate summary
         summary = {
             'timestamp': datetime.now().isoformat(),
+            'source': 'Sleeper API',
             'total_teams': len(self.nfl_teams),
             'teams_with_injuries': len(all_injuries),
             'total_injuries': total_injuries,
@@ -161,6 +223,10 @@ class InjuryFetcher:
                 'QUESTIONABLE': sum(
                     1 for injuries in all_injuries.values()
                     for inj in injuries if inj['injury_status'] == 'QUESTIONABLE'
+                ),
+                'IR': sum(
+                    1 for injuries in all_injuries.values()
+                    for inj in injuries if inj['injury_status'] == 'IR'
                 )
             },
             'output_file': str(output_file)
@@ -177,6 +243,7 @@ class InjuryFetcher:
         print(f"  - OUT: {summary['by_status']['OUT']}")
         print(f"  - DOUBTFUL: {summary['by_status']['DOUBTFUL']}")
         print(f"  - QUESTIONABLE: {summary['by_status']['QUESTIONABLE']}")
+        print(f"  - IR: {summary['by_status']['IR']}")
         print(f"✓ Saved to: {output_file}")
         print(f"{'='*60}\n")
 
@@ -240,10 +307,36 @@ class InjuryFetcher:
         key_injuries = [
             inj for inj in team_injuries
             if inj.get('position') in positions
-            and inj.get('injury_status') in ['OUT', 'DOUBTFUL']
+            and inj.get('injury_status') in ['OUT', 'DOUBTFUL', 'IR']
         ]
 
         return key_injuries
+
+    def get_all_active_injuries(self) -> Dict[str, List[Dict]]:
+        """Get current injuries for all teams (live from API).
+
+        Returns:
+            Dict of team -> list of injuries
+        """
+        all_players = self.fetch_all_players()
+
+        if not all_players:
+            return {}
+
+        all_injuries = {}
+
+        for team in self.nfl_teams:
+            injuries = self.fetch_team_injuries(team, all_players)
+            if injuries:
+                # Filter to only active injuries (not IR for game-day decisions)
+                active_injuries = [
+                    inj for inj in injuries
+                    if inj['injury_status'] in ['OUT', 'DOUBTFUL', 'QUESTIONABLE']
+                ]
+                if active_injuries:
+                    all_injuries[team] = active_injuries
+
+        return all_injuries
 
 
 def fetch_injuries(output_dir: Path, week: Optional[int] = None) -> Dict:
@@ -260,9 +353,19 @@ def fetch_injuries(output_dir: Path, week: Optional[int] = None) -> Dict:
     return fetcher.fetch_all_injuries(output_dir, week)
 
 
+def get_current_injuries() -> Dict[str, List[Dict]]:
+    """Get current injuries without saving to file.
+
+    Returns:
+        Dict of team -> list of injuries
+    """
+    fetcher = InjuryFetcher()
+    return fetcher.get_all_active_injuries()
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='Fetch NFL injury reports from ESPN API'
+        description='Fetch NFL injury reports from Sleeper API'
     )
     parser.add_argument('--output', type=Path, default=Path('inputs/injuries'),
                        help='Output directory (default: inputs/injuries/)')
