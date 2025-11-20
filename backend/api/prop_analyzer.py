@@ -7,6 +7,16 @@ model projections to identify value plays.
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
+from math import erf, sqrt
+
+# Import calibration module
+try:
+    from backend.betting.probability_calibration import calibrate_probability, probability_calibrator
+    CALIBRATION_AVAILABLE = True
+except ImportError:
+    CALIBRATION_AVAILABLE = False
+    def calibrate_probability(prop_type, prob):
+        return prob
 
 
 class PropType(Enum):
@@ -97,19 +107,26 @@ class PropAnalyzer:
         """
         return (true_probability - implied_probability) / implied_probability * 100
 
-    def estimate_hit_probability(self, projection: float, line: float, std_dev: float) -> float:
+    def estimate_hit_probability(
+        self,
+        projection: float,
+        line: float,
+        std_dev: float,
+        prop_type: Optional[str] = None,
+        apply_calibration: bool = True
+    ) -> float:
         """Estimate probability of hitting over/under using normal distribution.
 
         Args:
             projection: Model projection
             line: Sportsbook line
             std_dev: Standard deviation of projection
+            prop_type: Type of prop (for calibration lookup)
+            apply_calibration: Whether to apply probability calibration
 
         Returns:
             Probability of going over the line (0-1)
         """
-        import statistics
-
         if std_dev == 0:
             return 1.0 if projection > line else 0.0
 
@@ -117,10 +134,12 @@ class PropAnalyzer:
         z_score = (line - projection) / std_dev
 
         # Use normal CDF approximation
-        # This is a simplified approximation; in production use scipy.stats.norm.cdf
-        from math import erf, sqrt
         probability_under = 0.5 * (1 + erf(z_score / sqrt(2)))
         probability_over = 1 - probability_under
+
+        # Apply calibration if available and requested
+        if apply_calibration and CALIBRATION_AVAILABLE and prop_type:
+            probability_over = calibrate_probability(prop_type, probability_over)
 
         return probability_over
 
@@ -134,11 +153,13 @@ class PropAnalyzer:
         Returns:
             PropValue assessment
         """
-        # Calculate hit probabilities
+        # Calculate hit probabilities with calibration
         prob_over = self.estimate_hit_probability(
             projection.projection,
             prop_line.line,
-            projection.std_dev
+            projection.std_dev,
+            prop_type=prop_line.prop_type,
+            apply_calibration=True
         )
         prob_under = 1 - prob_over
 
