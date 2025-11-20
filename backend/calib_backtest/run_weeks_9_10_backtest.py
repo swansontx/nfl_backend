@@ -62,15 +62,25 @@ class WeeksBacktester:
         }
 
     def _load_player_stats(self) -> pd.DataFrame:
-        """Load player stats data."""
-        stats_file = self.inputs_dir / "player_stats_2024_2025.csv"
-        if stats_file.exists():
-            df = pd.read_csv(stats_file, low_memory=False)
-            print(f"Loaded {len(df)} player stat records")
-            return df
-        else:
-            print(f"Warning: Stats file not found: {stats_file}")
-            return pd.DataFrame()
+        """Load player stats data, preferring enhanced file with snap counts."""
+        # Prefer enhanced file which has snap count data
+        # Try files in order of preference
+        files_to_try = [
+            ("player_stats_enhanced_2024_2025.csv", "enhanced 2024+2025"),
+            ("player_stats_enhanced_2025.csv", "enhanced 2025"),
+            ("player_stats_2024_2025.csv", "basic"),
+        ]
+
+        for filename, desc in files_to_try:
+            filepath = self.inputs_dir / filename
+            if filepath.exists():
+                df = pd.read_csv(filepath, low_memory=False)
+                has_snaps = 'offense_pct' in df.columns
+                print(f"Loaded {len(df)} player stat records ({desc}, snaps: {has_snaps})")
+                return df
+
+        print(f"Warning: No stats file found")
+        return pd.DataFrame()
 
     def _load_schedules(self) -> pd.DataFrame:
         """Load schedule data."""
@@ -209,6 +219,44 @@ class WeeksBacktester:
         else:
             return max(0.80, min(1.25, multiplier))
 
+    def get_snap_usage_multiplier(self, features: Dict, stat_col: str) -> float:
+        """Get snap usage multiplier based on recent vs season average snap share.
+
+        A player with increasing snap share is getting more opportunities,
+        so we boost their projection. Decreasing snap share = fewer opportunities.
+
+        Args:
+            features: Player features dict with snap_pct_season_avg and snap_pct_l3_avg
+            stat_col: The stat type being projected
+
+        Returns:
+            Multiplier between 0.85 and 1.15
+        """
+        season_avg = features.get('snap_pct_season_avg')
+        l3_avg = features.get('snap_pct_l3_avg')
+
+        if not season_avg or not l3_avg or season_avg == 0:
+            return 1.0
+
+        # Calculate snap trend (recent vs season)
+        snap_trend = l3_avg / season_avg
+
+        # Apply different caps based on stat type
+        # Volume stats (yards, receptions) are more affected by snap count
+        if stat_col in ['rushing_yards', 'receiving_yards', 'receptions', 'targets', 'carries']:
+            # More aggressive adjustment for volume stats (0.85-1.15)
+            multiplier = snap_trend
+            return max(0.85, min(1.15, multiplier))
+        elif stat_col in ['passing_yards', 'completions', 'attempts']:
+            # Moderate adjustment for passing (QBs usually play full game)
+            # But backup QBs or limited snaps matter
+            multiplier = 0.5 + (snap_trend * 0.5)  # Dampened effect
+            return max(0.90, min(1.10, multiplier))
+        else:
+            # TD stats are less correlated with pure volume
+            multiplier = 0.7 + (snap_trend * 0.3)  # Very dampened
+            return max(0.95, min(1.05, multiplier))
+
     def get_player_features(self, player_id: str, max_week: int) -> Dict:
         """Get rolling average features for a player using only data before max_week."""
         player_df = self.player_stats[
@@ -239,6 +287,20 @@ class WeeksBacktester:
                 # Last game
                 features[f'{stat}_last'] = player_df.iloc[0][stat] if len(player_df) > 0 else 0
 
+        # Add snap count features (opportunity indicator)
+        if 'offense_pct' in player_df.columns:
+            snap_values = player_df['offense_pct'].dropna()
+            if len(snap_values) > 0:
+                features['snap_pct_season_avg'] = snap_values.mean()
+                features['snap_pct_l3_avg'] = recent.head(3)['offense_pct'].mean() if len(recent) >= 3 else snap_values.mean()
+                features['snap_pct_last'] = player_df.iloc[0].get('offense_pct', features['snap_pct_season_avg'])
+
+        if 'offense_snaps' in player_df.columns:
+            snap_values = player_df['offense_snaps'].dropna()
+            if len(snap_values) > 0:
+                features['snap_count_season_avg'] = snap_values.mean()
+                features['snap_count_l3_avg'] = recent.head(3)['offense_snaps'].mean() if len(recent) >= 3 else snap_values.mean()
+
         # Add metadata
         features['games_played'] = len(player_df)
         features['player_name'] = player_df.iloc[0].get('player_display_name', '')
@@ -248,7 +310,7 @@ class WeeksBacktester:
         return features
 
     def generate_projection(self, player_id: str, prop_type: str, features: Dict, opponent: str = None) -> Optional[float]:
-        """Generate a projection for a specific prop type, adjusted for opponent."""
+        """Generate a projection for a specific prop type, adjusted for opponent and snap usage."""
         # Get the stat column name
         stat_col = self.prop_map.get(prop_type, prop_type)
 
@@ -265,8 +327,12 @@ class WeeksBacktester:
 
         # Apply opponent adjustment for yardage stats
         if opponent and stat_col in ['rushing_yards', 'receiving_yards', 'passing_yards']:
-            multiplier = self.get_opponent_multiplier(opponent, stat_col)
-            base_projection = base_projection * multiplier
+            opp_multiplier = self.get_opponent_multiplier(opponent, stat_col)
+            base_projection = base_projection * opp_multiplier
+
+        # Apply snap usage adjustment (opportunity indicator)
+        snap_multiplier = self.get_snap_usage_multiplier(features, stat_col)
+        base_projection = base_projection * snap_multiplier
 
         return round(base_projection, 1) if base_projection > 0 else None
 

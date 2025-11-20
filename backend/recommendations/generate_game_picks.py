@@ -19,7 +19,22 @@ class GamePicksGenerator:
 
     def __init__(self, inputs_dir: str = "inputs"):
         self.inputs_dir = Path(inputs_dir)
-        self.stats = pd.read_csv(self.inputs_dir / "player_stats_2024_2025.csv", low_memory=False)
+
+        # Prefer enhanced file which has snap count data
+        # Try files in order of preference
+        files_to_try = [
+            "player_stats_enhanced_2024_2025.csv",
+            "player_stats_enhanced_2025.csv",
+            "player_stats_2024_2025.csv",
+        ]
+
+        for filename in files_to_try:
+            filepath = self.inputs_dir / filename
+            if filepath.exists():
+                self.stats = pd.read_csv(filepath, low_memory=False)
+                break
+        else:
+            raise FileNotFoundError("No player stats file found")
 
         # Load injury data
         self.injuries = self._load_injuries()
@@ -318,6 +333,53 @@ class GamePicksGenerator:
         else:
             return max(0.80, min(1.25, multiplier))
 
+    def get_snap_usage_multiplier(self, player_id: str, stat_col: str) -> float:
+        """Get snap usage multiplier based on recent vs season average snap share.
+
+        A player with increasing snap share is getting more opportunities,
+        so we boost their projection. Decreasing snap share = fewer opportunities.
+
+        Returns:
+            Multiplier between 0.85 and 1.15
+        """
+        player_df = self.stats[
+            self.stats['player_id'] == player_id
+        ].sort_values('week', ascending=False)
+
+        if len(player_df) < 2:
+            return 1.0
+
+        # Check if snap data is available
+        if 'offense_pct' not in player_df.columns:
+            return 1.0
+
+        snap_values = player_df['offense_pct'].dropna()
+        if len(snap_values) < 2:
+            return 1.0
+
+        season_avg = snap_values.mean()
+        l3_avg = snap_values.head(3).mean()
+
+        if season_avg == 0:
+            return 1.0
+
+        # Calculate snap trend (recent vs season)
+        snap_trend = l3_avg / season_avg
+
+        # Apply different caps based on stat type
+        # Volume stats (yards, receptions) are more affected by snap count
+        if stat_col in ['rushing_yards', 'receiving_yards', 'receptions', 'targets', 'carries']:
+            # More aggressive adjustment for volume stats (0.85-1.15)
+            return max(0.85, min(1.15, snap_trend))
+        elif stat_col in ['passing_yards', 'completions', 'attempts']:
+            # Moderate adjustment for passing (QBs usually play full game)
+            multiplier = 0.5 + (snap_trend * 0.5)  # Dampened effect
+            return max(0.90, min(1.10, multiplier))
+        else:
+            # TD stats are less correlated with pure volume
+            multiplier = 0.7 + (snap_trend * 0.3)  # Very dampened
+            return max(0.95, min(1.05, multiplier))
+
     def get_projection(self, player_id: str, stat_col: str, n_weeks: int = 4, opponent: str = None) -> float:
         """Get weighted average projection for a player, adjusted for opponent.
 
@@ -344,8 +406,12 @@ class GamePicksGenerator:
 
         # Apply opponent adjustment for rushing/receiving yards
         if opponent and stat_col in ['rushing_yards', 'receiving_yards', 'passing_yards']:
-            multiplier = self.get_opponent_multiplier(opponent, stat_col)
-            return base_projection * multiplier
+            opp_multiplier = self.get_opponent_multiplier(opponent, stat_col)
+            base_projection = base_projection * opp_multiplier
+
+        # Apply snap usage adjustment (opportunity indicator)
+        snap_multiplier = self.get_snap_usage_multiplier(player_id, stat_col)
+        base_projection = base_projection * snap_multiplier
 
         return base_projection
 
