@@ -169,6 +169,41 @@ curl "http://localhost:8000/picks/KC/BUF"
 curl -X POST http://localhost:8000/populate/all
 ```
 
+### Using the Orchestrator (full pipeline):
+```bash
+# Run full pipeline: data + features + training + predictions
+python -m backend.orchestration.orchestrator --season 2024 --full
+
+# Just fetch data and features (no training)
+python -m backend.orchestration.orchestrator --season 2024
+
+# Training + predictions only
+python -m backend.orchestration.orchestrator --season 2024 --train --predict
+
+# Generate picks for specific game
+python -m backend.orchestration.orchestrator --season 2024 --picks --team1 HOU --team2 BUF
+
+# Backtest mode
+python -m backend.orchestration.orchestrator --season 2023 --backtest
+
+# List all pipeline stages
+python -m backend.orchestration.orchestrator --list-stages
+```
+
+The orchestrator runs stages in order:
+1. Initialize SQLite database
+2. Fetch nflverse data (PBP, player stats, rosters)
+3. Fetch NFL schedules
+4. Fetch sportsbook odds (requires ODDS_API_KEY)
+5. Fetch injury reports
+6. Extract player PBP features
+7. Apply smoothing and rolling windows
+8. Build roster & injury indexes
+9. (Optional) Train models
+10. (Optional) Generate projections
+11. (Optional) Run backtests
+12. (Optional) Generate game picks
+
 ---
 
 ## 8. Troubleshooting

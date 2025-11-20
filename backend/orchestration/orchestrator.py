@@ -29,6 +29,23 @@ from typing import List, Optional
 import subprocess
 import sys
 
+# Import database repositories for direct population
+try:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "local_db",
+        Path(__file__).parent.parent / "database" / "local_db.py"
+    )
+    local_db = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(local_db)
+    OddsRepository = local_db.OddsRepository
+    InjuriesRepository = local_db.InjuriesRepository
+    init_database = local_db.init_database
+    get_database_status = local_db.get_database_status
+    HAS_DB = True
+except Exception:
+    HAS_DB = False
+
 
 class PipelineStage:
     """Represents a single stage in the pipeline."""
@@ -79,6 +96,14 @@ class NFLPropsPipeline:
         """Build the pipeline stages."""
         backend_dir = Path(__file__).parent.parent
 
+        # Stage 0: Initialize database
+        if HAS_DB:
+            self.stages.append(PipelineStage(
+                name="Initialize SQLite database",
+                script_path=str(backend_dir / "database" / "local_db.py"),
+                args=[]  # Running the file directly calls init_database()
+            ))
+
         # Stage 1: Data Ingestion
         self.stages.append(PipelineStage(
             name="Ingest nflverse data (PBP, player stats, rosters)",
@@ -90,6 +115,20 @@ class NFLPropsPipeline:
             name="Ingest NFL schedules",
             script_path=str(backend_dir / "ingestion" / "fetch_nflverse_schedules.py"),
             args=["--year", str(self.season), "--out", "inputs"]
+        ))
+
+        # Stage 1b: Fetch odds from Odds API
+        self.stages.append(PipelineStage(
+            name="Fetch sportsbook odds (requires ODDS_API_KEY)",
+            script_path=str(backend_dir / "ingestion" / "fetch_odds.py"),
+            args=["--season", str(self.season)]
+        ))
+
+        # Stage 1c: Fetch injuries
+        self.stages.append(PipelineStage(
+            name="Fetch injury reports",
+            script_path=str(backend_dir / "ingestion" / "fetch_injuries.py"),
+            args=["--season", str(self.season), "--output", "inputs"]
         ))
 
         # Stage 2: Feature Extraction
