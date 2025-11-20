@@ -39,6 +39,7 @@ from backend.api.boxscore_generator import boxscore_generator
 from backend.api.injury_impact_analyzer import injury_analyzer, get_injury_impact_for_game
 from backend.api.situational_analyzer import situational_analyzer, analyze_game_situation, get_top_situations
 from backend.api.evaluation_pipeline import evaluation_pipeline, evaluate_game, evaluate_week
+from backend.api.defense_analyzer import defense_analyzer
 from backend.config import settings, check_environment
 
 app = FastAPI(
@@ -515,6 +516,97 @@ async def get_team_trending_form(team: str, season: int = 2024, week: int = 12):
             'trend': form.defense_trend
         }
     }
+
+
+# ============================================================================
+# Defense Performance Endpoints - Quick Intelligent Responses
+# ============================================================================
+
+@app.get('/team/{team}/defense/rush', tags=['Analysis'])
+async def get_team_rush_defense(team: str, season: int = 2024, last_n_games: int = 5):
+    """Get rush defense performance with individual RB matchups.
+
+    Shows:
+    - How each RB performed vs their season average (+/- yards)
+    - Held under percentage (how often defense held RBs below average)
+    - Trend analysis (improving/declining)
+
+    USE THIS to answer: "How has X team done against the run?"
+    """
+    result = defense_analyzer.get_rush_defense_performance(team, season, last_n_games)
+
+    return {
+        'team': team.upper(),
+        'defense_type': 'rush',
+        'insight': result.insight,
+        'yards_allowed_per_game': round(result.avg_yards_allowed, 1),
+        'tds_allowed': result.total_tds_allowed,
+        'held_under_pct': result.held_under_pct,
+        'trending': result.trending,
+        'matchups': [
+            {
+                'player': m.player_name,
+                'team': m.team,
+                'week': m.week,
+                'yards': m.yards,
+                'attempts': m.attempts,
+                'ypc': m.ypc,
+                'season_avg': m.season_avg_yards,
+                'vs_avg': f"{'+' if m.yards_diff >= 0 else ''}{m.yards_diff}",
+                'held_under': m.held_under
+            }
+            for m in result.player_matchups
+        ]
+    }
+
+
+@app.get('/team/{team}/defense/pass', tags=['Analysis'])
+async def get_team_pass_defense(team: str, season: int = 2024, last_n_games: int = 5):
+    """Get pass defense performance with individual QB matchups.
+
+    Shows:
+    - How each QB performed vs their season average (+/- yards)
+    - Held under percentage
+    - Trend analysis
+
+    USE THIS to answer: "How has X team done against the pass?"
+    """
+    result = defense_analyzer.get_pass_defense_performance(team, season, last_n_games)
+
+    return {
+        'team': team.upper(),
+        'defense_type': 'pass',
+        'insight': result.insight,
+        'yards_allowed_per_game': round(result.avg_yards_allowed, 1),
+        'tds_allowed': result.total_tds_allowed,
+        'held_under_pct': result.held_under_pct,
+        'matchups': [
+            {
+                'player': m.player_name,
+                'team': m.team,
+                'week': m.week,
+                'yards': m.yards,
+                'attempts': m.attempts,
+                'ypa': m.ypc,
+                'season_avg': m.season_avg_yards,
+                'vs_avg': f"{'+' if m.yards_diff >= 0 else ''}{m.yards_diff}",
+                'held_under': m.held_under
+            }
+            for m in result.player_matchups
+        ]
+    }
+
+
+@app.get('/team/{team}/defense', tags=['Analysis'])
+async def get_team_defense_summary(team: str, season: int = 2024):
+    """Get complete defense summary for a team.
+
+    Combines rush and pass defense analysis with individual matchups
+    and performance comparisons.
+
+    USE THIS for overall defense analysis questions.
+    """
+    return defense_analyzer.get_defense_summary(team, season)
 
 
 # ============================================================================

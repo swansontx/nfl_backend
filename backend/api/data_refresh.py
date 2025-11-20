@@ -39,7 +39,7 @@ def ensure_pbp_table():
     with get_db() as conn:
         cursor = conn.cursor()
 
-        # Play-by-play data - comprehensive game logs
+        # Play-by-play data - comprehensive game logs with advanced metrics
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS play_by_play (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,6 +49,8 @@ def ensure_pbp_table():
                 week INTEGER,
                 posteam TEXT,
                 defteam TEXT,
+                home_team TEXT,
+                away_team TEXT,
                 quarter INTEGER,
                 time TEXT,
                 down INTEGER,
@@ -70,6 +72,15 @@ def ensure_pbp_table():
                 first_down INTEGER,
                 epa REAL,
                 wpa REAL,
+                cpoe REAL,
+                qb_hit INTEGER,
+                score_differential INTEGER,
+                roof TEXT,
+                surface TEXT,
+                defenders_in_box INTEGER,
+                coverage_type TEXT,
+                offense_personnel TEXT,
+                defense_personnel TEXT,
                 passer_player_name TEXT,
                 passer_player_id TEXT,
                 receiver_player_name TEXT,
@@ -606,14 +617,17 @@ class DataRefreshManager:
                                 cursor.execute("""
                                     INSERT OR REPLACE INTO play_by_play
                                     (play_id, game_id, season, week, posteam, defteam,
-                                     quarter, time, down, ydstogo, yardline_100, play_type,
-                                     yards_gained, air_yards, yards_after_catch, pass_length,
-                                     pass_location, run_location, run_gap, touchdown,
-                                     interception, fumble, sack, penalty, first_down,
-                                     epa, wpa, passer_player_name, passer_player_id,
+                                     home_team, away_team, quarter, time, down, ydstogo,
+                                     yardline_100, play_type, yards_gained, air_yards,
+                                     yards_after_catch, pass_length, pass_location,
+                                     run_location, run_gap, touchdown, interception,
+                                     fumble, sack, penalty, first_down, epa, wpa, cpoe,
+                                     qb_hit, score_differential, roof, surface,
+                                     defenders_in_box, coverage_type, offense_personnel,
+                                     defense_personnel, passer_player_name, passer_player_id,
                                      receiver_player_name, receiver_player_id,
                                      rusher_player_name, rusher_player_id, desc)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                                 """, (
                                     play.get('play_id'),
                                     play.get('game_id'),
@@ -621,7 +635,9 @@ class DataRefreshManager:
                                     play.get('week'),
                                     play.get('posteam'),
                                     play.get('defteam'),
-                                    play.get('quarter'),
+                                    play.get('home_team'),
+                                    play.get('away_team'),
+                                    play.get('qtr', play.get('quarter')),
                                     play.get('time'),
                                     play.get('down'),
                                     play.get('ydstogo'),
@@ -642,6 +658,15 @@ class DataRefreshManager:
                                     play.get('first_down'),
                                     play.get('epa'),
                                     play.get('wpa'),
+                                    play.get('cpoe'),
+                                    play.get('qb_hit'),
+                                    play.get('score_differential'),
+                                    play.get('roof'),
+                                    play.get('surface'),
+                                    play.get('defenders_in_box'),
+                                    play.get('coverage_type'),
+                                    play.get('offense_personnel'),
+                                    play.get('defense_personnel'),
                                     play.get('passer_player_name'),
                                     play.get('passer_player_id'),
                                     play.get('receiver_player_name'),

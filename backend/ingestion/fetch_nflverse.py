@@ -129,6 +129,21 @@ def fetch_nflverse(year: int, out_dir: Path, cache_dir: Optional[Path] = None,
                 'url': f'{base_url}/depth_charts/depth_charts_{year}.csv',
                 'output': f'depth_charts_{year}.csv',
                 'description': 'Weekly depth charts'
+            },
+            'ftn_charting': {
+                'url': f'{base_url}/ftn_charting/ftn_charting_{year}.csv',
+                'output': f'ftn_charting_{year}.csv',
+                'description': 'FTN charting data (coverage schemes, formations)'
+            },
+            'participations': {
+                'url': f'{base_url}/participations/participations_{year}.csv',
+                'output': f'participations_{year}.csv',
+                'description': 'Play-level participation data'
+            },
+            'combine': {
+                'url': f'{base_url}/combine/combine.csv',
+                'output': f'combine_{year}.csv',
+                'description': 'NFL combine results'
             }
         }
         datasets.update(advanced_datasets)

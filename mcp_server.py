@@ -654,6 +654,75 @@ async def list_tools():
                 },
                 "required": ["game_id", "home_team", "away_team"]
             }
+        ),
+
+        # ========== DEFENSE PERFORMANCE TOOLS ==========
+        Tool(
+            name="get_rush_defense",
+            description="RUSH DEFENSE ANALYSIS - How has a team done against the run? Shows each RB's performance vs their average (+/- yards), held under percentage, and trends. USE THIS when asked about run defense or RB matchups.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team": {
+                        "type": "string",
+                        "description": "Team abbreviation (e.g., 'BUF', 'KC')"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    },
+                    "last_n_games": {
+                        "type": "integer",
+                        "description": "Number of recent games to analyze",
+                        "default": 5
+                    }
+                },
+                "required": ["team"]
+            }
+        ),
+        Tool(
+            name="get_pass_defense",
+            description="PASS DEFENSE ANALYSIS - How has a team done against the pass? Shows each QB's performance vs their average (+/- yards), held under percentage. USE THIS when asked about pass defense or QB matchups.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team": {
+                        "type": "string",
+                        "description": "Team abbreviation (e.g., 'BUF', 'KC')"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    },
+                    "last_n_games": {
+                        "type": "integer",
+                        "description": "Number of recent games to analyze",
+                        "default": 5
+                    }
+                },
+                "required": ["team"]
+            }
+        ),
+        Tool(
+            name="get_defense_summary",
+            description="COMPLETE DEFENSE ANALYSIS - Get full defense summary with both rush and pass analysis. Shows individual player matchups and performance comparisons. USE THIS for general defense questions.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team": {
+                        "type": "string",
+                        "description": "Team abbreviation (e.g., 'BUF', 'KC')"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    }
+                },
+                "required": ["team"]
+            }
         )
     ]
 
@@ -959,6 +1028,33 @@ async def call_tool(name: str, arguments: dict):
                         "season": season,
                         "week": week
                     }
+                )
+
+            # ========== DEFENSE PERFORMANCE TOOLS ==========
+            elif name == "get_rush_defense":
+                team = arguments.get("team", "")
+                season = arguments.get("season", 2024)
+                last_n_games = arguments.get("last_n_games", 5)
+                response = await client.get(
+                    f"{API_BASE}/team/{team}/defense/rush",
+                    params={"season": season, "last_n_games": last_n_games}
+                )
+
+            elif name == "get_pass_defense":
+                team = arguments.get("team", "")
+                season = arguments.get("season", 2024)
+                last_n_games = arguments.get("last_n_games", 5)
+                response = await client.get(
+                    f"{API_BASE}/team/{team}/defense/pass",
+                    params={"season": season, "last_n_games": last_n_games}
+                )
+
+            elif name == "get_defense_summary":
+                team = arguments.get("team", "")
+                season = arguments.get("season", 2024)
+                response = await client.get(
+                    f"{API_BASE}/team/{team}/defense",
+                    params={"season": season}
                 )
 
             else:
