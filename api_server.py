@@ -278,11 +278,15 @@ async def fetch_nflverse(
     year: int = Query(2024, description="NFL season year"),
     include_all: bool = Query(True, description="Include all datasets")
 ):
-    """Fetch nflverse data (play-by-play, stats, rosters)."""
+    """Fetch nflverse data (play-by-play, stats, rosters).
+
+    Downloads to inputs/ directory where all other code expects to find the files.
+    """
     try:
         from backend.ingestion.fetch_nflverse import fetch_nflverse
 
-        output_dir = PROJECT_ROOT / "inputs" / "nflverse"
+        # Save directly to inputs/ where all other code expects files
+        output_dir = PROJECT_ROOT / "inputs"
         cache_dir = PROJECT_ROOT / "cache"
 
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -412,8 +416,8 @@ async def check_data_freshness(
         else:
             freshness["projections"] = {"last_update": None, "is_stale": True}
 
-        # Check nflverse files
-        nflverse_dir = PROJECT_ROOT / "inputs" / "nflverse"
+        # Check nflverse files (in main inputs/ dir, not subdirectory)
+        nflverse_dir = PROJECT_ROOT / "inputs"
         if nflverse_dir.exists():
             files = list(nflverse_dir.glob("*.csv"))
             if files:
