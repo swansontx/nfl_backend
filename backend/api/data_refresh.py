@@ -110,6 +110,130 @@ def ensure_pbp_table():
         logger.info("Play-by-play table ensured")
 
 
+def ensure_advanced_tables():
+    """Ensure advanced nflverse tables exist in database."""
+    from backend.database.local_db import get_db
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        # Snap counts - player participation percentages
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS snap_counts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                season INTEGER,
+                week INTEGER,
+                game_id TEXT,
+                player_id TEXT,
+                player_name TEXT,
+                team TEXT,
+                position TEXT,
+                offense_snaps INTEGER,
+                offense_pct REAL,
+                defense_snaps INTEGER,
+                defense_pct REAL,
+                st_snaps INTEGER,
+                st_pct REAL,
+                UNIQUE(season, week, player_id)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_snaps_player
+            ON snap_counts(player_id, season)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_snaps_team
+            ON snap_counts(team, season, week)
+        """)
+
+        # FTN charting - coverage schemes and formations
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS ftn_charting (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                season INTEGER,
+                week INTEGER,
+                game_id TEXT,
+                play_id TEXT,
+                offense_formation TEXT,
+                offense_personnel TEXT,
+                defense_coverage TEXT,
+                defense_man_zone TEXT,
+                defenders_in_box INTEGER,
+                pass_rushers INTEGER,
+                blitz INTEGER,
+                UNIQUE(season, week, game_id, play_id)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_ftn_game
+            ON ftn_charting(game_id, season)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_ftn_coverage
+            ON ftn_charting(defense_man_zone, season)
+        """)
+
+        # PFR advanced stats - passing, rushing, receiving, defense
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS pfr_advanced (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                season INTEGER,
+                player_id TEXT,
+                player_name TEXT,
+                team TEXT,
+                stat_type TEXT,
+                games INTEGER,
+                attempts INTEGER,
+                yards INTEGER,
+                tds INTEGER,
+                first_downs INTEGER,
+                ybc REAL,
+                yac REAL,
+                broken_tackles INTEGER,
+                drops INTEGER,
+                drop_pct REAL,
+                bad_throws INTEGER,
+                bad_throw_pct REAL,
+                pocket_time REAL,
+                blitzed INTEGER,
+                hurried INTEGER,
+                pressured_pct REAL,
+                UNIQUE(season, player_id, stat_type)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_pfr_player
+            ON pfr_advanced(player_id, season)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_pfr_team
+            ON pfr_advanced(team, stat_type, season)
+        """)
+
+        logger.info("Advanced nflverse tables ensured")
+
+
+# Staleness thresholds (in hours)
+STALENESS_THRESHOLDS = {
+    'injuries': 6,      # Refresh if > 6 hours old
+    'odds': 2,          # Refresh if > 2 hours old (lines move)
+    'schedules': 24,    # Once per day
+    'player_stats': 12, # Twice per day
+    'team_stats': 12,
+    'rosters': 24,
+    'play_by_play': 24,
+    'snap_counts': 24,
+    'ftn_charting': 24,
+    'pfr_advanced': 168  # Once per week
+}
+
+
 class DataRefreshManager:
     """Manages data refresh operations for the NFL backend."""
 
@@ -118,8 +242,26 @@ class DataRefreshManager:
         self.last_refresh: Dict[str, datetime] = {}
         self.refresh_in_progress: Dict[str, bool] = {}
 
+    def is_stale(self, data_type: str) -> bool:
+        """Check if data type is stale and needs refresh.
+
+        Args:
+            data_type: Type of data to check
+
+        Returns:
+            True if data is stale or never refreshed
+        """
+        last = self.last_refresh.get(data_type)
+        if not last:
+            return True
+
+        threshold_hours = STALENESS_THRESHOLDS.get(data_type, 24)
+        age_hours = (datetime.now() - last).total_seconds() / 3600
+
+        return age_hours > threshold_hours
+
     async def refresh_all(self, force: bool = False) -> Dict:
-        """Refresh all data sources.
+        """Refresh all data sources with smart staleness checking.
 
         Args:
             force: Force refresh even if recently updated
@@ -131,15 +273,59 @@ class DataRefreshManager:
 
         # Initialize database if needed
         init_database()
+        ensure_advanced_tables()
 
-        # Run all refreshes
-        results['injuries'] = await self.refresh_injuries(force)
-        results['schedules'] = await self.refresh_schedules(force)
-        results['player_stats'] = await self.refresh_player_stats(force)
-        results['team_stats'] = await self.refresh_team_stats(force)
-        results['rosters'] = await self.refresh_rosters(force)
-        results['play_by_play'] = await self.refresh_play_by_play(force)
-        results['odds'] = await self.refresh_odds(force)
+        # Run all refreshes (with staleness check if not forced)
+        if force or self.is_stale('injuries'):
+            results['injuries'] = await self.refresh_injuries(force)
+        else:
+            results['injuries'] = {'status': 'skipped', 'reason': 'not stale'}
+
+        if force or self.is_stale('schedules'):
+            results['schedules'] = await self.refresh_schedules(force)
+        else:
+            results['schedules'] = {'status': 'skipped', 'reason': 'not stale'}
+
+        if force or self.is_stale('player_stats'):
+            results['player_stats'] = await self.refresh_player_stats(force)
+        else:
+            results['player_stats'] = {'status': 'skipped', 'reason': 'not stale'}
+
+        if force or self.is_stale('team_stats'):
+            results['team_stats'] = await self.refresh_team_stats(force)
+        else:
+            results['team_stats'] = {'status': 'skipped', 'reason': 'not stale'}
+
+        if force or self.is_stale('rosters'):
+            results['rosters'] = await self.refresh_rosters(force)
+        else:
+            results['rosters'] = {'status': 'skipped', 'reason': 'not stale'}
+
+        if force or self.is_stale('play_by_play'):
+            results['play_by_play'] = await self.refresh_play_by_play(force)
+        else:
+            results['play_by_play'] = {'status': 'skipped', 'reason': 'not stale'}
+
+        if force or self.is_stale('odds'):
+            results['odds'] = await self.refresh_odds(force)
+        else:
+            results['odds'] = {'status': 'skipped', 'reason': 'not stale'}
+
+        # New advanced tables
+        if force or self.is_stale('snap_counts'):
+            results['snap_counts'] = await self.refresh_snap_counts(force)
+        else:
+            results['snap_counts'] = {'status': 'skipped', 'reason': 'not stale'}
+
+        if force or self.is_stale('ftn_charting'):
+            results['ftn_charting'] = await self.refresh_ftn_charting(force)
+        else:
+            results['ftn_charting'] = {'status': 'skipped', 'reason': 'not stale'}
+
+        if force or self.is_stale('pfr_advanced'):
+            results['pfr_advanced'] = await self.refresh_pfr_advanced(force)
+        else:
+            results['pfr_advanced'] = {'status': 'skipped', 'reason': 'not stale'}
 
         results['timestamp'] = datetime.now().isoformat()
         results['database_status'] = get_database_status()
@@ -697,6 +883,268 @@ class DataRefreshManager:
 
         finally:
             self.refresh_in_progress['play_by_play'] = False
+
+    async def refresh_snap_counts(self, force: bool = False) -> Dict:
+        """Refresh snap count data from nflverse.
+
+        Args:
+            force: Force refresh
+
+        Returns:
+            Dict with refresh results
+        """
+        if self.refresh_in_progress.get('snap_counts', False):
+            return {'status': 'in_progress', 'message': 'Snap counts refresh already running'}
+
+        self.refresh_in_progress['snap_counts'] = True
+
+        try:
+            logger.info("Refreshing snap counts data...")
+
+            # Find snap count files
+            snap_files = list(self.inputs_dir.glob('snap_counts*.csv'))
+
+            if not snap_files:
+                return {
+                    'status': 'warning',
+                    'message': 'No snap count files found',
+                    'count': 0
+                }
+
+            from backend.database.local_db import get_db
+
+            total_records = 0
+            for file in snap_files:
+                try:
+                    df = pd.read_csv(file)
+
+                    with get_db() as conn:
+                        cursor = conn.cursor()
+                        for _, row in df.iterrows():
+                            try:
+                                cursor.execute("""
+                                    INSERT OR REPLACE INTO snap_counts
+                                    (season, week, game_id, player_id, player_name, team,
+                                     position, offense_snaps, offense_pct, defense_snaps,
+                                     defense_pct, st_snaps, st_pct)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """, (
+                                    row.get('season'),
+                                    row.get('week'),
+                                    row.get('game_id'),
+                                    row.get('player_id', row.get('pfr_player_id')),
+                                    row.get('player', row.get('player_name')),
+                                    row.get('team'),
+                                    row.get('position'),
+                                    row.get('offense_snaps'),
+                                    row.get('offense_pct'),
+                                    row.get('defense_snaps'),
+                                    row.get('defense_pct'),
+                                    row.get('st_snaps'),
+                                    row.get('st_pct')
+                                ))
+                                total_records += 1
+                            except:
+                                pass
+                except Exception as e:
+                    logger.warning(f"Error reading snap counts file {file}: {e}")
+
+            self.last_refresh['snap_counts'] = datetime.now()
+
+            return {
+                'status': 'success',
+                'count': total_records,
+                'files_processed': len(snap_files),
+                'timestamp': datetime.now().isoformat()
+            }
+
+        except Exception as e:
+            logger.error(f"Error refreshing snap counts: {e}")
+            return {'status': 'error', 'message': str(e)}
+
+        finally:
+            self.refresh_in_progress['snap_counts'] = False
+
+    async def refresh_ftn_charting(self, force: bool = False) -> Dict:
+        """Refresh FTN charting data (coverage schemes, formations).
+
+        Args:
+            force: Force refresh
+
+        Returns:
+            Dict with refresh results
+        """
+        if self.refresh_in_progress.get('ftn_charting', False):
+            return {'status': 'in_progress', 'message': 'FTN charting refresh already running'}
+
+        self.refresh_in_progress['ftn_charting'] = True
+
+        try:
+            logger.info("Refreshing FTN charting data...")
+
+            # Find FTN charting files
+            ftn_files = list(self.inputs_dir.glob('ftn_charting*.csv'))
+
+            if not ftn_files:
+                return {
+                    'status': 'warning',
+                    'message': 'No FTN charting files found',
+                    'count': 0
+                }
+
+            from backend.database.local_db import get_db
+
+            total_records = 0
+            for file in ftn_files:
+                try:
+                    df = pd.read_csv(file)
+
+                    with get_db() as conn:
+                        cursor = conn.cursor()
+                        for _, row in df.iterrows():
+                            try:
+                                cursor.execute("""
+                                    INSERT OR REPLACE INTO ftn_charting
+                                    (season, week, game_id, play_id, offense_formation,
+                                     offense_personnel, defense_coverage, defense_man_zone,
+                                     defenders_in_box, pass_rushers, blitz)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """, (
+                                    row.get('season'),
+                                    row.get('week'),
+                                    row.get('nflverse_game_id', row.get('game_id')),
+                                    row.get('play_id'),
+                                    row.get('offense_formation'),
+                                    row.get('offense_personnel'),
+                                    row.get('coverage'),
+                                    row.get('coverage_type', row.get('man_zone')),
+                                    row.get('n_defense_box'),
+                                    row.get('n_pass_rushers'),
+                                    row.get('is_blitz', 0)
+                                ))
+                                total_records += 1
+                            except:
+                                pass
+                except Exception as e:
+                    logger.warning(f"Error reading FTN charting file {file}: {e}")
+
+            self.last_refresh['ftn_charting'] = datetime.now()
+
+            return {
+                'status': 'success',
+                'count': total_records,
+                'files_processed': len(ftn_files),
+                'timestamp': datetime.now().isoformat()
+            }
+
+        except Exception as e:
+            logger.error(f"Error refreshing FTN charting: {e}")
+            return {'status': 'error', 'message': str(e)}
+
+        finally:
+            self.refresh_in_progress['ftn_charting'] = False
+
+    async def refresh_pfr_advanced(self, force: bool = False) -> Dict:
+        """Refresh PFR advanced stats.
+
+        Args:
+            force: Force refresh
+
+        Returns:
+            Dict with refresh results
+        """
+        if self.refresh_in_progress.get('pfr_advanced', False):
+            return {'status': 'in_progress', 'message': 'PFR advanced refresh already running'}
+
+        self.refresh_in_progress['pfr_advanced'] = True
+
+        try:
+            logger.info("Refreshing PFR advanced stats...")
+
+            # Find PFR advanced stats files
+            pfr_files = list(self.inputs_dir.glob('pfr_advstats*.csv'))
+
+            if not pfr_files:
+                return {
+                    'status': 'warning',
+                    'message': 'No PFR advanced stats files found',
+                    'count': 0
+                }
+
+            from backend.database.local_db import get_db
+
+            total_records = 0
+            for file in pfr_files:
+                try:
+                    df = pd.read_csv(file)
+
+                    # Determine stat type from filename
+                    stat_type = 'unknown'
+                    if 'pass' in file.name:
+                        stat_type = 'passing'
+                    elif 'rush' in file.name:
+                        stat_type = 'rushing'
+                    elif 'rec' in file.name:
+                        stat_type = 'receiving'
+                    elif 'def' in file.name:
+                        stat_type = 'defense'
+
+                    with get_db() as conn:
+                        cursor = conn.cursor()
+                        for _, row in df.iterrows():
+                            try:
+                                cursor.execute("""
+                                    INSERT OR REPLACE INTO pfr_advanced
+                                    (season, player_id, player_name, team, stat_type,
+                                     games, attempts, yards, tds, first_downs,
+                                     ybc, yac, broken_tackles, drops, drop_pct,
+                                     bad_throws, bad_throw_pct, pocket_time,
+                                     blitzed, hurried, pressured_pct)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """, (
+                                    row.get('season'),
+                                    row.get('pfr_id', row.get('player_id')),
+                                    row.get('player_name', row.get('player')),
+                                    row.get('team'),
+                                    stat_type,
+                                    row.get('g', row.get('games')),
+                                    row.get('att', row.get('attempts')),
+                                    row.get('yds', row.get('yards')),
+                                    row.get('td', row.get('tds')),
+                                    row.get('first_down', row.get('first_downs')),
+                                    row.get('ybc', row.get('yards_before_contact')),
+                                    row.get('yac', row.get('yards_after_contact')),
+                                    row.get('brk_tkl', row.get('broken_tackles')),
+                                    row.get('drop', row.get('drops')),
+                                    row.get('drop_pct'),
+                                    row.get('bad_throw', row.get('bad_throws')),
+                                    row.get('bad_pct', row.get('bad_throw_pct')),
+                                    row.get('pocket_time'),
+                                    row.get('blitzed'),
+                                    row.get('hurried'),
+                                    row.get('prss_pct', row.get('pressured_pct'))
+                                ))
+                                total_records += 1
+                            except:
+                                pass
+                except Exception as e:
+                    logger.warning(f"Error reading PFR file {file}: {e}")
+
+            self.last_refresh['pfr_advanced'] = datetime.now()
+
+            return {
+                'status': 'success',
+                'count': total_records,
+                'files_processed': len(pfr_files),
+                'timestamp': datetime.now().isoformat()
+            }
+
+        except Exception as e:
+            logger.error(f"Error refreshing PFR advanced: {e}")
+            return {'status': 'error', 'message': str(e)}
+
+        finally:
+            self.refresh_in_progress['pfr_advanced'] = False
 
     def get_refresh_status(self) -> Dict:
         """Get current refresh status for all data types.
