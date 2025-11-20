@@ -38,6 +38,7 @@ from backend.api.schedule_loader import schedule_loader, Game
 from backend.api.boxscore_generator import boxscore_generator
 from backend.api.injury_impact_analyzer import injury_analyzer, get_injury_impact_for_game
 from backend.api.situational_analyzer import situational_analyzer, analyze_game_situation, get_top_situations
+from backend.api.evaluation_pipeline import evaluation_pipeline, evaluate_game, evaluate_week
 from backend.config import settings, check_environment
 
 app = FastAPI(
@@ -335,6 +336,23 @@ async def refresh_play_by_play(force: bool = False):
     return result
 
 
+@app.post('/admin/refresh/odds', tags=['Admin', 'Refresh'])
+async def refresh_odds(force: bool = False):
+    """Refresh odds/lines from The Odds API.
+
+    Fetches player prop lines from multiple sportsbooks and stores
+    snapshots for line movement tracking.
+
+    Args:
+        force: Force refresh
+
+    Returns:
+        Dict with refresh results
+    """
+    result = await data_refresh_manager.refresh_odds(force=force)
+    return result
+
+
 @app.get('/admin/refresh/status', tags=['Admin', 'Refresh'])
 async def get_refresh_status():
     """Get current data refresh status.
@@ -496,6 +514,106 @@ async def get_team_trending_form(team: str, season: int = 2024, week: int = 12):
             'season_allowed': form.season_points_allowed_avg,
             'trend': form.defense_trend
         }
+    }
+
+
+# ============================================================================
+# Evaluation Pipeline Endpoints - Complete Game Analysis
+# ============================================================================
+
+@app.get('/game/{game_id}/evaluate', tags=['Evaluation'])
+async def evaluate_game_complete(game_id: str, home_team: str, away_team: str,
+                                  season: int = 2024, week: int = 12):
+    """Run COMPLETE evaluation pipeline for a game.
+
+    This is the main endpoint for comprehensive game analysis that uses
+    ALL analyzers in a consistent, organized way:
+    - Situational Analysis (form, weather, schedule)
+    - Matchup Quality (positional edges)
+    - Injury Impact (replacements, redistributions)
+    - Prop Value (betting opportunities)
+
+    Returns scored categories, key takeaways, and actionable prop targets.
+    """
+    result = evaluate_game(game_id, home_team, away_team, season, week)
+
+    return {
+        'game_id': game_id,
+        'matchup': f"{away_team} @ {home_team}",
+        'overall_score': result.overall_score,
+        'overall_grade': result.overall_grade,
+        'game_narrative': result.game_narrative,
+        'categories': {
+            'situational_edge': {
+                'score': result.situational_edge.score if result.situational_edge else 0,
+                'grade': result.situational_edge.grade if result.situational_edge else 'C',
+                'factors': result.situational_edge.factors if result.situational_edge else [],
+                'narrative': result.situational_edge.narrative if result.situational_edge else ''
+            },
+            'matchup_quality': {
+                'score': result.matchup_quality.score if result.matchup_quality else 0,
+                'grade': result.matchup_quality.grade if result.matchup_quality else 'C',
+                'factors': result.matchup_quality.factors if result.matchup_quality else [],
+                'narrative': result.matchup_quality.narrative if result.matchup_quality else ''
+            },
+            'injury_impact': {
+                'score': result.injury_impact.score if result.injury_impact else 0,
+                'grade': result.injury_impact.grade if result.injury_impact else 'C',
+                'factors': result.injury_impact.factors if result.injury_impact else [],
+                'narrative': result.injury_impact.narrative if result.injury_impact else ''
+            },
+            'prop_value': {
+                'score': result.prop_value.score if result.prop_value else 0,
+                'grade': result.prop_value.grade if result.prop_value else 'C',
+                'factors': result.prop_value.factors if result.prop_value else [],
+                'narrative': result.prop_value.narrative if result.prop_value else ''
+            }
+        },
+        'key_takeaways': result.key_takeaways,
+        'prop_targets': [
+            {
+                'player': t.player,
+                'team': t.team,
+                'prop_type': t.prop_type,
+                'direction': t.direction,
+                'edge_score': t.edge_score,
+                'rationale': t.rationale,
+                'confidence': t.confidence
+            }
+            for t in result.prop_targets
+        ],
+        'analyzer_outputs': result.analyzer_outputs,
+        'evaluated_at': result.evaluated_at
+    }
+
+
+@app.get('/week/{week}/evaluate', tags=['Evaluation'])
+async def evaluate_week_complete(week: int, season: int = 2024):
+    """Evaluate ALL games in a week using complete pipeline.
+
+    Returns all games sorted by overall score (best opportunities first).
+    """
+    results = evaluate_week(season, week)
+
+    return {
+        'season': season,
+        'week': week,
+        'total_games': len(results),
+        'games': [
+            {
+                'game_id': r.game_id,
+                'matchup': f"{r.away_team} @ {r.home_team}",
+                'overall_score': r.overall_score,
+                'overall_grade': r.overall_grade,
+                'key_takeaways': r.key_takeaways[:3],
+                'top_props': [
+                    {'team': t.team, 'prop': f"{t.prop_type} {t.direction}",
+                     'edge': t.edge_score}
+                    for t in r.prop_targets[:3]
+                ]
+            }
+            for r in results
+        ]
     }
 
 

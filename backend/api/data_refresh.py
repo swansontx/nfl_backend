@@ -20,9 +20,11 @@ from backend.database.local_db import (
     SchedulesRepository,
     PlayerStatsRepository,
     TeamStatsRepository,
-    RostersRepository
+    RostersRepository,
+    OddsRepository
 )
 from backend.ingestion.fetch_injuries import InjuryFetcher
+from backend.api.odds_api import odds_api
 from backend.config import settings
 
 logger = logging.getLogger(__name__)
@@ -126,11 +128,92 @@ class DataRefreshManager:
         results['team_stats'] = await self.refresh_team_stats(force)
         results['rosters'] = await self.refresh_rosters(force)
         results['play_by_play'] = await self.refresh_play_by_play(force)
+        results['odds'] = await self.refresh_odds(force)
 
         results['timestamp'] = datetime.now().isoformat()
         results['database_status'] = get_database_status()
 
         return results
+
+    async def refresh_odds(self, force: bool = False) -> Dict:
+        """Refresh odds/lines from The Odds API.
+
+        Args:
+            force: Force refresh even if recently updated
+
+        Returns:
+            Dict with refresh results
+        """
+        if self.refresh_in_progress.get('odds', False):
+            return {'status': 'in_progress', 'message': 'Odds refresh already running'}
+
+        self.refresh_in_progress['odds'] = True
+
+        try:
+            logger.info("Refreshing odds data from The Odds API...")
+
+            # Get upcoming games
+            games = odds_api.get_upcoming_games()
+
+            if not games:
+                return {
+                    'status': 'warning',
+                    'message': 'No upcoming games found or API key not set',
+                    'count': 0
+                }
+
+            # Get props for each game
+            all_props = []
+            for game in games:
+                event_id = game.get('id')
+                if event_id:
+                    props = odds_api.get_player_props(event_id)
+                    for prop in props:
+                        all_props.append({
+                            'game_id': event_id,
+                            'player_id': getattr(prop, 'player_id', ''),
+                            'player_name': getattr(prop, 'player_name', ''),
+                            'team': getattr(prop, 'team', ''),
+                            'prop_type': getattr(prop, 'prop_type', ''),
+                            'line': getattr(prop, 'line', 0),
+                            'over_odds': getattr(prop, 'over_odds', 0),
+                            'under_odds': getattr(prop, 'under_odds', 0),
+                            'book': getattr(prop, 'book', 'draftkings')
+                        })
+
+            if not all_props:
+                return {
+                    'status': 'warning',
+                    'message': 'No props fetched from API',
+                    'count': 0
+                }
+
+            # Determine current week/season
+            now = datetime.now()
+            season = now.year if now.month >= 9 else now.year - 1
+            if now.month >= 9:
+                week = min(18, (now - datetime(now.year, 9, 1)).days // 7 + 1)
+            else:
+                week = min(18, (now - datetime(now.year - 1, 9, 1)).days // 7 + 1)
+
+            # Insert into database
+            count = OddsRepository.insert_snapshot(all_props, week, season)
+
+            self.last_refresh['odds'] = datetime.now()
+
+            return {
+                'status': 'success',
+                'count': count,
+                'games_processed': len(games),
+                'timestamp': datetime.now().isoformat()
+            }
+
+        except Exception as e:
+            logger.error(f"Error refreshing odds: {e}")
+            return {'status': 'error', 'message': str(e)}
+
+        finally:
+            self.refresh_in_progress['odds'] = False
 
     async def refresh_injuries(self, force: bool = False) -> Dict:
         """Refresh injury data from ESPN API and store in SQLite.
