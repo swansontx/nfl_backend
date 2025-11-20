@@ -10,7 +10,7 @@ Run with: uvicorn api_server:app --reload --port 8000
 
 import os
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, List
 from contextlib import asynccontextmanager
@@ -263,6 +263,181 @@ async def fetch_all(
         "week": week,
         "year": year,
         "timestamp": datetime.now().isoformat()
+    }
+
+
+# ============ AUTO-REFRESH ENDPOINTS ============
+
+@app.get("/refresh/check")
+async def check_data_freshness(
+    odds_max_age_hours: int = Query(4, description="Max age for odds data in hours"),
+    injuries_max_age_hours: int = Query(12, description="Max age for injury data in hours"),
+    nflverse_max_age_days: int = Query(1, description="Max age for nflverse data in days")
+):
+    """Check freshness of all data sources and recommend updates."""
+    from backend.database.local_db import get_db
+
+    now = datetime.now()
+    freshness = {}
+    recommendations = []
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        # Check odds freshness
+        cursor.execute("SELECT MAX(snapshot_time) FROM odds_snapshots")
+        odds_last = cursor.fetchone()[0]
+        if odds_last:
+            odds_time = datetime.fromisoformat(odds_last.replace('Z', '+00:00').replace('+00:00', ''))
+            odds_age_hours = (now - odds_time).total_seconds() / 3600
+            freshness["odds"] = {
+                "last_update": odds_last,
+                "age_hours": round(odds_age_hours, 1),
+                "is_stale": odds_age_hours > odds_max_age_hours
+            }
+            if odds_age_hours > odds_max_age_hours:
+                recommendations.append("odds")
+        else:
+            freshness["odds"] = {"last_update": None, "is_stale": True}
+            recommendations.append("odds")
+
+        # Check injuries freshness
+        cursor.execute("SELECT MAX(reported_at) FROM injuries")
+        injuries_last = cursor.fetchone()[0]
+        if injuries_last:
+            injuries_time = datetime.fromisoformat(injuries_last.replace('Z', '+00:00').replace('+00:00', ''))
+            injuries_age_hours = (now - injuries_time).total_seconds() / 3600
+            freshness["injuries"] = {
+                "last_update": injuries_last,
+                "age_hours": round(injuries_age_hours, 1),
+                "is_stale": injuries_age_hours > injuries_max_age_hours
+            }
+            if injuries_age_hours > injuries_max_age_hours:
+                recommendations.append("injuries")
+        else:
+            freshness["injuries"] = {"last_update": None, "is_stale": True}
+            recommendations.append("injuries")
+
+        # Check projections freshness
+        cursor.execute("SELECT MAX(generated_at) FROM projections")
+        proj_last = cursor.fetchone()[0]
+        if proj_last:
+            freshness["projections"] = {
+                "last_update": proj_last,
+                "is_stale": False  # Projections are regenerated manually
+            }
+        else:
+            freshness["projections"] = {"last_update": None, "is_stale": True}
+
+        # Check nflverse files
+        nflverse_dir = PROJECT_ROOT / "inputs" / "nflverse"
+        if nflverse_dir.exists():
+            files = list(nflverse_dir.glob("*.csv"))
+            if files:
+                latest = max(files, key=lambda f: f.stat().st_mtime)
+                nflverse_time = datetime.fromtimestamp(latest.stat().st_mtime)
+                nflverse_age_days = (now - nflverse_time).total_seconds() / 86400
+                freshness["nflverse"] = {
+                    "last_update": nflverse_time.isoformat(),
+                    "age_days": round(nflverse_age_days, 1),
+                    "is_stale": nflverse_age_days > nflverse_max_age_days
+                }
+                if nflverse_age_days > nflverse_max_age_days:
+                    recommendations.append("nflverse")
+            else:
+                freshness["nflverse"] = {"last_update": None, "is_stale": True}
+                recommendations.append("nflverse")
+        else:
+            freshness["nflverse"] = {"last_update": None, "is_stale": True}
+            recommendations.append("nflverse")
+
+    return {
+        "freshness": freshness,
+        "stale_sources": recommendations,
+        "needs_refresh": len(recommendations) > 0,
+        "timestamp": now.isoformat()
+    }
+
+
+@app.post("/refresh/auto")
+async def auto_refresh(
+    week: int = Query(12, description="NFL week"),
+    year: int = Query(2024, description="NFL season"),
+    odds_max_age_hours: int = Query(4, description="Max age for odds before refresh"),
+    injuries_max_age_hours: int = Query(12, description="Max age for injuries before refresh"),
+    force: bool = Query(False, description="Force refresh even if data is fresh")
+):
+    """Automatically refresh stale data sources."""
+    # Check freshness
+    freshness_check = await check_data_freshness(
+        odds_max_age_hours, injuries_max_age_hours
+    )
+
+    stale = freshness_check["stale_sources"] if not force else ["odds", "injuries"]
+    results = {}
+
+    # Refresh stale sources
+    if "odds" in stale:
+        try:
+            odds_result = await fetch_odds(week, year)
+            results["odds"] = "refreshed"
+        except Exception as e:
+            results["odds"] = f"error: {str(e)}"
+    else:
+        results["odds"] = "fresh"
+
+    if "injuries" in stale:
+        try:
+            injuries_result = await fetch_injuries(week, year)
+            results["injuries"] = "refreshed"
+        except Exception as e:
+            results["injuries"] = f"error: {str(e)}"
+    else:
+        results["injuries"] = "fresh"
+
+    # Note: nflverse not auto-refreshed due to size
+    if "nflverse" in stale:
+        results["nflverse"] = "stale - refresh manually with /fetch/nflverse"
+
+    refreshed_count = sum(1 for v in results.values() if v == "refreshed")
+
+    return {
+        "success": True,
+        "refreshed_sources": refreshed_count,
+        "results": results,
+        "was_forced": force,
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@app.post("/refresh/schedule")
+async def get_refresh_schedule():
+    """Get recommended refresh schedule for data sources."""
+    return {
+        "recommended_schedule": {
+            "odds": {
+                "frequency": "Every 4 hours during game days",
+                "reason": "Lines move frequently, especially close to game time"
+            },
+            "injuries": {
+                "frequency": "Every 12 hours, more on Wed-Fri",
+                "reason": "Injury reports typically update mid-week"
+            },
+            "nflverse": {
+                "frequency": "Once per week after games complete",
+                "reason": "Stats update after games, no need for frequent refresh"
+            },
+            "projections": {
+                "frequency": "After each data refresh",
+                "reason": "Re-run models with fresh data"
+            }
+        },
+        "tips": [
+            "Run /refresh/auto before betting sessions",
+            "Fetch odds more frequently on game days (2-4 hours)",
+            "Wednesday-Friday are key for injury report updates",
+            "After Sunday games, fetch nflverse for updated stats"
+        ]
     }
 
 

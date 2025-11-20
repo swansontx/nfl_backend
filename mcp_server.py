@@ -108,6 +108,38 @@ async def list_tools():
                 }
             }
         ),
+        Tool(
+            name="check_data_freshness",
+            description="Check how fresh your data is and see what needs refreshing.",
+            inputSchema={
+                "type": "object",
+                "properties": {}
+            }
+        ),
+        Tool(
+            name="auto_refresh",
+            description="Automatically refresh only stale data sources. Smart refresh that skips fresh data.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number",
+                        "default": 12
+                    },
+                    "year": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    },
+                    "force": {
+                        "type": "boolean",
+                        "description": "Force refresh even if data is fresh",
+                        "default": False
+                    }
+                }
+            }
+        ),
 
         # ========== QUERY TOOLS ==========
         Tool(
@@ -350,6 +382,18 @@ async def call_tool(name: str, arguments: dict):
                 response = await client.post(
                     f"{API_BASE}/fetch/all",
                     params={"week": week, "year": year}
+                )
+
+            elif name == "check_data_freshness":
+                response = await client.get(f"{API_BASE}/refresh/check")
+
+            elif name == "auto_refresh":
+                week = arguments.get("week", 12)
+                year = arguments.get("year", 2024)
+                force = arguments.get("force", False)
+                response = await client.post(
+                    f"{API_BASE}/refresh/auto",
+                    params={"week": week, "year": year, "force": force}
                 )
 
             # ========== QUERY TOOLS ==========
