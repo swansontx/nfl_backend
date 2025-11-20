@@ -12,6 +12,14 @@ from dataclasses import dataclass
 from typing import Protocol
 import math
 
+# Import settings for empirical std dev config
+try:
+    from backend.config import settings
+    CONFIG_AVAILABLE = True
+except ImportError:
+    CONFIG_AVAILABLE = False
+    settings = None
+
 
 class PropDistribution(Protocol):
     """Protocol for prop distributions."""
@@ -229,6 +237,28 @@ DEFAULT_STD_BY_PROP = {
 }
 
 
+def get_std_dev_for_prop(prop_type: str) -> float:
+    """Get empirical standard deviation for a prop type.
+
+    Uses config values if available, falls back to defaults.
+
+    Args:
+        prop_type: Type of prop (e.g., 'passing_yards', 'receptions')
+
+    Returns:
+        Standard deviation value
+    """
+    prop_lower = prop_type.lower()
+
+    # Try config values first (from backtest analysis)
+    if CONFIG_AVAILABLE and settings and hasattr(settings, 'prop_std_devs'):
+        if prop_lower in settings.prop_std_devs:
+            return settings.prop_std_devs[prop_lower]
+
+    # Fall back to module defaults
+    return DEFAULT_STD_BY_PROP.get(prop_lower, 15.0)
+
+
 def get_distribution(
     prop_type: str,
     projection: float,
@@ -239,7 +269,7 @@ def get_distribution(
     Args:
         prop_type: Type of prop (e.g., 'passing_yards', 'receptions')
         projection: Projected value (mean/lambda)
-        std_dev: Standard deviation (for normal) or None to use default
+        std_dev: Standard deviation (for normal) or None to use empirical default
 
     Returns:
         Distribution object with cdf, prob_over, prob_under methods
@@ -251,7 +281,7 @@ def get_distribution(
     else:
         # Normal distribution
         if std_dev is None or std_dev <= 0:
-            std_dev = DEFAULT_STD_BY_PROP.get(prop_type.lower(), 15.0)
+            std_dev = get_std_dev_for_prop(prop_type)
         return NormalDistribution(mean=projection, std=std_dev)
 
 

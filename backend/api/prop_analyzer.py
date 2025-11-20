@@ -18,6 +18,18 @@ except ImportError:
     def calibrate_probability(prop_type, prob):
         return prob
 
+# Import distribution models for prop-type-specific probability calculations
+try:
+    from backend.modeling.distributions import (
+        get_distribution,
+        calculate_hit_probability,
+        PROP_DISTRIBUTION_MAP,
+        DEFAULT_STD_BY_PROP
+    )
+    DISTRIBUTIONS_AVAILABLE = True
+except ImportError:
+    DISTRIBUTIONS_AVAILABLE = False
+
 
 class PropType(Enum):
     """Types of prop bets."""
@@ -54,6 +66,11 @@ class PropProjection:
     confidence_interval: Tuple[float, float]  # 80% CI
     hit_probability_over: float  # Probability of going over the line
     hit_probability_under: float
+    # Quality metrics for filtering
+    games_sampled: int = 0  # Number of games in training sample
+    model_quality: float = 0.0  # Model R² or accuracy score
+    usage_metric: float = 0.0  # Usage % for RB/WR (snap %, target share)
+    position: str = ""  # Player position
 
 
 @dataclass
@@ -71,13 +88,57 @@ class PropValue:
 class PropAnalyzer:
     """Analyze props for value."""
 
-    def __init__(self, kelly_fraction: float = 0.25):
-        """Initialize prop analyzer.
+    def __init__(
+        self,
+        kelly_fraction: float = 0.25,
+        min_games_sampled: int = 5,
+        min_model_quality: float = 0.3,
+        min_usage_threshold: float = 0.15
+    ):
+        """Initialize prop analyzer with quality thresholds.
 
         Args:
             kelly_fraction: Fraction of Kelly criterion to use (default 0.25 for quarter Kelly)
+            min_games_sampled: Minimum games in training sample
+            min_model_quality: Minimum model R²/accuracy score
+            min_usage_threshold: Minimum usage % for RB/WR props
         """
         self.kelly_fraction = kelly_fraction
+        self.min_games_sampled = min_games_sampled
+        self.min_model_quality = min_model_quality
+        self.min_usage_threshold = min_usage_threshold
+
+    def passes_quality_gates(self, projection: PropProjection) -> Tuple[bool, List[str]]:
+        """Check if a projection passes quality gates.
+
+        Args:
+            projection: PropProjection to evaluate
+
+        Returns:
+            Tuple of (passes: bool, reasons: list of failed gates)
+        """
+        reasons = []
+
+        # Gate 1: Minimum games sampled
+        if projection.games_sampled > 0 and projection.games_sampled < self.min_games_sampled:
+            reasons.append(f"Insufficient sample: {projection.games_sampled} games < {self.min_games_sampled} min")
+
+        # Gate 2: Model quality
+        if projection.model_quality > 0 and projection.model_quality < self.min_model_quality:
+            reasons.append(f"Low model quality: {projection.model_quality:.2f} < {self.min_model_quality} min")
+
+        # Gate 3: Usage threshold (for RB/WR skill position props)
+        usage_props = ['rushing_yards', 'receiving_yards', 'receptions', 'targets', 'carries']
+        if projection.prop_type in usage_props:
+            if projection.usage_metric > 0 and projection.usage_metric < self.min_usage_threshold:
+                reasons.append(f"Low usage: {projection.usage_metric:.1%} < {self.min_usage_threshold:.1%} min")
+
+        # Gate 4: Sanity check on projection value
+        if projection.projection <= 0:
+            reasons.append(f"Invalid projection: {projection.projection}")
+
+        passes = len(reasons) == 0
+        return passes, reasons
 
     @staticmethod
     def american_to_implied_probability(odds: int) -> float:
@@ -115,13 +176,16 @@ class PropAnalyzer:
         prop_type: Optional[str] = None,
         apply_calibration: bool = True
     ) -> float:
-        """Estimate probability of hitting over/under using normal distribution.
+        """Estimate probability of hitting over/under using appropriate distribution.
+
+        Uses Normal distribution for yardage props (continuous) and
+        Poisson distribution for count props (receptions, TDs, etc.).
 
         Args:
             projection: Model projection
             line: Sportsbook line
             std_dev: Standard deviation of projection
-            prop_type: Type of prop (for calibration lookup)
+            prop_type: Type of prop (for distribution selection and calibration)
             apply_calibration: Whether to apply probability calibration
 
         Returns:
@@ -130,12 +194,20 @@ class PropAnalyzer:
         if std_dev == 0:
             return 1.0 if projection > line else 0.0
 
-        # Z-score calculation
-        z_score = (line - projection) / std_dev
-
-        # Use normal CDF approximation
-        probability_under = 0.5 * (1 + erf(z_score / sqrt(2)))
-        probability_over = 1 - probability_under
+        # Use distribution models if available (Normal for yards, Poisson for counts)
+        if DISTRIBUTIONS_AVAILABLE and prop_type:
+            probability_over = calculate_hit_probability(
+                prop_type=prop_type,
+                projection=projection,
+                line=line,
+                std_dev=std_dev,
+                side='over'
+            )
+        else:
+            # Fallback to simple normal CDF
+            z_score = (line - projection) / std_dev
+            probability_under = 0.5 * (1 + erf(z_score / sqrt(2)))
+            probability_over = 1 - probability_under
 
         # Apply calibration if available and requested
         if apply_calibration and CALIBRATION_AVAILABLE and prop_type:
@@ -210,11 +282,14 @@ class PropAnalyzer:
             value_grade=value_grade
         )
 
-    def find_best_props(self,
-                       prop_lines: List[PropLine],
-                       projections: List[PropProjection],
-                       min_edge: float = 5.0,
-                       min_grade: str = "B") -> List[PropValue]:
+    def find_best_props(
+        self,
+        prop_lines: List[PropLine],
+        projections: List[PropProjection],
+        min_edge: float = 5.0,
+        min_grade: str = "B",
+        apply_quality_filters: bool = True
+    ) -> List[PropValue]:
         """Find best value props from a set of lines.
 
         Args:
@@ -222,6 +297,7 @@ class PropAnalyzer:
             projections: List of model projections
             min_edge: Minimum edge to include
             min_grade: Minimum value grade to include
+            apply_quality_filters: Whether to apply quality gate filters
 
         Returns:
             List of PropValue objects, sorted by edge
@@ -233,6 +309,7 @@ class PropAnalyzer:
         }
 
         value_props = []
+        filtered_count = 0
 
         for line in prop_lines:
             key = (line.player_id, line.prop_type)
@@ -240,6 +317,14 @@ class PropAnalyzer:
                 continue
 
             projection = proj_lookup[key]
+
+            # Apply quality gates if enabled
+            if apply_quality_filters:
+                passes, reasons = self.passes_quality_gates(projection)
+                if not passes:
+                    filtered_count += 1
+                    continue
+
             value = self.analyze_prop(line, projection)
 
             # Filter by criteria
@@ -253,6 +338,9 @@ class PropAnalyzer:
             key=lambda v: max(v.edge_over, v.edge_under),
             reverse=True
         )
+
+        if filtered_count > 0:
+            print(f"Quality filters removed {filtered_count} props")
 
         return value_props
 
