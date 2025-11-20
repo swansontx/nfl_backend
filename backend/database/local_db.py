@@ -407,6 +407,61 @@ def init_database():
             ON schedules(away_team, home_team, season)
         """)
 
+        # Next Gen Stats - Player tracking metrics (speed, acceleration, routes)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS nextgen_stats (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                season INTEGER,
+                week INTEGER,
+                game_id TEXT,
+                player_id TEXT,
+                player_name TEXT,
+                team TEXT,
+                position TEXT,
+                stat_type TEXT,
+                avg_time_to_throw REAL,
+                avg_completed_air_yards REAL,
+                avg_intended_air_yards REAL,
+                avg_air_yards_differential REAL,
+                aggressiveness REAL,
+                max_completed_air_distance REAL,
+                avg_air_yards_to_sticks REAL,
+                passer_rating REAL,
+                completion_percentage REAL,
+                expected_completion_percentage REAL,
+                completion_percentage_above_expectation REAL,
+                avg_cushion REAL,
+                avg_separation REAL,
+                avg_intended_air_yards_rec REAL,
+                percent_share_of_intended_air_yards REAL,
+                catch_percentage REAL,
+                avg_yac REAL,
+                avg_expected_yac REAL,
+                avg_yac_above_expectation REAL,
+                efficiency REAL,
+                percent_attempts_gte_eight_defenders REAL,
+                avg_time_to_los REAL,
+                rush_attempts INTEGER,
+                rush_yards INTEGER,
+                expected_rush_yards REAL,
+                rush_yards_over_expected REAL,
+                rush_yards_over_expected_per_att REAL,
+                rush_pct_over_expected REAL,
+                UNIQUE(season, week, player_id, stat_type)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_nextgen_player
+            ON nextgen_stats(player_id, season)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_nextgen_team
+            ON nextgen_stats(team, season, stat_type)
+        """)
+
         print(f"Database initialized at {DB_PATH}")
         return str(DB_PATH)
 

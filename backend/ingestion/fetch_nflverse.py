@@ -89,6 +89,12 @@ def fetch_nflverse(year: int, out_dir: Path, cache_dir: Optional[Path] = None,
             'output': f'weekly_rosters_{year}.csv',
             'description': 'Weekly roster data',
             'core': True
+        },
+        'schedules': {
+            'url': f'{base_url}/schedules/schedules_{year}.csv',
+            'output': f'schedules_{year}.csv',
+            'description': 'NFL season schedule with Vegas lines',
+            'core': True
         }
     }
 

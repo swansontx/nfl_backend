@@ -231,7 +231,8 @@ STALENESS_THRESHOLDS = {
     'play_by_play': 24,
     'snap_counts': 24,
     'ftn_charting': 24,
-    'pfr_advanced': 168  # Once per week
+    'pfr_advanced': 168,  # Once per week
+    'nextgen_stats': 168  # Once per week
 }
 
 
@@ -322,7 +323,8 @@ class DataRefreshManager:
             'odds': ('odds_snapshots', 'season'),
             'snap_counts': ('snap_counts', 'season'),
             'ftn_charting': ('ftn_charting', 'season'),
-            'pfr_advanced': ('pfr_advanced', 'season')
+            'pfr_advanced': ('pfr_advanced', 'season'),
+            'nextgen_stats': ('nextgen_stats', 'season')
         }
 
         table_info = table_map.get(data_type)
@@ -402,7 +404,8 @@ class DataRefreshManager:
             f'play_by_play_{season}.csv',
             f'weekly_rosters_{season}.csv',
             f'snap_counts_{season}.csv',
-            f'schedules_{season}.csv'
+            f'schedules_{season}.csv',
+            f'nextgen_stats_{season}.csv'
         ]
 
         missing_files = []
@@ -514,6 +517,11 @@ class DataRefreshManager:
             results['pfr_advanced'] = await self.refresh_pfr_advanced(force)
         else:
             results['pfr_advanced'] = {'status': 'skipped', 'reason': 'not stale'}
+
+        if force or self.is_stale('nextgen_stats'):
+            results['nextgen_stats'] = await self.refresh_nextgen_stats(force)
+        else:
+            results['nextgen_stats'] = {'status': 'skipped', 'reason': 'not stale'}
 
         results['timestamp'] = datetime.now().isoformat()
         results['database_status'] = get_database_status()
@@ -1343,6 +1351,134 @@ class DataRefreshManager:
 
         finally:
             self.refresh_in_progress['pfr_advanced'] = False
+
+    async def refresh_nextgen_stats(self, force: bool = False) -> Dict:
+        """Refresh Next Gen Stats (player tracking data).
+
+        Args:
+            force: Force refresh
+
+        Returns:
+            Dict with refresh results
+        """
+        if self.refresh_in_progress.get('nextgen_stats', False):
+            return {'status': 'in_progress', 'message': 'NGS refresh already running'}
+
+        self.refresh_in_progress['nextgen_stats'] = True
+
+        try:
+            logger.info("Refreshing Next Gen Stats...")
+
+            # Find NGS files (ngs_*.csv or nextgen_stats*.csv)
+            ngs_files = list(self.inputs_dir.glob('ngs_*.csv')) + \
+                       list(self.inputs_dir.glob('nextgen_stats*.csv'))
+
+            if not ngs_files:
+                return {
+                    'status': 'warning',
+                    'message': 'No Next Gen Stats files found',
+                    'count': 0
+                }
+
+            from backend.database.local_db import get_db
+
+            total_records = 0
+            for file in ngs_files:
+                try:
+                    df = pd.read_csv(file)
+
+                    # Determine stat type from filename
+                    stat_type = 'unknown'
+                    if 'pass' in file.name:
+                        stat_type = 'passing'
+                    elif 'rush' in file.name:
+                        stat_type = 'rushing'
+                    elif 'rec' in file.name:
+                        stat_type = 'receiving'
+
+                    with get_db() as conn:
+                        cursor = conn.cursor()
+                        for _, row in df.iterrows():
+                            try:
+                                cursor.execute("""
+                                    INSERT OR REPLACE INTO nextgen_stats
+                                    (season, week, game_id, player_id, player_name,
+                                     team, position, stat_type,
+                                     avg_time_to_throw, avg_completed_air_yards,
+                                     avg_intended_air_yards, avg_air_yards_differential,
+                                     aggressiveness, max_completed_air_distance,
+                                     avg_air_yards_to_sticks, passer_rating,
+                                     completion_percentage, expected_completion_percentage,
+                                     completion_percentage_above_expectation,
+                                     avg_cushion, avg_separation, avg_intended_air_yards_rec,
+                                     percent_share_of_intended_air_yards, catch_percentage,
+                                     avg_yac, avg_expected_yac, avg_yac_above_expectation,
+                                     efficiency, percent_attempts_gte_eight_defenders,
+                                     avg_time_to_los, rush_attempts, rush_yards,
+                                     expected_rush_yards, rush_yards_over_expected,
+                                     rush_yards_over_expected_per_att, rush_pct_over_expected)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """, (
+                                    row.get('season'),
+                                    row.get('week'),
+                                    row.get('game_id', row.get('nflverse_game_id')),
+                                    row.get('player_id', row.get('player_gsis_id')),
+                                    row.get('player_name', row.get('player_display_name')),
+                                    row.get('team', row.get('team_abbr')),
+                                    row.get('position', row.get('player_position')),
+                                    stat_type,
+                                    row.get('avg_time_to_throw'),
+                                    row.get('avg_completed_air_yards'),
+                                    row.get('avg_intended_air_yards'),
+                                    row.get('avg_air_yards_differential'),
+                                    row.get('aggressiveness'),
+                                    row.get('max_completed_air_distance'),
+                                    row.get('avg_air_yards_to_sticks'),
+                                    row.get('passer_rating'),
+                                    row.get('completion_percentage'),
+                                    row.get('expected_completion_percentage'),
+                                    row.get('completion_percentage_above_expectation'),
+                                    row.get('avg_cushion'),
+                                    row.get('avg_separation'),
+                                    row.get('avg_intended_air_yards', row.get('avg_intended_air_yards_rec')),
+                                    row.get('percent_share_of_intended_air_yards'),
+                                    row.get('catch_percentage'),
+                                    row.get('avg_yac'),
+                                    row.get('avg_expected_yac'),
+                                    row.get('avg_yac_above_expectation'),
+                                    row.get('efficiency'),
+                                    row.get('percent_attempts_gte_eight_defenders'),
+                                    row.get('avg_time_to_los'),
+                                    row.get('rush_attempts'),
+                                    row.get('rush_yards'),
+                                    row.get('expected_rush_yards'),
+                                    row.get('rush_yards_over_expected'),
+                                    row.get('rush_yards_over_expected_per_att'),
+                                    row.get('rush_pct_over_expected')
+                                ))
+                                total_records += 1
+                            except:
+                                pass
+
+                except Exception as e:
+                    logger.warning(f"Error reading NGS file {file}: {e}")
+
+            self.last_refresh['nextgen_stats'] = datetime.now()
+            self._save_timestamp('nextgen_stats', total_records)
+
+            return {
+                'status': 'success',
+                'count': total_records,
+                'files_processed': len(ngs_files),
+                'timestamp': datetime.now().isoformat()
+            }
+
+        except Exception as e:
+            logger.error(f"Error refreshing next gen stats: {e}")
+            return {'status': 'error', 'message': str(e)}
+
+        finally:
+            self.refresh_in_progress['nextgen_stats'] = False
 
     def get_refresh_status(self) -> Dict:
         """Get current refresh status for all data types.
