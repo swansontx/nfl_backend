@@ -9,6 +9,7 @@ numpy>=1.24.0
 
 # HTTP Requests (for odds API, injuries, etc.)
 requests>=2.31.0
+httpx>=0.25.0
 
 # Machine Learning (for modeling and calibration)
 scikit-learn>=1.3.0
