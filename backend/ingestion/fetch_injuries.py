@@ -452,7 +452,8 @@ class InjuryFetcher:
         self,
         player_name: str,
         injury_file: Optional[Path] = None,
-        team: Optional[str] = None
+        team: Optional[str] = None,
+        position: Optional[str] = None
     ) -> Optional[Dict]:
         """Get injury status for a player by name (searches all teams if team not provided).
 
@@ -460,6 +461,7 @@ class InjuryFetcher:
             player_name: Player name (partial match supported)
             injury_file: Path to injury JSON file (uses default if not provided)
             team: Optional team abbreviation to narrow search
+            position: Optional position to filter (QB, RB, WR, TE, etc.)
 
         Returns:
             Injury dict if player is injured, None otherwise
@@ -477,6 +479,7 @@ class InjuryFetcher:
             data = json.load(f)
 
         player_lower = player_name.lower()
+        position_upper = position.upper() if position else None
 
         # Search specific team or all teams
         teams_to_search = [team] if team else data.keys()
@@ -485,6 +488,12 @@ class InjuryFetcher:
             team_injuries = data.get(team_abbr, [])
             for injury in team_injuries:
                 inj_name = injury.get('player_name', '').lower()
+                inj_pos = injury.get('position', '').upper()
+
+                # Check position filter
+                if position_upper and inj_pos != position_upper:
+                    continue
+
                 # Exact match or partial match
                 if inj_name == player_lower or player_lower in inj_name:
                     return injury
@@ -495,7 +504,8 @@ class InjuryFetcher:
         self,
         search_term: str,
         injury_file: Optional[Path] = None,
-        status_filter: Optional[List[str]] = None
+        status_filter: Optional[List[str]] = None,
+        position: Optional[str] = None
     ) -> List[Dict]:
         """Search for players by name across all teams.
 
@@ -503,6 +513,7 @@ class InjuryFetcher:
             search_term: Search string (partial match)
             injury_file: Path to injury JSON file
             status_filter: Optional list of statuses to filter by (e.g., ['OUT', 'DOUBTFUL'])
+            position: Optional position to filter (QB, RB, WR, TE, etc.)
 
         Returns:
             List of matching injury dicts
@@ -519,14 +530,18 @@ class InjuryFetcher:
             data = json.load(f)
 
         search_lower = search_term.lower()
+        position_upper = position.upper() if position else None
         results = []
 
         for team_abbr, team_injuries in data.items():
             for injury in team_injuries:
                 player_name = injury.get('player_name', '').lower()
+                inj_pos = injury.get('position', '').upper()
+
                 if search_lower in player_name:
                     if status_filter is None or injury.get('injury_status') in status_filter:
-                        results.append(injury)
+                        if position_upper is None or inj_pos == position_upper:
+                            results.append(injury)
 
         return results
 
@@ -624,18 +639,19 @@ def get_current_injuries() -> Dict[str, List[Dict]]:
     return all_injuries
 
 
-def get_player_injury(player_name: str, team: Optional[str] = None) -> Optional[Dict]:
+def get_player_injury(player_name: str, team: Optional[str] = None, position: Optional[str] = None) -> Optional[Dict]:
     """Get injury status for a specific player.
 
     Args:
         player_name: Player name (partial match supported)
         team: Optional team abbreviation
+        position: Optional position filter (QB, RB, WR, etc.)
 
     Returns:
         Injury dict if player is injured, None otherwise
     """
     fetcher = InjuryFetcher()
-    return fetcher.get_player_injury(player_name, team=team)
+    return fetcher.get_player_injury(player_name, team=team, position=position)
 
 
 def search_injuries(search_term: str, status_filter: Optional[List[str]] = None) -> List[Dict]:
@@ -678,6 +694,8 @@ if __name__ == '__main__':
                        help='Look up a specific player injury')
     parser.add_argument('--team', type=str, default=None,
                        help='Team abbreviation (for player lookup)')
+    parser.add_argument('--position', type=str, default=None,
+                       help='Position filter (QB, RB, WR, TE, K, etc.)')
     parser.add_argument('--status', type=str, default=None,
                        help='List all players with this status (OUT, DOUBTFUL, QUESTIONABLE, IR)')
     parser.add_argument('--search', type=str, default=None,
@@ -687,7 +705,7 @@ if __name__ == '__main__':
     if args.player:
         # Look up specific player
         fetcher = InjuryFetcher()
-        injury = fetcher.get_player_injury(args.player, team=args.team)
+        injury = fetcher.get_player_injury(args.player, team=args.team, position=args.position)
         if injury:
             print(f"\n{injury['player_name']} ({injury['team']} - {injury['position']})")
             print(f"  Status: {injury['injury_status']}")
@@ -701,18 +719,23 @@ if __name__ == '__main__':
                 print(f"Checking live data for {args.team}...")
                 injury = fetcher.fetch_player_injury_live(args.player, args.team)
                 if injury:
-                    print(f"\n{injury['player_name']} ({injury['team']} - {injury['position']})")
-                    print(f"  Status: {injury['injury_status']}")
-                    print(f"  Injury: {injury['injury_type']}")
+                    # Apply position filter to live result
+                    if args.position and injury.get('position', '').upper() != args.position.upper():
+                        print(f"Player found but position doesn't match '{args.position}'")
+                    else:
+                        print(f"\n{injury['player_name']} ({injury['team']} - {injury['position']})")
+                        print(f"  Status: {injury['injury_status']}")
+                        print(f"  Injury: {injury['injury_type']}")
                 else:
                     print(f"Player not found or not injured")
 
     elif args.search:
         # Search for players
         fetcher = InjuryFetcher()
-        results = fetcher.search_players(args.search)
+        results = fetcher.search_players(args.search, position=args.position)
         if results:
-            print(f"\nFound {len(results)} results for '{args.search}':\n")
+            pos_str = f" at {args.position.upper()}" if args.position else ""
+            print(f"\nFound {len(results)} results for '{args.search}'{pos_str}:\n")
             for inj in results:
                 print(f"  {inj['player_name']} ({inj['team']} - {inj['position']}): {inj['injury_status']}")
         else:
@@ -721,9 +744,11 @@ if __name__ == '__main__':
     elif args.status:
         # List players by status
         fetcher = InjuryFetcher()
-        results = fetcher.get_all_players_by_status(args.status)
+        positions = [args.position.upper()] if args.position else None
+        results = fetcher.get_all_players_by_status(args.status, positions=positions)
         if results:
-            print(f"\n{len(results)} players with status '{args.status.upper()}':\n")
+            pos_str = f" at {args.position.upper()}" if args.position else ""
+            print(f"\n{len(results)} players with status '{args.status.upper()}'{pos_str}:\n")
             # Sort by team
             results.sort(key=lambda x: x['team'])
             current_team = None
