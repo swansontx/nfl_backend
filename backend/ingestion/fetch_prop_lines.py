@@ -187,6 +187,11 @@ class PropLineFetcher:
 
         try:
             response = requests.get(url, params=params, timeout=10)
+
+            # Handle 422 silently - market not available for this event
+            if response.status_code == 422:
+                return {}
+
             response.raise_for_status()
 
             data = response.json()
@@ -198,7 +203,9 @@ class PropLineFetcher:
             return data
 
         except requests.exceptions.RequestException as e:
-            print(f"  ✗ Error fetching {market} for {game_id}: {e}")
+            # Only print real errors, not 422s
+            if '422' not in str(e):
+                print(f"  ✗ Error fetching {market} for {game_id}: {e}")
             return {}
 
     def process_prop_data_with_movement(
