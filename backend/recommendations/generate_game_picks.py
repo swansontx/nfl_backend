@@ -13,12 +13,20 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import json
 
-# Import odds fetching utilities
+# Import database repository for odds (bypass __init__.py which needs SQLAlchemy)
 try:
-    from backend.ingestion.fetch_odds import load_latest_odds, get_player_line
-    HAS_ODDS_API = True
-except ImportError:
-    HAS_ODDS_API = False
+    import sys
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "local_db",
+        Path(__file__).parent.parent / "database" / "local_db.py"
+    )
+    local_db = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(local_db)
+    OddsRepository = local_db.OddsRepository
+    HAS_DB = True
+except Exception:
+    HAS_DB = False
 
 
 class GamePicksGenerator:
@@ -179,32 +187,53 @@ class GamePicksGenerator:
         return pd.DataFrame()
 
     def _load_odds_data(self) -> Dict:
-        """Load latest sportsbook odds data if available.
+        """Load latest sportsbook odds data from database.
 
-        Looks for odds files in inputs/odds/ directory.
+        Uses OddsRepository to fetch latest odds snapshots.
         """
-        if not HAS_ODDS_API:
-            return {}
-
-        # Try to load latest odds
-        odds_dir = self.inputs_dir / "odds"
-        if not odds_dir.exists():
+        if not HAS_DB:
             return {}
 
         try:
-            odds_data = load_latest_odds(odds_dir)
-            if odds_data:
-                fetched_at = odds_data.get('fetched_at', 'unknown')
-                num_players = len(odds_data.get('props_by_player', {}))
-                print(f"Loaded sportsbook lines for {num_players} players (fetched: {fetched_at})")
-            return odds_data
+            # Get latest odds from database
+            odds_list = OddsRepository.get_latest_odds()
+
+            if not odds_list:
+                return {}
+
+            # Organize by player_name -> prop_type for easy lookup
+            odds_by_player = {}
+            for odds in odds_list:
+                player = odds.get('player_name', '')
+                prop = odds.get('prop_type', '')
+
+                if not player or not prop:
+                    continue
+
+                if player not in odds_by_player:
+                    odds_by_player[player] = {}
+
+                odds_by_player[player][prop] = {
+                    'line': odds.get('line'),
+                    'over_odds': odds.get('over_odds'),
+                    'under_odds': odds.get('under_odds'),
+                    'book': odds.get('book', 'draftkings'),
+                    'snapshot_time': odds.get('snapshot_time')
+                }
+
+            num_players = len(odds_by_player)
+            if num_players > 0:
+                print(f"Loaded sportsbook lines for {num_players} players from database")
+
+            return {'props_by_player': odds_by_player}
+
         except Exception as e:
-            print(f"Warning: Could not load odds data: {e}")
+            print(f"Warning: Could not load odds from database: {e}")
             return {}
 
     def get_sportsbook_line(self, player_name: str, prop_type: str,
                             bookmaker: str = 'draftkings') -> Optional[Dict]:
-        """Get real sportsbook line for a player prop.
+        """Get real sportsbook line for a player prop from database.
 
         Args:
             player_name: Player's display name
@@ -217,30 +246,34 @@ class GamePicksGenerator:
         if not self.odds_data:
             return None
 
-        # Map our prop types to Odds API market keys
-        prop_to_market = {
-            'passing_yards': 'player_pass_yds',
-            'passing_tds': 'player_pass_tds',
-            'completions': 'player_pass_completions',
-            'attempts': 'player_pass_attempts',
-            'interceptions': 'player_interceptions',
-            'rushing_yards': 'player_rush_yds',
-            'rushing_tds': 'player_rush_attempts',  # Note: API might not have rush TDs
-            'carries': 'player_rush_attempts',
-            'receptions': 'player_receptions',
-            'receiving_yards': 'player_reception_yds',
-            'targets': 'player_receptions',  # Use receptions as proxy
-            'receiving_tds': 'player_anytime_td',  # Note: this is all TDs
+        props_by_player = self.odds_data.get('props_by_player', {})
+
+        # Try exact match first
+        player_props = props_by_player.get(player_name, {})
+
+        # If not found, try fuzzy match
+        if not player_props:
+            player_lower = player_name.lower()
+            for name, props in props_by_player.items():
+                if player_lower in name.lower() or name.lower() in player_lower:
+                    player_props = props
+                    break
+
+        if not player_props or prop_type not in player_props:
+            return None
+
+        odds_data = player_props[prop_type]
+        line = odds_data.get('line')
+
+        if line is None:
+            return None
+
+        return {
+            'over_line': line,
+            'over_odds': odds_data.get('over_odds', -110),
+            'under_line': line,
+            'under_odds': odds_data.get('under_odds', -110)
         }
-
-        market = prop_to_market.get(prop_type)
-        if not market:
-            return None
-
-        try:
-            return get_player_line(player_name, market, self.odds_data, bookmaker)
-        except Exception:
-            return None
 
     def get_depth_chart_multiplier(self, player_name: str, position: str) -> float:
         """Get depth chart multiplier based on player's position on depth chart.
