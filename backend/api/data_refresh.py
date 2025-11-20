@@ -24,6 +24,7 @@ from backend.database.local_db import (
     OddsRepository
 )
 from backend.ingestion.fetch_injuries import InjuryFetcher
+from backend.ingestion.fetch_nflverse import fetch_nflverse
 from backend.api.odds_api import odds_api
 from backend.config import settings
 
@@ -378,6 +379,72 @@ class DataRefreshManager:
         logger.info(f"{data_type}: Data is fresh ({age_hours:.1f}h old), skipping")
         return False
 
+    def download_nflverse_data(self, season: int = None) -> Dict:
+        """Download nflverse data files if they don't exist.
+
+        This downloads from GitHub releases directly, no special libraries needed.
+
+        Args:
+            season: NFL season year (defaults to current season)
+
+        Returns:
+            Dict with download results
+        """
+        if season is None:
+            now = datetime.now()
+            season = now.year if now.month >= 9 else now.year - 1
+
+        logger.info(f"Checking for nflverse data files for {season} season...")
+
+        # Check if key files exist
+        key_files = [
+            f'player_stats_{season}.csv',
+            f'play_by_play_{season}.csv',
+            f'weekly_rosters_{season}.csv',
+            f'snap_counts_{season}.csv',
+            f'schedules_{season}.csv'
+        ]
+
+        missing_files = []
+        for filename in key_files:
+            filepath = self.inputs_dir / filename
+            if not filepath.exists():
+                missing_files.append(filename)
+
+        if not missing_files:
+            logger.info(f"All nflverse data files exist for {season}")
+            return {
+                'status': 'skipped',
+                'reason': 'files already exist',
+                'season': season
+            }
+
+        logger.info(f"Missing {len(missing_files)} nflverse files, downloading...")
+
+        try:
+            # Call fetch_nflverse to download missing files
+            fetch_nflverse(
+                year=season,
+                out_dir=self.inputs_dir,
+                cache_dir=None,
+                include_all=True
+            )
+
+            return {
+                'status': 'success',
+                'season': season,
+                'downloaded': len(missing_files),
+                'files': missing_files
+            }
+
+        except Exception as e:
+            logger.error(f"Error downloading nflverse data: {e}")
+            return {
+                'status': 'error',
+                'message': str(e),
+                'season': season
+            }
+
     async def refresh_all(self, force: bool = False) -> Dict:
         """Refresh all data sources with smart staleness checking.
 
@@ -392,6 +459,9 @@ class DataRefreshManager:
         # Initialize database if needed
         init_database()
         ensure_advanced_tables()
+
+        # Download nflverse data files if missing
+        results['nflverse_download'] = self.download_nflverse_data()
 
         # Run all refreshes (with staleness check if not forced)
         if force or self.is_stale('injuries'):
