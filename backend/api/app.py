@@ -1,10 +1,33 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 from datetime import datetime
+import logging
 
 from backend.api.external_apis import weather_api, sleeper_api
+from backend.api.data_refresh import data_refresh_manager, startup_refresh
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events."""
+    # Startup: Auto-refresh all data
+    logger.info("Server starting - initiating data refresh...")
+    try:
+        results = await startup_refresh()
+        logger.info(f"Startup data refresh complete: {results.get('database_status', {})}")
+    except Exception as e:
+        logger.error(f"Startup refresh failed: {e}")
+        # Don't prevent server from starting
+
+    yield
+
+    # Shutdown
+    logger.info("Server shutting down...")
 from backend.api.insights_engine import insight_generator, PlayerStats, Insight as InsightData
 from backend.api.narrative_generator import narrative_generator
 from backend.api.prop_analyzer import prop_analyzer, PropLine, PropProjection, PropValue
@@ -19,7 +42,8 @@ from backend.config import settings, check_environment
 app = FastAPI(
     title='NFL Props Backend API',
     version='1.0.0',
-    description='Backend API for NFL props predictions, insights, and content'
+    description='Backend API for NFL props predictions, insights, and content',
+    lifespan=lifespan
 )
 
 # CORS middleware for frontend
@@ -204,6 +228,131 @@ async def create_sample_projections(game_id: str):
         'game_id': game_id,
         'file': f'outputs/predictions/props_{game_id}.csv'
     }
+
+
+# ============================================================================
+# Data Refresh Endpoints (for MCP/Claude to trigger updates)
+# ============================================================================
+
+@app.post('/admin/refresh/all', tags=['Admin', 'Refresh'])
+async def refresh_all_data(force: bool = False):
+    """Refresh all data sources (injuries, schedules, stats, play-by-play).
+
+    This is the main endpoint for MCP/Claude to trigger comprehensive data updates.
+
+    Args:
+        force: Force refresh even if recently updated
+
+    Returns:
+        Dict with refresh results for each data type and database status
+    """
+    results = await data_refresh_manager.refresh_all(force=force)
+    return results
+
+
+@app.post('/admin/refresh/injuries', tags=['Admin', 'Refresh'])
+async def refresh_injuries(force: bool = False):
+    """Refresh injury data from Sleeper API.
+
+    Args:
+        force: Force refresh even if recently updated
+
+    Returns:
+        Dict with refresh results
+    """
+    result = await data_refresh_manager.refresh_injuries(force=force)
+    return result
+
+
+@app.post('/admin/refresh/schedules', tags=['Admin', 'Refresh'])
+async def refresh_schedules(force: bool = False):
+    """Refresh schedule data from CSV/parquet files.
+
+    Args:
+        force: Force refresh
+
+    Returns:
+        Dict with refresh results
+    """
+    result = await data_refresh_manager.refresh_schedules(force=force)
+    return result
+
+
+@app.post('/admin/refresh/player-stats', tags=['Admin', 'Refresh'])
+async def refresh_player_stats(force: bool = False):
+    """Refresh player stats from CSV files.
+
+    Args:
+        force: Force refresh
+
+    Returns:
+        Dict with refresh results
+    """
+    result = await data_refresh_manager.refresh_player_stats(force=force)
+    return result
+
+
+@app.post('/admin/refresh/team-stats', tags=['Admin', 'Refresh'])
+async def refresh_team_stats(force: bool = False):
+    """Refresh team stats from CSV files.
+
+    Args:
+        force: Force refresh
+
+    Returns:
+        Dict with refresh results
+    """
+    result = await data_refresh_manager.refresh_team_stats(force=force)
+    return result
+
+
+@app.post('/admin/refresh/rosters', tags=['Admin', 'Refresh'])
+async def refresh_rosters(force: bool = False):
+    """Refresh roster/depth chart data.
+
+    Args:
+        force: Force refresh
+
+    Returns:
+        Dict with refresh results
+    """
+    result = await data_refresh_manager.refresh_rosters(force=force)
+    return result
+
+
+@app.post('/admin/refresh/play-by-play', tags=['Admin', 'Refresh'])
+async def refresh_play_by_play(force: bool = False):
+    """Refresh play-by-play data from nflverse parquet files.
+
+    Args:
+        force: Force refresh
+
+    Returns:
+        Dict with refresh results
+    """
+    result = await data_refresh_manager.refresh_play_by_play(force=force)
+    return result
+
+
+@app.get('/admin/refresh/status', tags=['Admin', 'Refresh'])
+async def get_refresh_status():
+    """Get current data refresh status.
+
+    Returns:
+        Dict with last refresh times, in-progress status, and database stats
+    """
+    return data_refresh_manager.get_refresh_status()
+
+
+@app.get('/admin/database/status', tags=['Admin'])
+async def get_database_status():
+    """Get SQLite database status and record counts.
+
+    Returns:
+        Dict with counts for all tables and last update times
+    """
+    from backend.database.local_db import get_database_status
+    return get_database_status()
 
 
 @app.get('/game/{game_id}/projections')
