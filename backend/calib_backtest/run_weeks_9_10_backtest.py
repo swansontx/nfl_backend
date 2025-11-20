@@ -181,10 +181,26 @@ class WeeksBacktester:
         with open(props_file) as f:
             data = json.load(f)
 
+        # Map short prop types to standard names
+        prop_type_map = {
+            'pass_yards': 'passing_yards',
+            'rush_yards': 'rushing_yards',
+            'rec_yards': 'receiving_yards',
+            'passing_yards': 'passing_yards',
+            'rushing_yards': 'rushing_yards',
+            'receiving_yards': 'receiving_yards',
+            'receptions': 'receptions',
+            'passing_tds': 'passing_tds',
+            'rushing_tds': 'rushing_tds',
+            'receiving_tds': 'receiving_tds',
+        }
+
         # Build lookup
         historical = {}
         for prop in data.get('props', []):
-            key = (prop['player'], prop['prop_type'])
+            player = prop['player']
+            prop_type = prop_type_map.get(prop['prop_type'], prop['prop_type'])
+            key = (player, prop_type)
             historical[key] = prop['line']
 
         return historical
