@@ -606,7 +606,21 @@ class GamePicksGenerator:
         else:
             alt_line = round(alt_line * 2) / 2
 
-        # Calculate line difference in actual yards
+        # Ensure minimum buffer for count props (avoid +0 situations)
+        if prop_type in ['receptions', 'targets', 'carries']:
+            min_diff = 0.5
+            if direction == 'UNDER' and alt_line <= line:
+                alt_line = line + min_diff
+            elif direction == 'OVER' and alt_line >= line:
+                alt_line = line - min_diff
+        elif prop_type in ['completions', 'attempts']:
+            min_diff = 1.0
+            if direction == 'UNDER' and alt_line <= line:
+                alt_line = line + min_diff
+            elif direction == 'OVER' and alt_line >= line:
+                alt_line = line - min_diff
+
+        # Calculate line difference
         line_diff = abs(alt_line - line)
 
         # Estimate hit rates (UNDERs hit ~7% more than OVERs based on backtest)
