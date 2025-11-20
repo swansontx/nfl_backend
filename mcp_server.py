@@ -513,6 +513,147 @@ async def list_tools():
                     }
                 }
             }
+        ),
+
+        # ========== EVALUATION & SITUATIONAL TOOLS ==========
+        Tool(
+            name="evaluate_game",
+            description="COMPLETE GAME EVALUATION - Run full evaluation pipeline for a game. Analyzes: situational edges (trending form, weather, rest), matchup quality (positional grades), injury impact, and prop value. Returns scored grades (A+ to F) for each category. USE THIS for comprehensive game analysis before betting.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "game_id": {
+                        "type": "string",
+                        "description": "Game ID (e.g., '2024_12_BUF_MIA')"
+                    },
+                    "home_team": {
+                        "type": "string",
+                        "description": "Home team abbreviation (e.g., 'BUF')"
+                    },
+                    "away_team": {
+                        "type": "string",
+                        "description": "Away team abbreviation (e.g., 'MIA')"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    },
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number",
+                        "default": 12
+                    }
+                },
+                "required": ["game_id", "home_team", "away_team"]
+            }
+        ),
+        Tool(
+            name="evaluate_week",
+            description="EVALUATE ALL GAMES IN WEEK - Run complete evaluation pipeline for every game in a week. Returns scored analysis for each game with rankings by betting opportunity. USE THIS to find the best games to bet on.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    }
+                },
+                "required": ["week"]
+            }
+        ),
+        Tool(
+            name="get_situational_analysis",
+            description="SITUATIONAL ANALYSIS - Analyze situational factors for a game: trending form (last 3 vs season), weather impact, rest/schedule advantages, positional matchup grades. Identifies key betting situations and specific prop targets.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "game_id": {
+                        "type": "string",
+                        "description": "Game ID (e.g., '2024_12_BUF_MIA')"
+                    },
+                    "home_team": {
+                        "type": "string",
+                        "description": "Home team abbreviation"
+                    },
+                    "away_team": {
+                        "type": "string",
+                        "description": "Away team abbreviation"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    },
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number",
+                        "default": 12
+                    }
+                },
+                "required": ["game_id", "home_team", "away_team"]
+            }
+        ),
+        Tool(
+            name="get_team_trending_form",
+            description="TRENDING FORM - Get recent form analysis for a team. Compares last 3 games vs season averages for scoring, defense, passing, and rushing. Shows momentum (hot/cold/neutral) and form grades.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team": {
+                        "type": "string",
+                        "description": "Team abbreviation (e.g., 'KC', 'BUF')"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    },
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number",
+                        "default": 12
+                    }
+                },
+                "required": ["team"]
+            }
+        ),
+        Tool(
+            name="get_positional_matchups",
+            description="POSITIONAL MATCHUP GRADES - Get specific matchup grades (A+ to F) for key positions: QB vs Pass Defense, RB vs Rush Defense. Shows edge score and target props for each position battle.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "game_id": {
+                        "type": "string",
+                        "description": "Game ID (e.g., '2024_12_BUF_MIA')"
+                    },
+                    "home_team": {
+                        "type": "string",
+                        "description": "Home team abbreviation"
+                    },
+                    "away_team": {
+                        "type": "string",
+                        "description": "Away team abbreviation"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    },
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number",
+                        "default": 12
+                    }
+                },
+                "required": ["game_id", "home_team", "away_team"]
+            }
         )
     ]
 
@@ -749,6 +890,75 @@ async def call_tool(name: str, arguments: dict):
                         "include_odds": True
                     },
                     timeout=180.0  # 3 minutes for full population
+                )
+
+            # ========== EVALUATION & SITUATIONAL TOOLS ==========
+            elif name == "evaluate_game":
+                game_id = arguments.get("game_id", "")
+                home_team = arguments.get("home_team", "")
+                away_team = arguments.get("away_team", "")
+                season = arguments.get("season", 2024)
+                week = arguments.get("week", 12)
+                response = await client.get(
+                    f"{API_BASE}/game/{game_id}/evaluate",
+                    params={
+                        "home_team": home_team,
+                        "away_team": away_team,
+                        "season": season,
+                        "week": week
+                    },
+                    timeout=60.0
+                )
+
+            elif name == "evaluate_week":
+                week = arguments.get("week", 12)
+                season = arguments.get("season", 2024)
+                response = await client.get(
+                    f"{API_BASE}/week/{week}/evaluate",
+                    params={"season": season},
+                    timeout=120.0  # May take longer for all games
+                )
+
+            elif name == "get_situational_analysis":
+                game_id = arguments.get("game_id", "")
+                home_team = arguments.get("home_team", "")
+                away_team = arguments.get("away_team", "")
+                season = arguments.get("season", 2024)
+                week = arguments.get("week", 12)
+                response = await client.get(
+                    f"{API_BASE}/game/{game_id}/situation",
+                    params={
+                        "home_team": home_team,
+                        "away_team": away_team,
+                        "season": season,
+                        "week": week
+                    }
+                )
+
+            elif name == "get_team_trending_form":
+                team = arguments.get("team", "")
+                season = arguments.get("season", 2024)
+                week = arguments.get("week", 12)
+                response = await client.get(
+                    f"{API_BASE}/team/{team}/form",
+                    params={"season": season, "week": week}
+                )
+
+            elif name == "get_positional_matchups":
+                game_id = arguments.get("game_id", "")
+                home_team = arguments.get("home_team", "")
+                away_team = arguments.get("away_team", "")
+                season = arguments.get("season", 2024)
+                week = arguments.get("week", 12)
+                # Use situational endpoint and extract positional edges
+                response = await client.get(
+                    f"{API_BASE}/game/{game_id}/situation",
+                    params={
+                        "home_team": home_team,
+                        "away_team": away_team,
+                        "season": season,
+                        "week": week
+                    }
                 )
 
             else:
