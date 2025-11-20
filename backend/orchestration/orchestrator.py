@@ -125,17 +125,71 @@ class NFLPropsPipeline:
                   "--output", "outputs"]
         ))
 
-        # Stage 5: Model Training (optional, controlled by --train flag)
-        # Note: Model training scripts to be implemented
-        # Would run: backend/modeling/train_passing_model.py, etc.
+    def _add_training_stages(self):
+        """Add model training stages to pipeline."""
+        backend_dir = Path(__file__).parent.parent
 
-        # Stage 6: Prediction Generation (for specific week/games)
-        # Note: Prediction scripts to be implemented
-        # Would run: backend/modeling/generate_predictions.py
+        # Stage 5a: Train multi-prop models (main training)
+        self.stages.append(PipelineStage(
+            name="Train multi-prop models (all prop types)",
+            script_path=str(backend_dir / "modeling" / "train_multi_prop_models.py"),
+            args=["--season", str(self.season),
+                  "--output-dir", "outputs/models"]
+        ))
 
-        # Stage 7: Backtest/Calibration (optional, controlled by --backtest flag)
-        # Note: Backtest framework to be implemented
-        # Would run: backend/calib_backtest/run_backtest.py
+        # Stage 5b: Train passing model (detailed QB model)
+        self.stages.append(PipelineStage(
+            name="Train passing model (QB projections)",
+            script_path=str(backend_dir / "modeling" / "train_passing_model.py"),
+            args=["--year", str(self.season),
+                  "--output", "outputs/models"]
+        ))
+
+        # Stage 5c: Train usage efficiency models
+        self.stages.append(PipelineStage(
+            name="Train usage efficiency models",
+            script_path=str(backend_dir / "modeling" / "train_usage_efficiency_models.py"),
+            args=["--season", str(self.season)]
+        ))
+
+        # Stage 5d: Train quantile models (confidence intervals)
+        self.stages.append(PipelineStage(
+            name="Train quantile models (confidence intervals)",
+            script_path=str(backend_dir / "modeling" / "train_quantile_models.py"),
+            args=["--season", str(self.season)]
+        ))
+
+    def _add_prediction_stages(self):
+        """Add prediction generation stages to pipeline."""
+        backend_dir = Path(__file__).parent.parent
+
+        # Stage 6: Generate projections for upcoming games
+        week_args = ["--week", str(self.week)] if self.week else []
+        self.stages.append(PipelineStage(
+            name=f"Generate projections for week {self.week or 'current'}",
+            script_path=str(backend_dir / "modeling" / "generate_projections.py"),
+            args=["--season", str(self.season),
+                  "--output", "outputs/projections"] + week_args
+        ))
+
+    def _add_backtest_stages(self):
+        """Add backtest/calibration stages to pipeline."""
+        backend_dir = Path(__file__).parent.parent
+
+        # Stage 7a: Run enhanced backtest
+        self.stages.append(PipelineStage(
+            name="Run enhanced backtest validation",
+            script_path=str(backend_dir / "calib_backtest" / "run_enhanced_backtest.py"),
+            args=["--season", str(self.season),
+                  "--output", "outputs/backtest"]
+        ))
+
+        # Stage 7b: Calibrate probabilities
+        self.stages.append(PipelineStage(
+            name="Calibrate probabilities",
+            script_path=str(backend_dir / "calib_backtest" / "calibrate.py"),
+            args=["--season", str(self.season)]
+        ))
 
     def run_full_pipeline(self) -> bool:
         """Run the complete pipeline.
@@ -195,33 +249,55 @@ if __name__ == '__main__':
     p.add_argument('--stage', type=str, default=None,
                    help='Run specific stage by name')
     p.add_argument('--train', action='store_true',
-                   help='Include model training step (not yet implemented)')
+                   help='Include model training stages')
     p.add_argument('--backtest', action='store_true',
-                   help='Include backtest validation step (not yet implemented)')
+                   help='Include backtest validation stages')
+    p.add_argument('--predict', action='store_true',
+                   help='Include prediction generation stage')
     p.add_argument('--predict-only', action='store_true',
-                   help='Skip data ingestion/features, only run predictions (not yet implemented)')
+                   help='Skip data ingestion/features, only run predictions')
+    p.add_argument('--full', action='store_true',
+                   help='Run full pipeline (data + train + predict + backtest)')
     args = p.parse_args()
 
     # Create pipeline
     pipeline = NFLPropsPipeline(season=args.season, week=args.week)
 
+    # Add optional stages based on flags
+    if args.full or args.train:
+        pipeline._add_training_stages()
+    if args.full or args.predict or args.predict_only:
+        pipeline._add_prediction_stages()
+    if args.full or args.backtest:
+        pipeline._add_backtest_stages()
+
     if args.list_stages:
         pipeline.list_stages()
-        print(f"\nNotes:")
-        print(f"  - Model training: Use --train flag (not yet implemented)")
-        print(f"  - Backtest validation: Use --backtest flag (not yet implemented)")
-        print(f"  - Predictions only: Use --predict-only flag (not yet implemented)")
+        print(f"\nUsage examples:")
+        print(f"  python -m backend.orchestration.orchestrator --season 2024")
+        print(f"  python -m backend.orchestration.orchestrator --season 2024 --train")
+        print(f"  python -m backend.orchestration.orchestrator --season 2024 --full")
+        print(f"  python -m backend.orchestration.orchestrator --season 2024 --week 12 --predict")
+        print(f"  python -m backend.orchestration.orchestrator --season 2024 --backtest")
     elif args.stage:
         success = pipeline.run_stage(args.stage)
         sys.exit(0 if success else 1)
+    elif args.predict_only:
+        # Only run prediction stage (skip data ingestion)
+        print(f"\n{'#'*60}")
+        print(f"# Running prediction-only mode")
+        print(f"# Season: {args.season}, Week: {args.week or 'current'}")
+        print(f"{'#'*60}\n")
+
+        # Find and run only prediction stage
+        for stage in pipeline.stages:
+            if "Generate projections" in stage.name:
+                success = stage.run()
+                sys.exit(0 if success else 1)
+
+        print("Error: Prediction stage not found. Use --predict flag.")
+        sys.exit(1)
     else:
         # Run full pipeline
-        if args.train:
-            print("\n⚠️  Model training requested but not yet implemented")
-        if args.backtest:
-            print("\n⚠️  Backtest validation requested but not yet implemented")
-        if args.predict_only:
-            print("\n⚠️  Predict-only mode requested but not yet implemented")
-
         success = pipeline.run_full_pipeline()
         sys.exit(0 if success else 1)
