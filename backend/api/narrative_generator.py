@@ -220,6 +220,144 @@ class NarrativeTemplates:
         )
 
     @staticmethod
+    def player_trend(player_name: str, trend_data: Dict) -> Narrative:
+        """Generate player trend narrative.
+
+        Args:
+            player_name: Player name
+            trend_data: Dict with trend analysis from StatisticalAnalyzer
+
+        Returns:
+            Narrative object
+        """
+        direction = trend_data.get('direction', 'stable')
+        strength = trend_data.get('strength', 0)
+        pct_change = trend_data.get('pct_change', 0)
+        recent_avg = trend_data.get('recent_avg', 0)
+        earlier_avg = trend_data.get('earlier_avg', 0)
+        stat_name = trend_data.get('stat_name', 'production')
+
+        if direction == 'increasing' and strength >= 0.5:
+            content = (
+                f"Hot Streak: {player_name}'s {stat_name} is trending sharply upward. "
+                f"Recent 3-game avg: {recent_avg:.1f} vs earlier avg: {earlier_avg:.1f} ({pct_change:+.1f}%). "
+                f"Books may not have fully adjusted to this surge - look for OVER value."
+            )
+            confidence = 0.75 + (strength * 0.1)
+            recommendation = "OVER"
+        elif direction == 'decreasing' and strength >= 0.5:
+            content = (
+                f"Cooling Off: {player_name}'s {stat_name} is in decline. "
+                f"Recent 3-game avg: {recent_avg:.1f} vs earlier avg: {earlier_avg:.1f} ({pct_change:+.1f}%). "
+                f"Market may be slow to react to this downturn - consider UNDER."
+            )
+            confidence = 0.70 + (strength * 0.1)
+            recommendation = "UNDER"
+        elif direction == 'stable':
+            content = (
+                f"Steady Production: {player_name} maintaining consistent {stat_name}. "
+                f"Average: {recent_avg:.1f} with low variance. "
+                f"No strong edge from trends - look at matchup factors instead."
+            )
+            confidence = 0.5
+            recommendation = "NEUTRAL"
+        else:
+            content = (
+                f"Mild Trend: {player_name} showing slight {direction} pattern in {stat_name}. "
+                f"Recent: {recent_avg:.1f} vs earlier: {earlier_avg:.1f} ({pct_change:+.1f}%). "
+                f"Trend not strong enough for high-confidence play."
+            )
+            confidence = 0.55 + (strength * 0.1)
+            recommendation = "OVER" if direction == 'increasing' else "UNDER"
+
+        return Narrative(
+            narrative_type="player_trend",
+            content=content,
+            generated_at=datetime.now().isoformat(),
+            confidence=min(confidence, 0.9),
+            supporting_stats={
+                "player_name": player_name,
+                "direction": direction,
+                "strength": strength,
+                "pct_change": pct_change,
+                "recent_avg": recent_avg,
+                "earlier_avg": earlier_avg,
+                "recommendation": recommendation
+            }
+        )
+
+    @staticmethod
+    def team_trend(team: str, trend_data: Dict) -> Narrative:
+        """Generate team trend narrative.
+
+        Args:
+            team: Team abbreviation
+            trend_data: Dict with team trend analysis
+
+        Returns:
+            Narrative object
+        """
+        direction = trend_data.get('direction', 'stable')
+        stat_type = trend_data.get('stat_type', 'scoring')
+        recent_avg = trend_data.get('recent_avg', 0)
+        season_avg = trend_data.get('season_avg', 0)
+        games_analyzed = trend_data.get('games', 3)
+        pct_change = ((recent_avg - season_avg) / season_avg * 100) if season_avg else 0
+
+        if stat_type == 'offense':
+            if direction == 'increasing':
+                content = (
+                    f"Offensive Surge: {team} offense clicking over last {games_analyzed} games. "
+                    f"Recent avg: {recent_avg:.1f} pts vs season avg: {season_avg:.1f} ({pct_change:+.1f}%). "
+                    f"Their player props and team totals may be undervalued."
+                )
+            elif direction == 'decreasing':
+                content = (
+                    f"Offensive Slump: {team} offense struggling recently ({games_analyzed} games). "
+                    f"Recent avg: {recent_avg:.1f} pts vs season avg: {season_avg:.1f} ({pct_change:+.1f}%). "
+                    f"Consider lower totals and under plays on their key skill players."
+                )
+            else:
+                content = (
+                    f"Consistent Offense: {team} maintaining steady production at {recent_avg:.1f} pts/game. "
+                    f"No major deviations from season avg ({season_avg:.1f}) - play the matchup."
+                )
+        else:  # defense
+            if direction == 'improving':
+                content = (
+                    f"Defensive Improvement: {team} defense tightening up ({games_analyzed} games). "
+                    f"Recent pts allowed: {recent_avg:.1f} vs season avg: {season_avg:.1f}. "
+                    f"Opponent player props may be overvalued against this improving unit."
+                )
+            elif direction == 'declining':
+                content = (
+                    f"Defensive Struggles: {team} defense allowing more points recently. "
+                    f"Recent avg allowed: {recent_avg:.1f} vs season avg: {season_avg:.1f}. "
+                    f"Opponent skill players could exploit this weakened defense."
+                )
+            else:
+                content = (
+                    f"Stable Defense: {team} defense steady at {recent_avg:.1f} pts allowed. "
+                    f"Consistent with season avg - no strong edge from recent trends."
+                )
+
+        return Narrative(
+            narrative_type="team_trend",
+            content=content,
+            generated_at=datetime.now().isoformat(),
+            confidence=0.7 if direction != 'stable' else 0.5,
+            supporting_stats={
+                "team": team,
+                "stat_type": stat_type,
+                "direction": direction,
+                "recent_avg": recent_avg,
+                "season_avg": season_avg,
+                "pct_change": round(pct_change, 1),
+                "games_analyzed": games_analyzed
+            }
+        )
+
+    @staticmethod
     def contrarian_angle(public_betting: Dict, sharp_money: Dict) -> Narrative:
         """Generate contrarian betting narrative.
 

@@ -526,6 +526,7 @@ async def get_game_weather(game_id: str):
 @app.get('/api/v1/props/value')
 async def find_prop_value(
     game_id: Optional[str] = None,
+    game_ids: Optional[str] = None,
     player_id: Optional[str] = None,
     min_edge: float = 5.0,
     min_grade: str = "B",
@@ -534,7 +535,8 @@ async def find_prop_value(
     """Find high-value prop bets.
 
     Args:
-        game_id: Filter by game ID (optional)
+        game_id: Filter by single game ID (optional)
+        game_ids: Filter by multiple game IDs, comma-separated (optional, for parlay building)
         player_id: Filter by player ID (optional)
         min_edge: Minimum edge percentage (default 5%)
         min_grade: Minimum value grade (default "B")
@@ -551,18 +553,22 @@ async def find_prop_value(
     # Load real sportsbook lines from The Odds API
     prop_lines = odds_api.get_player_props()
 
-    # Filter by game_id if provided
-    if game_id:
-        prop_lines = [line for line in prop_lines if game_id in line.timestamp]  # TODO: Better filtering
+    # Build list of game IDs to filter
+    target_game_ids = []
+    if game_ids:
+        target_game_ids = [gid.strip() for gid in game_ids.split(',')]
+    elif game_id:
+        target_game_ids = [game_id]
 
     # Load real model projections
     projections = []
-    if game_id:
-        projections = model_loader.load_projections_for_game(game_id)
+    if target_game_ids:
+        for gid in target_game_ids:
+            projections.extend(model_loader.load_projections_for_game(gid))
     else:
-        # Load all recent projections if no game_id specified
+        # Load all recent projections if no game filter specified
         available_games = model_loader.get_available_games()
-        for gid in available_games[:5]:  # Limit to 5 most recent games
+        for gid in available_games[:10]:  # Limit to 10 most recent games
             projections.extend(model_loader.load_projections_for_game(gid))
 
     # If no real data available, use sample data for demo
