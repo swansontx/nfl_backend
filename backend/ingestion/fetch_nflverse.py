@@ -34,31 +34,64 @@ import os
 from datetime import datetime, timedelta
 
 
-def _get_file_age_days(file_path: Path) -> float:
-    """Get age of file in days.
+def _check_remote_modified(url: str, local_file: Path) -> bool:
+    """Check if remote file has been modified since local file was downloaded.
+
+    Uses HTTP HEAD request to compare Last-Modified header with local mtime.
+    This is the smart way to check for updates - only downloads when remote
+    actually has new data (e.g., new week added).
 
     Args:
-        file_path: Path to file
+        url: Remote URL
+        local_file: Local file path
 
     Returns:
-        Age in days, or float('inf') if file doesn't exist
+        True if remote is newer or local doesn't exist, False if local is current
     """
-    if not file_path.exists():
-        return float('inf')
+    if not local_file.exists():
+        return True
 
-    mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
-    age = datetime.now() - mtime
-    return age.total_seconds() / 86400  # Convert to days
+    try:
+        # Get remote Last-Modified header
+        response = requests.head(url, timeout=10, allow_redirects=True)
+        if response.status_code != 200:
+            # Can't check, assume we need to download
+            return True
+
+        last_modified = response.headers.get('Last-Modified')
+        if not last_modified:
+            # No header, can't compare - check file size instead
+            content_length = response.headers.get('Content-Length')
+            if content_length:
+                local_size = local_file.stat().st_size
+                remote_size = int(content_length)
+                # If sizes differ significantly, remote has been updated
+                if abs(remote_size - local_size) > 1000:  # 1KB tolerance
+                    return True
+            return False
+
+        # Parse Last-Modified header (format: "Wed, 21 Oct 2015 07:28:00 GMT")
+        from email.utils import parsedate_to_datetime
+        remote_mtime = parsedate_to_datetime(last_modified)
+        local_mtime = datetime.fromtimestamp(local_file.stat().st_mtime, tz=remote_mtime.tzinfo)
+
+        # Remote is newer if its mtime is after local
+        return remote_mtime > local_mtime
+
+    except Exception as e:
+        print(f"  ⚠ Could not check remote: {e}")
+        return False  # Don't download if we can't verify
 
 
 def fetch_nflverse(year: int, out_dir: Path, cache_dir: Optional[Path] = None,
-                  include_all: bool = True, max_age_days: int = 7, force: bool = False):
-    """Fetch nflverse data for a given season with incremental updates.
+                  include_all: bool = True, force: bool = False):
+    """Fetch nflverse data for a given season with smart incremental updates.
 
     Downloads ALL available nflverse datasets by default.
-    Uses smart caching to avoid unnecessary re-downloads:
-    - Skips files that exist and are less than max_age_days old
-    - Re-downloads files older than max_age_days to get updated data
+    Uses HTTP conditional requests to check if remote files have been updated:
+    - Only downloads when remote file has new data (e.g., new week added)
+    - Compares Last-Modified header with local file timestamp
+    - No unnecessary re-downloads of 100+ MB files
     - Use force=True to always re-download everything
 
     Datasets downloaded:
@@ -75,8 +108,7 @@ def fetch_nflverse(year: int, out_dir: Path, cache_dir: Optional[Path] = None,
         out_dir: Output directory for processed data
         cache_dir: Optional cache directory to avoid re-downloading
         include_all: Download all available datasets (default: True)
-        max_age_days: Re-download files older than this (default: 7 days)
-        force: Force re-download even if files are fresh (default: False)
+        force: Force re-download even if files are current (default: False)
 
     Data will be saved to:
         - {out_dir}/player_stats_{year}.csv - Weekly player statistics
@@ -184,7 +216,7 @@ def fetch_nflverse(year: int, out_dir: Path, cache_dir: Optional[Path] = None,
     if force:
         print(f"Update: FORCE (re-downloading all files)")
     else:
-        print(f"Update: INCREMENTAL (re-download files older than {max_age_days} days)")
+        print(f"Update: SMART (only download if remote has new data)")
     print(f"{'='*60}\n")
 
     downloaded_count = 0
@@ -194,26 +226,25 @@ def fetch_nflverse(year: int, out_dir: Path, cache_dir: Optional[Path] = None,
     for dataset_name, dataset_info in datasets.items():
         output_file = out_dir / dataset_info['output']
 
-        # Check if file exists and is fresh enough
+        # Check if we need to download (smart check using HTTP conditional request)
         if output_file.exists() and not force:
-            file_age = _get_file_age_days(output_file)
-            if file_age < max_age_days:
+            # Check if remote has been updated since we downloaded
+            if not _check_remote_modified(dataset_info['url'], output_file):
                 size_mb = output_file.stat().st_size / (1024 * 1024)
-                print(f"✓ {dataset_info['description']} is fresh ({file_age:.1f} days old, {size_mb:.1f} MB)")
+                print(f"✓ {dataset_info['description']} is current ({size_mb:.1f} MB)")
                 cached_count += 1
                 continue
             else:
-                print(f"↻ {dataset_info['description']} is stale ({file_age:.1f} days old), re-downloading...")
+                print(f"↻ {dataset_info['description']} has updates, re-downloading...")
                 # Continue to download section below
 
-        # Check cache (only if file doesn't exist or we're not forcing)
+        # Check cache
         if cache_dir and not force:
             cache_file = cache_dir / dataset_info['output']
             if cache_file.exists():
-                cache_age = _get_file_age_days(cache_file)
-                if cache_age < max_age_days:
+                # Use cache if remote hasn't been updated
+                if not _check_remote_modified(dataset_info['url'], cache_file):
                     print(f"✓ Using cached {dataset_info['description']}: {cache_file}")
-                    # Copy from cache to output
                     output_file.write_bytes(cache_file.read_bytes())
                     cached_count += 1
                     continue
@@ -265,10 +296,10 @@ def fetch_nflverse(year: int, out_dir: Path, cache_dir: Optional[Path] = None,
     print(f"\n{'='*60}")
     print(f"nflverse data fetch complete for {year}")
     print(f"  Downloaded: {downloaded_count} files")
-    print(f"  Fresh/Cached: {cached_count} files")
+    print(f"  Current/Cached: {cached_count} files")
     if failed_count > 0:
         print(f"  ⚠ Unavailable: {failed_count} files (may not exist for {year})")
-    print(f"  Next update: files older than {max_age_days} days will be refreshed")
+    print(f"  Note: Run again anytime - only downloads when nflverse releases new data")
     print(f"{'='*60}\n")
 
 
@@ -352,20 +383,18 @@ def _build_player_lookup(out_dir: Path, year: int) -> None:
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser(
-        description='Fetch nflverse data for a season with incremental updates'
+        description='Fetch nflverse data for a season (smart incremental updates)'
     )
     p.add_argument('--year', type=int, default=2024,
                    help='NFL season year (default: 2024)')
     p.add_argument('--out', type=Path, default=Path('inputs'),
                    help='Output directory (default: inputs/)')
     p.add_argument('--cache', type=Path, default=None,
-                   help='Optional cache directory to avoid re-downloading')
+                   help='Optional cache directory')
     p.add_argument('--core-only', action='store_true',
-                   help='Download only core datasets (PBP, stats, rosters) - skip Next Gen, PFR, etc.')
-    p.add_argument('--max-age', type=int, default=7,
-                   help='Re-download files older than N days (default: 7)')
+                   help='Download only core datasets (PBP, stats, rosters)')
     p.add_argument('--force', action='store_true',
-                   help='Force re-download all files regardless of age')
+                   help='Force re-download all files even if current')
     args = p.parse_args()
 
     fetch_nflverse(
@@ -373,6 +402,5 @@ if __name__ == '__main__':
         args.out,
         args.cache,
         include_all=not args.core_only,
-        max_age_days=args.max_age,
         force=args.force
     )
