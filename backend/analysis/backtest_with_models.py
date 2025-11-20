@@ -69,12 +69,18 @@ def predict_with_model(
     X = [[season_avg, l3_avg, games_played]]
 
     try:
-        if 'Q50' in model_data:
-            # Quantile models
+        if 'models' in model_data and 'q50' in model_data['models']:
+            # New quantile model structure
+            projection = float(model_data['models']['q50'].predict(X)[0])
+            q25 = float(model_data['models']['q25'].predict(X)[0])
+            q75 = float(model_data['models']['q75'].predict(X)[0])
+            std_dev = (q75 - q25) / 1.35  # IQR to std approximation
+        elif 'Q50' in model_data:
+            # Old quantile models
             projection = float(model_data['Q50'].predict(X)[0])
             q25 = float(model_data['Q25'].predict(X)[0])
             q75 = float(model_data['Q75'].predict(X)[0])
-            std_dev = (q75 - q25) / 1.35  # IQR to std approximation
+            std_dev = (q75 - q25) / 1.35
         elif 'model' in model_data:
             # Poisson/Bernoulli models
             projection = float(model_data['model'].predict(X)[0])
@@ -138,15 +144,28 @@ def backtest_with_models(week: int, season: int = 2025) -> Dict:
         features = {}
         last_row = player_hist.iloc[-1]
 
-        for col in ['passing_yards', 'rushing_yards', 'receiving_yards', 'receptions',
-                    'completions', 'attempts', 'carries', 'targets']:
+        # Map column names to model feature names
+        col_to_feature = {
+            'passing_yards': 'pass_yards',
+            'rushing_yards': 'rush_yards',
+            'receiving_yards': 'rec_yards',
+            'receptions': 'receptions',
+            'completions': 'completions',
+            'attempts': 'attempts',
+            'carries': 'carries',
+            'targets': 'targets',
+        }
+
+        for col, feature_name in col_to_feature.items():
             if col in player_hist.columns:
                 values = player_hist[col].dropna()
                 if len(values) > 0:
+                    features[f'season_avg_{feature_name}'] = values.mean()
+                    features[f'{feature_name}_season_avg'] = values.mean()
+                    features[f'l3_avg_{feature_name}'] = values.tail(3).mean()
+                    features[f'{feature_name}_l3_avg'] = values.tail(3).mean()
+                    # Also store with original col name for fallback
                     features[f'season_avg_{col}'] = values.mean()
-                    features[f'{col}_season_avg'] = values.mean()
-                    features[f'l3_avg_{col}'] = values.tail(3).mean()
-                    features[f'{col}_l3_avg'] = values.tail(3).mean()
 
         features['games_played'] = len(player_hist)
 
@@ -183,16 +202,25 @@ def backtest_with_models(week: int, season: int = 2025) -> Dict:
             over_hit = actual_val > line
             under_hit = actual_val < line
 
-            # Determine which side we'd bet based on model confidence
-            # If std_dev is low, we trust our projection more
-            confidence = max(0.5, min(0.9, 1 - (std_dev / max(projection, 1))))
+            # Use probability-based betting strategy
+            # Calculate probability of going over the line using normal CDF
+            from math import erf, sqrt
+            if std_dev > 0:
+                z_score = (line - projection) / std_dev
+                prob_under = 0.5 * (1 + erf(z_score / sqrt(2)))
+                prob_over = 1 - prob_under
+            else:
+                prob_over = 1.0 if projection > line else 0.0
 
-            # Simple strategy: bet over if projection is higher than average
-            predicted_side = "OVER" if projection > features.get(f'season_avg_{stat_col}', projection) else "UNDER"
-
-            # Or use variance-adjusted: bet against if high variance
-            if std_dev > projection * 0.3:
-                predicted_side = "UNDER"  # High variance = bet under for safety
+            # Bet on the side with higher probability
+            # Require >55% confidence to bet (simulating edge requirement)
+            if prob_over > 0.55:
+                predicted_side = "OVER"
+            elif prob_over < 0.45:
+                predicted_side = "UNDER"
+            else:
+                # No clear edge, skip or bet based on slight lean
+                predicted_side = "OVER" if prob_over > 0.5 else "UNDER"
 
             hit = (predicted_side == "OVER" and over_hit) or \
                   (predicted_side == "UNDER" and under_hit)
