@@ -52,7 +52,11 @@ class CalibrationParams:
 class ProbabilityCalibrator:
     """Calibrate probability estimates using historical data."""
 
-    def __init__(self, calibration_dir: str = "outputs/calibration"):
+    def __init__(self, calibration_dir: str = None):
+        if calibration_dir is None:
+            # Use absolute path based on project root
+            project_root = Path(__file__).parent.parent.parent
+            calibration_dir = project_root / "outputs" / "calibration"
         self.calibration_dir = Path(calibration_dir)
         self.calibration_dir.mkdir(parents=True, exist_ok=True)
 
