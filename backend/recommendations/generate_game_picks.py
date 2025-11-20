@@ -10,8 +10,15 @@ Uses our validated strategy:
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 import json
+
+# Import odds fetching utilities
+try:
+    from backend.ingestion.fetch_odds import load_latest_odds, get_player_line
+    HAS_ODDS_API = True
+except ImportError:
+    HAS_ODDS_API = False
 
 
 class GamePicksGenerator:
@@ -44,6 +51,9 @@ class GamePicksGenerator:
 
         # Calculate team defensive rankings
         self.def_rankings = self._calculate_defensive_rankings()
+
+        # Load real sportsbook lines if available
+        self.odds_data = self._load_odds_data()
 
         # Stat to defensive category mapping
         self.stat_to_def_category = {
@@ -167,6 +177,70 @@ class GamePicksGenerator:
             df = df[df['depth_position'].isin(skill_positions)].copy()
             return df
         return pd.DataFrame()
+
+    def _load_odds_data(self) -> Dict:
+        """Load latest sportsbook odds data if available.
+
+        Looks for odds files in inputs/odds/ directory.
+        """
+        if not HAS_ODDS_API:
+            return {}
+
+        # Try to load latest odds
+        odds_dir = self.inputs_dir / "odds"
+        if not odds_dir.exists():
+            return {}
+
+        try:
+            odds_data = load_latest_odds(odds_dir)
+            if odds_data:
+                fetched_at = odds_data.get('fetched_at', 'unknown')
+                num_players = len(odds_data.get('props_by_player', {}))
+                print(f"Loaded sportsbook lines for {num_players} players (fetched: {fetched_at})")
+            return odds_data
+        except Exception as e:
+            print(f"Warning: Could not load odds data: {e}")
+            return {}
+
+    def get_sportsbook_line(self, player_name: str, prop_type: str,
+                            bookmaker: str = 'draftkings') -> Optional[Dict]:
+        """Get real sportsbook line for a player prop.
+
+        Args:
+            player_name: Player's display name
+            prop_type: Our prop type (e.g., 'passing_yards')
+            bookmaker: Preferred bookmaker (default: draftkings)
+
+        Returns:
+            Dict with over_line, over_odds, under_line, under_odds or None
+        """
+        if not self.odds_data:
+            return None
+
+        # Map our prop types to Odds API market keys
+        prop_to_market = {
+            'passing_yards': 'player_pass_yds',
+            'passing_tds': 'player_pass_tds',
+            'completions': 'player_pass_completions',
+            'attempts': 'player_pass_attempts',
+            'interceptions': 'player_interceptions',
+            'rushing_yards': 'player_rush_yds',
+            'rushing_tds': 'player_rush_attempts',  # Note: API might not have rush TDs
+            'carries': 'player_rush_attempts',
+            'receptions': 'player_receptions',
+            'receiving_yards': 'player_reception_yds',
+            'targets': 'player_receptions',  # Use receptions as proxy
+            'receiving_tds': 'player_anytime_td',  # Note: this is all TDs
+        }
+
+        market = prop_to_market.get(prop_type)
+        if not market:
+            return None
+
+        try:
+            return get_player_line(player_name, market, self.odds_data, bookmaker)
+        except Exception:
+            return None
 
     def get_depth_chart_multiplier(self, player_name: str, position: str) -> float:
         """Get depth chart multiplier based on player's position on depth chart.
@@ -769,19 +843,45 @@ class GamePicksGenerator:
                 # Get trend info for justification
                 trend_info = self.get_player_trend(player_id, stat_col)
 
-                # Calculate the line
-                if strategy['dir'] == 'UNDER':
-                    line = projection + strategy['buffer']
-                else:
-                    line = projection - strategy['buffer']
+                # Check for real sportsbook line
+                real_line_data = self.get_sportsbook_line(player_name, strategy['prop'])
+                has_real_line = real_line_data is not None
 
-                # Round line to typical sportsbook increments
-                if strategy['prop'] in ['passing_yards']:
-                    line = round(line / 5) * 5
-                elif strategy['prop'] in ['rushing_yards', 'receiving_yards']:
-                    line = round(line * 2) / 2
+                if has_real_line:
+                    # Use real sportsbook line
+                    if strategy['dir'] == 'UNDER':
+                        line = real_line_data['under_line']
+                        real_odds = real_line_data['under_odds']
+                    else:
+                        line = real_line_data['over_line']
+                        real_odds = real_line_data['over_odds']
+
+                    # Calculate edge: how much our projection differs from market line
+                    if strategy['dir'] == 'UNDER':
+                        edge = line - projection  # Positive = good for UNDER
+                    else:
+                        edge = projection - line  # Positive = good for OVER
+
+                    edge_pct = (edge / line * 100) if line > 0 else 0
                 else:
-                    line = round(line * 2) / 2
+                    # Fall back to calculated line based on projection + buffer
+                    if strategy['dir'] == 'UNDER':
+                        line = projection + strategy['buffer']
+                        edge = strategy['buffer']
+                    else:
+                        line = projection - strategy['buffer']
+                        edge = strategy['buffer']
+
+                    edge_pct = (edge / line * 100) if line > 0 else 0
+                    real_odds = strategy['odds']
+
+                    # Round calculated line to typical sportsbook increments
+                    if strategy['prop'] in ['passing_yards']:
+                        line = round(line / 5) * 5
+                    elif strategy['prop'] in ['rushing_yards', 'receiving_yards']:
+                        line = round(line * 2) / 2
+                    else:
+                        line = round(line * 2) / 2
 
                 # Determine if player is a backup based on projection thresholds
                 is_backup = False
@@ -794,10 +894,17 @@ class GamePicksGenerator:
                 elif strategy['prop'] == 'receptions' and projection < 3:
                     is_backup = True
 
+                # Skip picks with negative edge (our projection favors the other side)
+                if edge < 0:
+                    continue
+
+                # Calculate buffer (for real lines, it's the edge; for calculated, it's the strategy buffer)
+                buffer = edge if has_real_line else strategy['buffer']
+
                 # Generate justification
                 justification = self.generate_justification(
                     player_name, team, strategy['prop'], strategy['dir'],
-                    projection, line, strategy['buffer'], trend_info, opponent
+                    projection, line, buffer, trend_info, opponent
                 )
 
                 # Calculate alternate line suggestion
@@ -814,8 +921,12 @@ class GamePicksGenerator:
                     'direction': strategy['dir'],
                     'projection': round(projection, 1),
                     'line': line,
-                    'buffer': strategy['buffer'],
+                    'buffer': round(buffer, 1),
+                    'edge': round(edge, 1),
+                    'edge_pct': round(edge_pct, 1),
+                    'has_real_line': has_real_line,
                     'est_hit_rate': strategy['hit_rate'],
+                    'real_odds': real_odds,
                     'est_odds': strategy['odds'],
                     'est_ev': strategy['ev'],
                     'category': strategy.get('category', 'other'),
@@ -837,8 +948,8 @@ class GamePicksGenerator:
 
                 picks.append(pick_data)
 
-        # Sort by EV
-        picks.sort(key=lambda x: -x['est_ev'])
+        # Sort by edge percentage (best value picks first), then by EV
+        picks.sort(key=lambda x: (-x['edge_pct'], -x['est_ev']))
 
         return picks
 
