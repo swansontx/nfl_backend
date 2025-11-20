@@ -173,7 +173,9 @@ def main():
     print("FETCHING NFL INJURY DATA")
     print("="*80 + "\n")
 
-    outputs_dir = Path('/home/user/nfl_backend/inputs')
+    # Use relative path from script location
+    outputs_dir = Path(__file__).parent.parent.parent / 'inputs'
+    outputs_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Sleeper API (best source - free, comprehensive)
     sleeper_df = fetch_sleeper_injuries()

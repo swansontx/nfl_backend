@@ -86,21 +86,47 @@ BODY_PART_ADJUSTMENTS = {
 class InjuryAdjuster:
     """Adjust projections based on injury data."""
 
-    def __init__(self, injuries_dir: str = "inputs/injuries"):
-        self.injuries_dir = Path(injuries_dir)
+    def __init__(self, injuries_dir: str = None):
+        # Use relative path from this file's location
+        if injuries_dir is None:
+            self.injuries_dir = Path(__file__).parent.parent.parent / 'inputs'
+        else:
+            self.injuries_dir = Path(injuries_dir)
         self.injuries: Dict[str, Dict] = {}
         self._load_injuries()
 
     def _load_injuries(self):
         """Load injury data from files."""
-        # Try to load from most recent injury file
-        injury_files = list(self.injuries_dir.glob("injuries_*.json"))
+        import pandas as pd
 
-        if not injury_files:
-            # Try alternative locations
-            alt_file = Path("inputs/injuries.json")
-            if alt_file.exists():
-                injury_files = [alt_file]
+        # Try to load from Sleeper CSV (primary source)
+        sleeper_file = self.injuries_dir / 'injuries_sleeper_current.csv'
+
+        if sleeper_file.exists():
+            try:
+                df = pd.read_csv(sleeper_file)
+
+                # Index by player name (lowercase for matching)
+                for _, row in df.iterrows():
+                    name = str(row.get('full_name', '')).lower()
+                    if name and name != 'nan':
+                        self.injuries[name] = {
+                            'player_name': row.get('full_name', ''),
+                            'team': row.get('team', ''),
+                            'position': row.get('position', ''),
+                            'injury_status': row.get('injury_status', ''),
+                            'injury_body_part': row.get('injury_body_part', ''),
+                            'injury_notes': row.get('injury_notes', ''),
+                        }
+
+                print(f"Loaded {len(self.injuries)} player injuries from {sleeper_file}")
+                return
+
+            except Exception as e:
+                print(f"Error loading injuries from CSV: {e}")
+
+        # Fallback: Try JSON files
+        injury_files = list(self.injuries_dir.glob("injuries_*.json"))
 
         if not injury_files:
             print("No injury data found. Run fetch_injuries.py to get latest data.")
