@@ -191,6 +191,17 @@ class NFLPropsPipeline:
             args=["--season", str(self.season)]
         ))
 
+    def _add_recommendation_stages(self, team1: str, team2: str):
+        """Add recommendation/picks generation stages to pipeline."""
+        backend_dir = Path(__file__).parent.parent
+
+        # Stage 8: Generate game picks with narratives and justifications
+        self.stages.append(PipelineStage(
+            name=f"Generate value picks for {team1} @ {team2}",
+            script_path=str(backend_dir / "recommendations" / "generate_game_picks.py"),
+            args=["--team1", team1, "--team2", team2]
+        ))
+
     def run_full_pipeline(self) -> bool:
         """Run the complete pipeline.
 
@@ -258,6 +269,12 @@ if __name__ == '__main__':
                    help='Skip data ingestion/features, only run predictions')
     p.add_argument('--full', action='store_true',
                    help='Run full pipeline (data + train + predict + backtest)')
+    p.add_argument('--picks', action='store_true',
+                   help='Generate game picks after predictions')
+    p.add_argument('--team1', type=str, default=None,
+                   help='Away team abbreviation (e.g., HOU)')
+    p.add_argument('--team2', type=str, default=None,
+                   help='Home team abbreviation (e.g., BUF)')
     args = p.parse_args()
 
     # Create pipeline
@@ -270,6 +287,8 @@ if __name__ == '__main__':
         pipeline._add_prediction_stages()
     if args.full or args.backtest:
         pipeline._add_backtest_stages()
+    if args.picks and args.team1 and args.team2:
+        pipeline._add_recommendation_stages(args.team1, args.team2)
 
     if args.list_stages:
         pipeline.list_stages()

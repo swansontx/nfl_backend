@@ -592,15 +592,27 @@ class GamePicksGenerator:
 
 
 def main():
-    generator = GamePicksGenerator()
+    import argparse
+    p = argparse.ArgumentParser(description='Generate value-optimized parlay picks')
+    p.add_argument('--team1', type=str, default='HOU',
+                   help='Away team abbreviation (default: HOU)')
+    p.add_argument('--team2', type=str, default='BUF',
+                   help='Home team abbreviation (default: BUF)')
+    p.add_argument('--inputs', type=str, default='inputs',
+                   help='Input directory for player stats')
+    args = p.parse_args()
 
-    # Generate picks for HOU vs BUF
-    team1, team2 = 'HOU', 'BUF'
+    team1, team2 = args.team1.upper(), args.team2.upper()
+
+    generator = GamePicksGenerator(inputs_dir=args.inputs)
+
+    # Generate picks
     picks = generator.generate_picks(team1, team2)
-    generator.print_picks(picks, "Houston Texans @ Buffalo Bills", team1, team2)
+    game_name = f"{team1} @ {team2}"
+    generator.print_picks(picks, game_name, team1, team2)
 
     # Save to file
-    output_file = Path("outputs/picks_HOU_BUF.json")
+    output_file = Path(f"outputs/picks_{team1}_{team2}.json")
     output_file.parent.mkdir(parents=True, exist_ok=True)
     with open(output_file, 'w') as f:
         json.dump(picks, f, indent=2)
