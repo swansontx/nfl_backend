@@ -1,10 +1,33 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 from datetime import datetime
+import logging
 
 from backend.api.external_apis import weather_api, sleeper_api
+from backend.api.data_refresh import data_refresh_manager, startup_refresh
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events."""
+    # Startup: Auto-refresh all data
+    logger.info("Server starting - initiating data refresh...")
+    try:
+        results = await startup_refresh()
+        logger.info(f"Startup data refresh complete: {results.get('database_status', {})}")
+    except Exception as e:
+        logger.error(f"Startup refresh failed: {e}")
+        # Don't prevent server from starting
+
+    yield
+
+    # Shutdown
+    logger.info("Server shutting down...")
 from backend.api.insights_engine import insight_generator, PlayerStats, Insight as InsightData
 from backend.api.narrative_generator import narrative_generator
 from backend.api.prop_analyzer import prop_analyzer, PropLine, PropProjection, PropValue
@@ -14,12 +37,16 @@ from backend.api.team_database import get_team, get_all_teams, get_division_team
 from backend.api.schedule_loader import schedule_loader, Game
 from backend.api.boxscore_generator import boxscore_generator
 from backend.api.injury_impact_analyzer import injury_analyzer, get_injury_impact_for_game
+from backend.api.situational_analyzer import situational_analyzer, analyze_game_situation, get_top_situations
+from backend.api.evaluation_pipeline import evaluation_pipeline, evaluate_game, evaluate_week
+from backend.api.defense_analyzer import defense_analyzer
 from backend.config import settings, check_environment
 
 app = FastAPI(
     title='NFL Props Backend API',
     version='1.0.0',
-    description='Backend API for NFL props predictions, insights, and content'
+    description='Backend API for NFL props predictions, insights, and content',
+    lifespan=lifespan
 )
 
 # CORS middleware for frontend
@@ -203,6 +230,482 @@ async def create_sample_projections(game_id: str):
         'status': 'created',
         'game_id': game_id,
         'file': f'outputs/predictions/props_{game_id}.csv'
+    }
+
+
+# ============================================================================
+# Data Refresh Endpoints (for MCP/Claude to trigger updates)
+# ============================================================================
+
+@app.post('/admin/refresh/all', tags=['Admin', 'Refresh'])
+async def refresh_all_data(force: bool = False):
+    """Refresh all data sources (injuries, schedules, stats, play-by-play).
+
+    This is the main endpoint for MCP/Claude to trigger comprehensive data updates.
+
+    Args:
+        force: Force refresh even if recently updated
+
+    Returns:
+        Dict with refresh results for each data type and database status
+    """
+    results = await data_refresh_manager.refresh_all(force=force)
+    return results
+
+
+@app.post('/admin/refresh/injuries', tags=['Admin', 'Refresh'])
+async def refresh_injuries(force: bool = False):
+    """Refresh injury data from Sleeper API.
+
+    Args:
+        force: Force refresh even if recently updated
+
+    Returns:
+        Dict with refresh results
+    """
+    result = await data_refresh_manager.refresh_injuries(force=force)
+    return result
+
+
+@app.post('/admin/refresh/schedules', tags=['Admin', 'Refresh'])
+async def refresh_schedules(force: bool = False):
+    """Refresh schedule data from CSV/parquet files.
+
+    Args:
+        force: Force refresh
+
+    Returns:
+        Dict with refresh results
+    """
+    result = await data_refresh_manager.refresh_schedules(force=force)
+    return result
+
+
+@app.post('/admin/refresh/player-stats', tags=['Admin', 'Refresh'])
+async def refresh_player_stats(force: bool = False):
+    """Refresh player stats from CSV files.
+
+    Args:
+        force: Force refresh
+
+    Returns:
+        Dict with refresh results
+    """
+    result = await data_refresh_manager.refresh_player_stats(force=force)
+    return result
+
+
+@app.post('/admin/refresh/team-stats', tags=['Admin', 'Refresh'])
+async def refresh_team_stats(force: bool = False):
+    """Refresh team stats from CSV files.
+
+    Args:
+        force: Force refresh
+
+    Returns:
+        Dict with refresh results
+    """
+    result = await data_refresh_manager.refresh_team_stats(force=force)
+    return result
+
+
+@app.post('/admin/refresh/rosters', tags=['Admin', 'Refresh'])
+async def refresh_rosters(force: bool = False):
+    """Refresh roster/depth chart data.
+
+    Args:
+        force: Force refresh
+
+    Returns:
+        Dict with refresh results
+    """
+    result = await data_refresh_manager.refresh_rosters(force=force)
+    return result
+
+
+@app.post('/admin/refresh/play-by-play', tags=['Admin', 'Refresh'])
+async def refresh_play_by_play(force: bool = False):
+    """Refresh play-by-play data from nflverse parquet files.
+
+    Args:
+        force: Force refresh
+
+    Returns:
+        Dict with refresh results
+    """
+    result = await data_refresh_manager.refresh_play_by_play(force=force)
+    return result
+
+
+@app.post('/admin/refresh/odds', tags=['Admin', 'Refresh'])
+async def refresh_odds(force: bool = False):
+    """Refresh odds/lines from The Odds API.
+
+    Fetches player prop lines from multiple sportsbooks and stores
+    snapshots for line movement tracking.
+
+    Args:
+        force: Force refresh
+
+    Returns:
+        Dict with refresh results
+    """
+    result = await data_refresh_manager.refresh_odds(force=force)
+    return result
+
+
+@app.get('/admin/refresh/status', tags=['Admin', 'Refresh'])
+async def get_refresh_status():
+    """Get current data refresh status.
+
+    Returns:
+        Dict with last refresh times, in-progress status, and database stats
+    """
+    return data_refresh_manager.get_refresh_status()
+
+
+@app.get('/admin/database/status', tags=['Admin'])
+async def get_database_status():
+    """Get SQLite database status and record counts.
+
+    Returns:
+        Dict with counts for all tables and last update times
+    """
+    from backend.database.local_db import get_database_status
+    return get_database_status()
+
+
+# ============================================================================
+# Situational Analysis Endpoints
+# ============================================================================
+
+@app.get('/game/{game_id}/situation', tags=['Analysis'])
+async def get_game_situation(game_id: str, home_team: str, away_team: str,
+                             season: int = 2024, week: int = 12):
+    """Get complete situational analysis for a game.
+
+    Compounds all data to identify betting edges:
+    - Trending form (last 3 games vs season)
+    - Weather impact
+    - Rest/schedule advantages
+    - Positional matchup grades
+
+    Returns detailed analysis with specific prop targets.
+    """
+    analysis = analyze_game_situation(game_id, home_team, away_team, season, week)
+
+    return {
+        'game_id': game_id,
+        'matchup': f"{away_team} @ {home_team}",
+        'season': season,
+        'week': week,
+        'home_form': {
+            'team': analysis.home_form.team,
+            'momentum': analysis.home_form.momentum,
+            'form_grade': analysis.home_form.form_grade,
+            'narrative': analysis.home_form.form_narrative,
+            'recent_points': analysis.home_form.recent_points_avg,
+            'season_points': analysis.home_form.season_points_avg
+        },
+        'away_form': {
+            'team': analysis.away_form.team,
+            'momentum': analysis.away_form.momentum,
+            'form_grade': analysis.away_form.form_grade,
+            'narrative': analysis.away_form.form_narrative,
+            'recent_points': analysis.away_form.recent_points_avg,
+            'season_points': analysis.away_form.season_points_avg
+        },
+        'weather': {
+            'temperature': analysis.weather.temperature,
+            'wind': analysis.weather.wind_speed,
+            'is_dome': analysis.weather.is_dome,
+            'narrative': analysis.weather.weather_narrative,
+            'props': analysis.weather.weather_props
+        },
+        'schedule': {
+            'home': {
+                'days_rest': analysis.home_schedule.days_rest,
+                'rest_advantage': analysis.home_schedule.rest_advantage,
+                'narrative': analysis.home_schedule.schedule_narrative
+            },
+            'away': {
+                'days_rest': analysis.away_schedule.days_rest,
+                'rest_advantage': analysis.away_schedule.rest_advantage,
+                'narrative': analysis.away_schedule.schedule_narrative
+            }
+        },
+        'positional_edges': [
+            {
+                'team': edge.team,
+                'position': edge.position,
+                'grade': edge.grade,
+                'edge_score': edge.edge_score,
+                'insight': edge.insight,
+                'props': edge.target_props
+            }
+            for edge in analysis.positional_edges
+        ],
+        'key_situations': analysis.key_situations,
+        'prop_targets': analysis.prop_targets
+    }
+
+
+@app.get('/week/{week}/situations', tags=['Analysis'])
+async def get_week_betting_situations(week: int, season: int = 2024, min_edge: float = 15.0):
+    """Get top betting situations across all games in a week.
+
+    Identifies SMASH SPOTS and favorable matchups for:
+    - Positional advantages (QB vs weak pass D, RB vs weak rush D)
+    - Hot/cold team momentum
+    - Weather impacts
+    - Rest advantages
+
+    Returns situations sorted by edge score.
+    """
+    situations = get_top_situations(season, week, min_edge)
+
+    return {
+        'season': season,
+        'week': week,
+        'min_edge': min_edge,
+        'total_situations': len(situations),
+        'situations': situations
+    }
+
+
+@app.get('/team/{team}/form', tags=['Analysis'])
+async def get_team_trending_form(team: str, season: int = 2024, week: int = 12):
+    """Get trending form analysis for a team.
+
+    Compares last 3 games vs season average for:
+    - Scoring
+    - Passing yards
+    - Rushing yards
+    - Points allowed
+
+    Returns momentum indicator (hot/cold/neutral) and form grade.
+    """
+    form = situational_analyzer.get_trending_form(team.upper(), season, week)
+
+    return {
+        'team': team.upper(),
+        'season': season,
+        'week': week,
+        'momentum': form.momentum,
+        'form_grade': form.form_grade,
+        'narrative': form.form_narrative,
+        'scoring': {
+            'recent_avg': form.recent_points_avg,
+            'season_avg': form.season_points_avg,
+            'trend': form.scoring_trend,
+            'trend_pct': form.scoring_trend_pct
+        },
+        'passing': {
+            'recent_avg': form.recent_pass_yards_avg,
+            'season_avg': form.season_pass_yards_avg,
+            'trend': form.pass_trend
+        },
+        'rushing': {
+            'recent_avg': form.recent_rush_yards_avg,
+            'season_avg': form.season_rush_yards_avg,
+            'trend': form.rush_trend
+        },
+        'defense': {
+            'recent_allowed': form.recent_points_allowed_avg,
+            'season_allowed': form.season_points_allowed_avg,
+            'trend': form.defense_trend
+        }
+    }
+
+
+# ============================================================================
+# Defense Performance Endpoints - Quick Intelligent Responses
+# ============================================================================
+
+@app.get('/team/{team}/defense/rush', tags=['Analysis'])
+async def get_team_rush_defense(team: str, season: int = 2024, last_n_games: int = 5):
+    """Get rush defense performance with individual RB matchups.
+
+    Shows:
+    - How each RB performed vs their season average (+/- yards)
+    - Held under percentage (how often defense held RBs below average)
+    - Trend analysis (improving/declining)
+
+    USE THIS to answer: "How has X team done against the run?"
+    """
+    result = defense_analyzer.get_rush_defense_performance(team, season, last_n_games)
+
+    return {
+        'team': team.upper(),
+        'defense_type': 'rush',
+        'insight': result.insight,
+        'yards_allowed_per_game': round(result.avg_yards_allowed, 1),
+        'tds_allowed': result.total_tds_allowed,
+        'held_under_pct': result.held_under_pct,
+        'trending': result.trending,
+        'matchups': [
+            {
+                'player': m.player_name,
+                'team': m.team,
+                'week': m.week,
+                'yards': m.yards,
+                'attempts': m.attempts,
+                'ypc': m.ypc,
+                'season_avg': m.season_avg_yards,
+                'vs_avg': f"{'+' if m.yards_diff >= 0 else ''}{m.yards_diff}",
+                'held_under': m.held_under
+            }
+            for m in result.player_matchups
+        ]
+    }
+
+
+@app.get('/team/{team}/defense/pass', tags=['Analysis'])
+async def get_team_pass_defense(team: str, season: int = 2024, last_n_games: int = 5):
+    """Get pass defense performance with individual QB matchups.
+
+    Shows:
+    - How each QB performed vs their season average (+/- yards)
+    - Held under percentage
+    - Trend analysis
+
+    USE THIS to answer: "How has X team done against the pass?"
+    """
+    result = defense_analyzer.get_pass_defense_performance(team, season, last_n_games)
+
+    return {
+        'team': team.upper(),
+        'defense_type': 'pass',
+        'insight': result.insight,
+        'yards_allowed_per_game': round(result.avg_yards_allowed, 1),
+        'tds_allowed': result.total_tds_allowed,
+        'held_under_pct': result.held_under_pct,
+        'matchups': [
+            {
+                'player': m.player_name,
+                'team': m.team,
+                'week': m.week,
+                'yards': m.yards,
+                'attempts': m.attempts,
+                'ypa': m.ypc,
+                'season_avg': m.season_avg_yards,
+                'vs_avg': f"{'+' if m.yards_diff >= 0 else ''}{m.yards_diff}",
+                'held_under': m.held_under
+            }
+            for m in result.player_matchups
+        ]
+    }
+
+
+@app.get('/team/{team}/defense', tags=['Analysis'])
+async def get_team_defense_summary(team: str, season: int = 2024):
+    """Get complete defense summary for a team.
+
+    Combines rush and pass defense analysis with individual matchups
+    and performance comparisons.
+
+    USE THIS for overall defense analysis questions.
+    """
+    return defense_analyzer.get_defense_summary(team, season)
+
+
+# ============================================================================
+# Evaluation Pipeline Endpoints - Complete Game Analysis
+# ============================================================================
+
+@app.get('/game/{game_id}/evaluate', tags=['Evaluation'])
+async def evaluate_game_complete(game_id: str, home_team: str, away_team: str,
+                                  season: int = 2024, week: int = 12):
+    """Run COMPLETE evaluation pipeline for a game.
+
+    This is the main endpoint for comprehensive game analysis that uses
+    ALL analyzers in a consistent, organized way:
+    - Situational Analysis (form, weather, schedule)
+    - Matchup Quality (positional edges)
+    - Injury Impact (replacements, redistributions)
+    - Prop Value (betting opportunities)
+
+    Returns scored categories, key takeaways, and actionable prop targets.
+    """
+    result = evaluate_game(game_id, home_team, away_team, season, week)
+
+    return {
+        'game_id': game_id,
+        'matchup': f"{away_team} @ {home_team}",
+        'overall_score': result.overall_score,
+        'overall_grade': result.overall_grade,
+        'game_narrative': result.game_narrative,
+        'categories': {
+            'situational_edge': {
+                'score': result.situational_edge.score if result.situational_edge else 0,
+                'grade': result.situational_edge.grade if result.situational_edge else 'C',
+                'factors': result.situational_edge.factors if result.situational_edge else [],
+                'narrative': result.situational_edge.narrative if result.situational_edge else ''
+            },
+            'matchup_quality': {
+                'score': result.matchup_quality.score if result.matchup_quality else 0,
+                'grade': result.matchup_quality.grade if result.matchup_quality else 'C',
+                'factors': result.matchup_quality.factors if result.matchup_quality else [],
+                'narrative': result.matchup_quality.narrative if result.matchup_quality else ''
+            },
+            'injury_impact': {
+                'score': result.injury_impact.score if result.injury_impact else 0,
+                'grade': result.injury_impact.grade if result.injury_impact else 'C',
+                'factors': result.injury_impact.factors if result.injury_impact else [],
+                'narrative': result.injury_impact.narrative if result.injury_impact else ''
+            },
+            'prop_value': {
+                'score': result.prop_value.score if result.prop_value else 0,
+                'grade': result.prop_value.grade if result.prop_value else 'C',
+                'factors': result.prop_value.factors if result.prop_value else [],
+                'narrative': result.prop_value.narrative if result.prop_value else ''
+            }
+        },
+        'key_takeaways': result.key_takeaways,
+        'prop_targets': [
+            {
+                'player': t.player,
+                'team': t.team,
+                'prop_type': t.prop_type,
+                'direction': t.direction,
+                'edge_score': t.edge_score,
+                'rationale': t.rationale,
+                'confidence': t.confidence
+            }
+            for t in result.prop_targets
+        ],
+        'analyzer_outputs': result.analyzer_outputs,
+        'evaluated_at': result.evaluated_at
+    }
+
+
+@app.get('/week/{week}/evaluate', tags=['Evaluation'])
+async def evaluate_week_complete(week: int, season: int = 2024):
+    """Evaluate ALL games in a week using complete pipeline.
+
+    Returns all games sorted by overall score (best opportunities first).
+    """
+    results = evaluate_week(season, week)
+
+    return {
+        'season': season,
+        'week': week,
+        'total_games': len(results),
+        'games': [
+            {
+                'game_id': r.game_id,
+                'matchup': f"{r.away_team} @ {r.home_team}",
+                'overall_score': r.overall_score,
+                'overall_grade': r.overall_grade,
+                'key_takeaways': r.key_takeaways[:3],
+                'top_props': [
+                    {'team': t.team, 'prop': f"{t.prop_type} {t.direction}",
+                     'edge': t.edge_score}
+                    for t in r.prop_targets[:3]
+                ]
+            }
+            for r in results
+        ]
     }
 
 

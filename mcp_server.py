@@ -513,6 +513,246 @@ async def list_tools():
                     }
                 }
             }
+        ),
+
+        # ========== EVALUATION & SITUATIONAL TOOLS ==========
+        Tool(
+            name="evaluate_game",
+            description="COMPLETE GAME EVALUATION - Run full evaluation pipeline for a game. Analyzes: situational edges (trending form, weather, rest), matchup quality (positional grades), injury impact, and prop value. Returns scored grades (A+ to F) for each category. USE THIS for comprehensive game analysis before betting.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "game_id": {
+                        "type": "string",
+                        "description": "Game ID (e.g., '2024_12_BUF_MIA')"
+                    },
+                    "home_team": {
+                        "type": "string",
+                        "description": "Home team abbreviation (e.g., 'BUF')"
+                    },
+                    "away_team": {
+                        "type": "string",
+                        "description": "Away team abbreviation (e.g., 'MIA')"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    },
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number",
+                        "default": 12
+                    }
+                },
+                "required": ["game_id", "home_team", "away_team"]
+            }
+        ),
+        Tool(
+            name="evaluate_week",
+            description="EVALUATE ALL GAMES IN WEEK - Run complete evaluation pipeline for every game in a week. Returns scored analysis for each game with rankings by betting opportunity. USE THIS to find the best games to bet on.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    }
+                },
+                "required": ["week"]
+            }
+        ),
+        Tool(
+            name="get_situational_analysis",
+            description="SITUATIONAL ANALYSIS - Analyze situational factors for a game: trending form (last 3 vs season), weather impact, rest/schedule advantages, positional matchup grades. Identifies key betting situations and specific prop targets.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "game_id": {
+                        "type": "string",
+                        "description": "Game ID (e.g., '2024_12_BUF_MIA')"
+                    },
+                    "home_team": {
+                        "type": "string",
+                        "description": "Home team abbreviation"
+                    },
+                    "away_team": {
+                        "type": "string",
+                        "description": "Away team abbreviation"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    },
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number",
+                        "default": 12
+                    }
+                },
+                "required": ["game_id", "home_team", "away_team"]
+            }
+        ),
+        Tool(
+            name="get_team_trending_form",
+            description="TRENDING FORM - Get recent form analysis for a team. Compares last 3 games vs season averages for scoring, defense, passing, and rushing. Shows momentum (hot/cold/neutral) and form grades.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team": {
+                        "type": "string",
+                        "description": "Team abbreviation (e.g., 'KC', 'BUF')"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    },
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number",
+                        "default": 12
+                    }
+                },
+                "required": ["team"]
+            }
+        ),
+        Tool(
+            name="get_positional_matchups",
+            description="POSITIONAL MATCHUP GRADES - Get specific matchup grades (A+ to F) for key positions: QB vs Pass Defense, RB vs Rush Defense. Shows edge score and target props for each position battle.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "game_id": {
+                        "type": "string",
+                        "description": "Game ID (e.g., '2024_12_BUF_MIA')"
+                    },
+                    "home_team": {
+                        "type": "string",
+                        "description": "Home team abbreviation"
+                    },
+                    "away_team": {
+                        "type": "string",
+                        "description": "Away team abbreviation"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    },
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number",
+                        "default": 12
+                    }
+                },
+                "required": ["game_id", "home_team", "away_team"]
+            }
+        ),
+
+        # ========== DEFENSE PERFORMANCE TOOLS ==========
+        Tool(
+            name="get_rush_defense",
+            description="RUSH DEFENSE ANALYSIS - How has a team done against the run? Shows each RB's performance vs their average (+/- yards), held under percentage, and trends. USE THIS when asked about run defense or RB matchups.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team": {
+                        "type": "string",
+                        "description": "Team abbreviation (e.g., 'BUF', 'KC')"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    },
+                    "last_n_games": {
+                        "type": "integer",
+                        "description": "Number of recent games to analyze",
+                        "default": 5
+                    }
+                },
+                "required": ["team"]
+            }
+        ),
+        Tool(
+            name="get_pass_defense",
+            description="PASS DEFENSE ANALYSIS - How has a team done against the pass? Shows each QB's performance vs their average (+/- yards), held under percentage. USE THIS when asked about pass defense or QB matchups.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team": {
+                        "type": "string",
+                        "description": "Team abbreviation (e.g., 'BUF', 'KC')"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    },
+                    "last_n_games": {
+                        "type": "integer",
+                        "description": "Number of recent games to analyze",
+                        "default": 5
+                    }
+                },
+                "required": ["team"]
+            }
+        ),
+        Tool(
+            name="get_defense_summary",
+            description="COMPLETE DEFENSE ANALYSIS - Get full defense summary with both rush and pass analysis. Shows individual player matchups and performance comparisons. USE THIS for general defense questions.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team": {
+                        "type": "string",
+                        "description": "Team abbreviation (e.g., 'BUF', 'KC')"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2024
+                    }
+                },
+                "required": ["team"]
+            }
+        ),
+
+        # ========== CROSS-GAME PARLAY TOOLS ==========
+        Tool(
+            name="best_props_all_games",
+            description="BEST PROPS ACROSS ALL GAMES - Find the highest edge props across every game in a week for cross-game parlays. Returns top props sorted by edge with game context. USE THIS when asked for 'best props', 'parlay legs', or props across multiple games.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number",
+                        "default": 12
+                    },
+                    "min_edge": {
+                        "type": "number",
+                        "description": "Minimum edge percentage (default 3.0)",
+                        "default": 3.0
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max number of props to return (default 20)",
+                        "default": 20
+                    },
+                    "prop_types": {
+                        "type": "string",
+                        "description": "Filter by prop types (comma-separated, e.g., 'pass_yards,rush_yards')"
+                    }
+                }
+            }
         )
     ]
 
@@ -749,6 +989,120 @@ async def call_tool(name: str, arguments: dict):
                         "include_odds": True
                     },
                     timeout=180.0  # 3 minutes for full population
+                )
+
+            # ========== EVALUATION & SITUATIONAL TOOLS ==========
+            elif name == "evaluate_game":
+                game_id = arguments.get("game_id", "")
+                home_team = arguments.get("home_team", "")
+                away_team = arguments.get("away_team", "")
+                season = arguments.get("season", 2024)
+                week = arguments.get("week", 12)
+                response = await client.get(
+                    f"{API_BASE}/game/{game_id}/evaluate",
+                    params={
+                        "home_team": home_team,
+                        "away_team": away_team,
+                        "season": season,
+                        "week": week
+                    },
+                    timeout=60.0
+                )
+
+            elif name == "evaluate_week":
+                week = arguments.get("week", 12)
+                season = arguments.get("season", 2024)
+                response = await client.get(
+                    f"{API_BASE}/week/{week}/evaluate",
+                    params={"season": season},
+                    timeout=120.0  # May take longer for all games
+                )
+
+            elif name == "get_situational_analysis":
+                game_id = arguments.get("game_id", "")
+                home_team = arguments.get("home_team", "")
+                away_team = arguments.get("away_team", "")
+                season = arguments.get("season", 2024)
+                week = arguments.get("week", 12)
+                response = await client.get(
+                    f"{API_BASE}/game/{game_id}/situation",
+                    params={
+                        "home_team": home_team,
+                        "away_team": away_team,
+                        "season": season,
+                        "week": week
+                    }
+                )
+
+            elif name == "get_team_trending_form":
+                team = arguments.get("team", "")
+                season = arguments.get("season", 2024)
+                week = arguments.get("week", 12)
+                response = await client.get(
+                    f"{API_BASE}/team/{team}/form",
+                    params={"season": season, "week": week}
+                )
+
+            elif name == "get_positional_matchups":
+                game_id = arguments.get("game_id", "")
+                home_team = arguments.get("home_team", "")
+                away_team = arguments.get("away_team", "")
+                season = arguments.get("season", 2024)
+                week = arguments.get("week", 12)
+                # Use situational endpoint and extract positional edges
+                response = await client.get(
+                    f"{API_BASE}/game/{game_id}/situation",
+                    params={
+                        "home_team": home_team,
+                        "away_team": away_team,
+                        "season": season,
+                        "week": week
+                    }
+                )
+
+            # ========== DEFENSE PERFORMANCE TOOLS ==========
+            elif name == "get_rush_defense":
+                team = arguments.get("team", "")
+                season = arguments.get("season", 2024)
+                last_n_games = arguments.get("last_n_games", 5)
+                response = await client.get(
+                    f"{API_BASE}/team/{team}/defense/rush",
+                    params={"season": season, "last_n_games": last_n_games}
+                )
+
+            elif name == "get_pass_defense":
+                team = arguments.get("team", "")
+                season = arguments.get("season", 2024)
+                last_n_games = arguments.get("last_n_games", 5)
+                response = await client.get(
+                    f"{API_BASE}/team/{team}/defense/pass",
+                    params={"season": season, "last_n_games": last_n_games}
+                )
+
+            elif name == "get_defense_summary":
+                team = arguments.get("team", "")
+                season = arguments.get("season", 2024)
+                response = await client.get(
+                    f"{API_BASE}/team/{team}/defense",
+                    params={"season": season}
+                )
+
+            # ========== CROSS-GAME PARLAY TOOLS ==========
+            elif name == "best_props_all_games":
+                week = arguments.get("week", 12)
+                min_edge = arguments.get("min_edge", 3.0)
+                limit = arguments.get("limit", 20)
+                prop_types = arguments.get("prop_types")
+                params = {
+                    "min_edge": min_edge,
+                    "limit": limit,
+                    "week": week
+                }
+                if prop_types:
+                    params["prop_types"] = prop_types
+                response = await client.get(
+                    f"{API_BASE}/analysis/quick-props",
+                    params=params
                 )
 
             else:
