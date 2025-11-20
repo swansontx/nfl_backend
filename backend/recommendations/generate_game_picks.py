@@ -21,8 +21,123 @@ class GamePicksGenerator:
         self.inputs_dir = Path(inputs_dir)
         self.stats = pd.read_csv(self.inputs_dir / "player_stats_2024_2025.csv", low_memory=False)
 
+        # Load injury data
+        self.injuries = self._load_injuries()
+
         # Calculate team defensive rankings
         self.def_rankings = self._calculate_defensive_rankings()
+
+        # Stat to defensive category mapping
+        self.stat_to_def_category = {
+            'rushing_yards': 'rush_yds_allowed',
+            'rushing_tds': 'rush_tds_allowed',
+            'carries': 'rush_yds_allowed',
+            'receiving_yards': 'rec_yds_allowed',
+            'receiving_tds': 'rec_tds_allowed',
+            'receptions': 'rec_yds_allowed',
+            'targets': 'rec_yds_allowed',
+            'passing_yards': 'pass_yds_allowed',
+            'passing_tds': 'pass_tds_allowed',
+            'completions': 'pass_yds_allowed',
+            'attempts': 'pass_yds_allowed',
+            'interceptions': 'ints_forced',
+        }
+
+        self.prop_map = {
+            'passing_yards': 'passing_yards',
+            'passing_tds': 'passing_tds',
+            'rushing_yards': 'rushing_yards',
+            'rushing_tds': 'rushing_tds',
+            'receiving_yards': 'receiving_yards',
+            'receptions': 'receptions',
+            'receiving_tds': 'receiving_tds',
+            'completions': 'completions',
+            'attempts': 'attempts',
+            'interceptions': 'passing_interceptions',
+            'carries': 'carries',
+            'targets': 'targets',
+        }
+
+        # Our validated value strategies
+        self.value_strategies = [
+            {'prop': 'receiving_tds', 'dir': 'UNDER', 'buffer': 0.5, 'hit_rate': 82.2, 'odds': -120, 'ev': 50.7, 'category': 'scoring'},
+            {'prop': 'rushing_tds', 'dir': 'UNDER', 'buffer': 0.5, 'hit_rate': 79.4, 'odds': -140, 'ev': 36.1, 'category': 'scoring'},
+            {'prop': 'passing_tds', 'dir': 'UNDER', 'buffer': 0.5, 'hit_rate': 75.0, 'odds': -150, 'ev': 25.0, 'category': 'qb_scoring'},
+            {'prop': 'rushing_yards', 'dir': 'UNDER', 'buffer': 15, 'hit_rate': 81.0, 'odds': -200, 'ev': 21.5, 'category': 'ground'},
+            {'prop': 'rushing_yards', 'dir': 'UNDER', 'buffer': 10, 'hit_rate': 77.8, 'odds': -200, 'ev': 16.7, 'category': 'ground'},
+            {'prop': 'rushing_yards', 'dir': 'UNDER', 'buffer': 5, 'hit_rate': 70.9, 'odds': -140, 'ev': 21.5, 'category': 'ground'},
+            {'prop': 'carries', 'dir': 'UNDER', 'buffer': 3, 'hit_rate': 80.1, 'odds': -200, 'ev': 20.1, 'category': 'volume'},
+            {'prop': 'carries', 'dir': 'UNDER', 'buffer': 2, 'hit_rate': 74.6, 'odds': -165, 'ev': 19.9, 'category': 'volume'},
+            {'prop': 'receiving_yards', 'dir': 'UNDER', 'buffer': 12.5, 'hit_rate': 77.0, 'odds': -200, 'ev': 15.6, 'category': 'air'},
+            {'prop': 'receiving_yards', 'dir': 'UNDER', 'buffer': 7.5, 'hit_rate': 70.9, 'odds': -165, 'ev': 13.9, 'category': 'air'},
+            {'prop': 'receptions', 'dir': 'UNDER', 'buffer': 1.5, 'hit_rate': 81.6, 'odds': -300, 'ev': 5.7, 'category': 'volume'},
+            {'prop': 'receptions', 'dir': 'UNDER', 'buffer': 1, 'hit_rate': 76.8, 'odds': -250, 'ev': 11.9, 'category': 'volume'},
+            {'prop': 'targets', 'dir': 'UNDER', 'buffer': 2, 'hit_rate': 75.0, 'odds': -200, 'ev': 12.5, 'category': 'volume'},
+            {'prop': 'passing_yards', 'dir': 'UNDER', 'buffer': 25, 'hit_rate': 72.0, 'odds': -165, 'ev': 14.0, 'category': 'qb'},
+            {'prop': 'completions', 'dir': 'UNDER', 'buffer': 3, 'hit_rate': 70.0, 'odds': -140, 'ev': 12.0, 'category': 'qb'},
+            {'prop': 'attempts', 'dir': 'UNDER', 'buffer': 4, 'hit_rate': 68.0, 'odds': -130, 'ev': 10.0, 'category': 'qb'},
+            {'prop': 'interceptions', 'dir': 'UNDER', 'buffer': 0.5, 'hit_rate': 73.3, 'odds': -165, 'ev': 17.8, 'category': 'qb_turnover'},
+            {'prop': 'interceptions', 'dir': 'OVER', 'buffer': -0.5, 'hit_rate': 45.0, 'odds': +110, 'ev': -2.0, 'category': 'qb_turnover'},
+        ]
+
+        # Narrative themes
+        self.narratives = {
+            'ground_game_stuffed': {
+                'name': 'Ground Game Stuffed',
+                'description': 'Strong run defense limits RB production',
+                'positions': ['RB'],
+                'props': ['rushing_yards', 'carries', 'rushing_tds'],
+            },
+            'secondary_lockdown': {
+                'name': 'Secondary Lockdown',
+                'description': 'Receivers struggle against tight coverage',
+                'positions': ['WR', 'TE'],
+                'props': ['receiving_yards', 'receptions', 'targets', 'receiving_tds'],
+            },
+            'qb_under_pressure': {
+                'name': 'QB Under Pressure',
+                'description': 'Pass rush disrupts timing',
+                'positions': ['QB'],
+                'props': ['passing_yards', 'completions', 'attempts', 'passing_tds', 'interceptions'],
+            },
+            'red_zone_woes': {
+                'name': 'Red Zone Struggles',
+                'description': 'Team struggles to punch it in',
+                'positions': ['QB', 'RB', 'WR', 'TE'],
+                'props': ['rushing_tds', 'receiving_tds', 'passing_tds'],
+            },
+        }
+
+    def _load_injuries(self) -> Dict:
+        """Load current injury statuses."""
+        injury_file = self.inputs_dir / "injuries_2024_2025.csv"
+        if not injury_file.exists():
+            return {}
+
+        injuries_df = pd.read_csv(injury_file)
+        max_week = int(self.stats['week'].max())
+
+        # Get latest injury report
+        latest = injuries_df[injuries_df['week'] == max_week]
+
+        # Build lookup by player name
+        injury_status = {}
+        for _, row in latest.iterrows():
+            name = row['full_name']
+            status = row.get('report_status', '')
+            if pd.notna(status):
+                injury_status[name] = status
+
+        return injury_status
+
+    def is_player_out(self, player_name: str) -> bool:
+        """Check if player is ruled OUT."""
+        status = self.injuries.get(player_name, '')
+        return status.lower() == 'out' if status else False
+
+    def get_injury_status(self, player_name: str) -> str:
+        """Get player's injury status."""
+        return self.injuries.get(player_name, '')
 
         # Stat to defensive category mapping
         self.stat_to_def_category = {
@@ -147,59 +262,90 @@ class GamePicksGenerator:
         }
 
     def _calculate_defensive_rankings(self) -> Dict:
-        """Calculate team defensive rankings based on yards/TDs allowed."""
+        """Calculate team defensive rankings based on what they ALLOW to opponents."""
         rankings = {}
 
-        # Get recent weeks
+        # Load schedule to get matchup info
+        schedule_file = self.inputs_dir / "schedules_2024_2025.csv"
+        if not schedule_file.exists():
+            return self._default_rankings()
+
+        schedule = pd.read_csv(schedule_file)
         max_week = int(self.stats['week'].max())
-        recent_stats = self.stats[self.stats['week'] >= max_week - 5]
+        min_week = max(1, max_week - 5)
 
-        # Group by opponent team to see what they allowed
-        teams = recent_stats['team'].unique()
+        # Track what each team ALLOWS
+        team_allowed = {}
 
-        for team in teams:
-            # Get stats AGAINST this team (when they were the opponent)
-            # We need to find games where this team was playing and sum opponent stats
-            team_games = recent_stats[recent_stats['team'] != team]
+        for _, game in schedule[
+            (schedule['week'] >= min_week) &
+            (schedule['week'] <= max_week) &
+            (schedule['game_type'] == 'REG')
+        ].iterrows():
+            home = game['home_team']
+            away = game['away_team']
+            week = game['week']
 
-            # This is simplified - in reality we'd need schedule data
-            # For now, estimate based on league averages and team performance
-            rankings[team] = {
-                'rush_yds_allowed': 'avg',
-                'rush_tds_allowed': 'avg',
-                'rec_yds_allowed': 'avg',
-                'rec_tds_allowed': 'avg',
-                'pass_yds_allowed': 'avg',
-                'pass_tds_allowed': 'avg',
-                'ints_forced': 'avg',
-                'rank': {}
+            # Away team's production = what home team allowed
+            away_stats = self.stats[
+                (self.stats['team'] == away) & (self.stats['week'] == week)
+            ]
+            # Home team's production = what away team allowed
+            home_stats = self.stats[
+                (self.stats['team'] == home) & (self.stats['week'] == week)
+            ]
+
+            # Home team allowed away team's stats
+            if home not in team_allowed:
+                team_allowed[home] = {'games': 0, 'rush': 0, 'rec': 0, 'pass': 0}
+            team_allowed[home]['games'] += 1
+            team_allowed[home]['rush'] += away_stats['rushing_yards'].sum()
+            team_allowed[home]['rec'] += away_stats['receiving_yards'].sum()
+            team_allowed[home]['pass'] += away_stats['passing_yards'].sum()
+
+            # Away team allowed home team's stats
+            if away not in team_allowed:
+                team_allowed[away] = {'games': 0, 'rush': 0, 'rec': 0, 'pass': 0}
+            team_allowed[away]['games'] += 1
+            team_allowed[away]['rush'] += home_stats['rushing_yards'].sum()
+            team_allowed[away]['rec'] += home_stats['receiving_yards'].sum()
+            team_allowed[away]['pass'] += home_stats['passing_yards'].sum()
+
+        # Calculate per-game averages and rank
+        team_avgs = []
+        for team, allowed in team_allowed.items():
+            if allowed['games'] > 0:
+                team_avgs.append({
+                    'team': team,
+                    'rush_avg': allowed['rush'] / allowed['games'],
+                    'rec_avg': allowed['rec'] / allowed['games'],
+                    'pass_avg': allowed['pass'] / allowed['games'],
+                })
+
+        if not team_avgs:
+            return self._default_rankings()
+
+        df = pd.DataFrame(team_avgs)
+        # Rank: 1 = best defense (allows least)
+        df['rush_rank'] = df['rush_avg'].rank(ascending=True)
+        df['rec_rank'] = df['rec_avg'].rank(ascending=True)
+        df['pass_rank'] = df['pass_avg'].rank(ascending=True)
+
+        for _, row in df.iterrows():
+            rankings[row['team']] = {
+                'rank': {
+                    'rush': int(row['rush_rank']),
+                    'rec': int(row['rec_rank']),
+                    'pass': int(row['pass_rank']),
+                }
             }
 
-        # Calculate actual rankings from aggregated opponent stats
-        # Group stats by opponent (the team that was facing them)
-        opp_stats = recent_stats.groupby('team').agg({
-            'rushing_yards': 'mean',
-            'rushing_tds': 'mean',
-            'receiving_yards': 'mean',
-            'receiving_tds': 'mean',
-            'passing_yards': 'mean',
-            'passing_tds': 'mean',
-        }).reset_index()
-
-        # Rank teams (lower = better defense = less allowed)
-        for stat in ['rushing_yards', 'rushing_tds', 'receiving_yards', 'receiving_tds', 'passing_yards', 'passing_tds']:
-            opp_stats[f'{stat}_rank'] = opp_stats[stat].rank(ascending=True)
-
-        for _, row in opp_stats.iterrows():
-            team = row['team']
-            if team in rankings:
-                rankings[team]['rank'] = {
-                    'rush': int(row.get('rushing_yards_rank', 16)),
-                    'rec': int(row.get('receiving_yards_rank', 16)),
-                    'pass': int(row.get('passing_yards_rank', 16)),
-                }
-
         return rankings
+
+    def _default_rankings(self) -> Dict:
+        """Return average rankings when data unavailable."""
+        teams = self.stats['team'].unique()
+        return {team: {'rank': {'rush': 16, 'rec': 16, 'pass': 16}} for team in teams}
 
     def get_def_context(self, opponent: str, prop: str) -> str:
         """Get defensive context string for opponent matchup."""
