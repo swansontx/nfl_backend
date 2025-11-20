@@ -39,6 +39,9 @@ class GamePicksGenerator:
         # Load injury data
         self.injuries = self._load_injuries()
 
+        # Load depth chart data
+        self.depth_charts = self._load_depth_charts()
+
         # Calculate team defensive rankings
         self.def_rankings = self._calculate_defensive_rankings()
 
@@ -153,6 +156,60 @@ class GamePicksGenerator:
     def get_injury_status(self, player_name: str) -> str:
         """Get player's injury status."""
         return self.injuries.get(player_name, '')
+
+    def _load_depth_charts(self) -> pd.DataFrame:
+        """Load depth chart data."""
+        depth_file = self.inputs_dir / "depth_charts_2024_2025.csv"
+        if depth_file.exists():
+            df = pd.read_csv(depth_file, low_memory=False)
+            # Filter to skill positions for offensive players
+            skill_positions = ['QB', 'RB', 'WR', 'TE']
+            df = df[df['depth_position'].isin(skill_positions)].copy()
+            return df
+        return pd.DataFrame()
+
+    def get_depth_chart_multiplier(self, player_name: str, position: str) -> float:
+        """Get depth chart multiplier based on player's position on depth chart.
+
+        Starters (depth_team=1) get boosted, backups get reduced.
+
+        Returns:
+            Multiplier between 0.7 and 1.05
+        """
+        if len(self.depth_charts) == 0:
+            return 1.0
+
+        # Get most recent week
+        max_week = int(self.stats['week'].max())
+
+        # Find player's most recent depth chart entry
+        player_dc = self.depth_charts[
+            (self.depth_charts['full_name'] == player_name) &
+            (self.depth_charts['week'] <= max_week)
+        ].sort_values('week', ascending=False)
+
+        if len(player_dc) == 0:
+            # Try matching on last name + first name
+            name_parts = player_name.split()
+            if len(name_parts) >= 2:
+                player_dc = self.depth_charts[
+                    (self.depth_charts['first_name'] == name_parts[0]) &
+                    (self.depth_charts['last_name'] == name_parts[-1]) &
+                    (self.depth_charts['week'] <= max_week)
+                ].sort_values('week', ascending=False)
+
+        if len(player_dc) == 0:
+            return 1.0
+
+        depth_team = player_dc.iloc[0].get('depth_team', 1)
+
+        # Starter (1st string) gets boost, backups get reduction
+        if depth_team == 1:
+            return 1.05  # 5% boost for starters
+        elif depth_team == 2:
+            return 0.85  # 15% reduction for backups
+        else:
+            return 0.70  # 30% reduction for 3rd string
 
     def _calculate_defensive_rankings(self) -> Dict:
         """Calculate team defensive rankings based on what they ALLOW to opponents."""
@@ -412,6 +469,12 @@ class GamePicksGenerator:
         # Apply snap usage adjustment (opportunity indicator)
         snap_multiplier = self.get_snap_usage_multiplier(player_id, stat_col)
         base_projection = base_projection * snap_multiplier
+
+        # Apply depth chart adjustment (starter/backup status)
+        player_name = player_df.iloc[0].get('player_display_name', '')
+        position = player_df.iloc[0].get('position', '')
+        dc_multiplier = self.get_depth_chart_multiplier(player_name, position)
+        base_projection = base_projection * dc_multiplier
 
         return base_projection
 
