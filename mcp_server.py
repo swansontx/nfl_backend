@@ -187,6 +187,60 @@ async def list_tools():
                 "required": ["game_id"]
             }
         ),
+
+        # ========== COMPREHENSIVE INTELLIGENCE TOOLS ==========
+        Tool(
+            name="full_matchup_analysis",
+            description="COMPREHENSIVE matchup analysis - injuries, projections, line movement, correlations, everything for one game.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "game_id": {
+                        "type": "string",
+                        "description": "Game ID (e.g., '2024_12_BUF_MIA')"
+                    }
+                },
+                "required": ["game_id"]
+            }
+        ),
+        Tool(
+            name="daily_betting_brief",
+            description="DAILY INTELLIGENCE - Auto-refreshes data, shows top props, injuries, sharp action across ALL games. Start here!",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number",
+                        "default": 12
+                    },
+                    "min_edge": {
+                        "type": "number",
+                        "description": "Minimum edge for top props (default 3.0)",
+                        "default": 3.0
+                    },
+                    "auto_refresh": {
+                        "type": "boolean",
+                        "description": "Auto-refresh stale data first",
+                        "default": True
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="player_outlook",
+            description="COMPLETE player analysis - all props, injury status/history, projection trends, line movement.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "player_name": {
+                        "type": "string",
+                        "description": "Player name (e.g., 'Josh Allen')"
+                    }
+                },
+                "required": ["player_name"]
+            }
+        ),
         Tool(
             name="get_line_movement",
             description="Get line movement history for a player/prop.",
@@ -415,6 +469,32 @@ async def call_tool(name: str, arguments: dict):
             elif name == "game_deep_dive":
                 game_id = arguments.get("game_id", "")
                 response = await client.get(f"{API_BASE}/analysis/game/{game_id}")
+
+            # ========== COMPREHENSIVE INTELLIGENCE ==========
+            elif name == "full_matchup_analysis":
+                game_id = arguments.get("game_id", "")
+                response = await client.get(
+                    f"{API_BASE}/intelligence/matchup/{game_id}"
+                )
+
+            elif name == "daily_betting_brief":
+                week = arguments.get("week", 12)
+                min_edge = arguments.get("min_edge", 3.0)
+                do_refresh = arguments.get("auto_refresh", True)
+                response = await client.get(
+                    f"{API_BASE}/intelligence/daily-brief",
+                    params={
+                        "week": week,
+                        "min_edge": min_edge,
+                        "auto_refresh": do_refresh
+                    }
+                )
+
+            elif name == "player_outlook":
+                player_name = arguments.get("player_name", "")
+                response = await client.get(
+                    f"{API_BASE}/intelligence/player/{player_name}"
+                )
 
             elif name == "get_line_movement":
                 player_name = arguments.get("player_name", "")

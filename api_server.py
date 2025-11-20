@@ -828,6 +828,341 @@ async def game_deep_dive(game_id: str):
     }
 
 
+# ============ COMPREHENSIVE INTELLIGENCE ENDPOINTS ============
+
+@app.get("/intelligence/matchup/{game_id}")
+async def full_matchup_analysis(game_id: str):
+    """
+    COMPREHENSIVE matchup analysis combining ALL data sources:
+    - Team injuries and their impact
+    - All player projections with edges
+    - Line movement signals
+    - Situational factors
+    - Correlated props for parlays
+    """
+    # Parse game_id
+    parts = game_id.split("_")
+    if len(parts) >= 4:
+        season, week, away_team, home_team = parts[0], parts[1], parts[2], parts[3]
+    else:
+        return {"error": "Invalid game_id format. Use: YYYY_WK_AWAY_HOME"}
+
+    # Get ALL relevant data
+    odds = OddsRepository.get_latest_odds(game_id=game_id)
+    projections = ProjectionsRepository.get_latest_projections(game_id=game_id)
+
+    # Get injuries for both teams
+    away_injuries = InjuriesRepository.get_latest_injuries(team=away_team)
+    home_injuries = InjuriesRepository.get_latest_injuries(team=home_team)
+
+    # Get line movement
+    movers = OddsRepository.get_hot_movers(min_movement=1.0, hours=48)
+    game_movers = [m for m in movers if m.get('game_id') == game_id]
+
+    # Organize projections by team
+    away_players = []
+    home_players = []
+
+    proj_lookup = {(p['player_name'].lower(), p['prop_type']): p for p in projections}
+
+    for odd in odds:
+        key = (odd['player_name'].lower(), odd['prop_type'])
+        proj = proj_lookup.get(key, {})
+
+        if proj:
+            player_data = {
+                "player": odd['player_name'],
+                "team": odd.get('team', ''),
+                "prop_type": odd['prop_type'],
+                "line": odd['line'],
+                "projection": proj.get('projection'),
+                "std_dev": proj.get('std_dev'),
+                "edge": round(abs(proj.get('projection', odd['line']) - odd['line']), 2),
+                "recommendation": "OVER" if proj.get('projection', 0) > odd['line'] else "UNDER",
+                "confidence": proj.get('hit_prob_over') if proj.get('projection', 0) > odd['line'] else proj.get('hit_prob_under')
+            }
+
+            # Determine team (simplified - would need roster data for accuracy)
+            if odd.get('team') == away_team:
+                away_players.append(player_data)
+            else:
+                home_players.append(player_data)
+
+    # Sort by edge
+    away_players.sort(key=lambda x: x['edge'], reverse=True)
+    home_players.sort(key=lambda x: x['edge'], reverse=True)
+
+    # Identify key injuries (OUT or DOUBTFUL)
+    key_away_injuries = [i for i in away_injuries if i.get('status') in ['OUT', 'DOUBTFUL']]
+    key_home_injuries = [i for i in home_injuries if i.get('status') in ['OUT', 'DOUBTFUL']]
+
+    # Find correlated props for parlays
+    correlations = []
+
+    # QB + WR correlations
+    away_qbs = [p for p in away_players if 'pass' in p['prop_type']]
+    away_wrs = [p for p in away_players if 'rec' in p['prop_type']]
+    if away_qbs and away_wrs:
+        correlations.append({
+            "type": "passing_stack",
+            "team": away_team,
+            "players": [away_qbs[0]['player'], away_wrs[0]['player']],
+            "props": [away_qbs[0]['prop_type'], away_wrs[0]['prop_type']],
+            "combined_edge": away_qbs[0]['edge'] + away_wrs[0]['edge'],
+            "correlation": "positive"
+        })
+
+    home_qbs = [p for p in home_players if 'pass' in p['prop_type']]
+    home_wrs = [p for p in home_players if 'rec' in p['prop_type']]
+    if home_qbs and home_wrs:
+        correlations.append({
+            "type": "passing_stack",
+            "team": home_team,
+            "players": [home_qbs[0]['player'], home_wrs[0]['player']],
+            "props": [home_qbs[0]['prop_type'], home_wrs[0]['prop_type']],
+            "combined_edge": home_qbs[0]['edge'] + home_wrs[0]['edge'],
+            "correlation": "positive"
+        })
+
+    return {
+        "source": "COMPREHENSIVE_ANALYSIS",
+        "game_id": game_id,
+        "matchup": f"{away_team} @ {home_team}",
+        "week": week,
+
+        "injury_impact": {
+            away_team: {
+                "key_out": [{"player": i['player_name'], "position": i['position'], "injury": i['injury_type']}
+                           for i in key_away_injuries[:5]],
+                "total_injuries": len(away_injuries)
+            },
+            home_team: {
+                "key_out": [{"player": i['player_name'], "position": i['position'], "injury": i['injury_type']}
+                           for i in key_home_injuries[:5]],
+                "total_injuries": len(home_injuries)
+            }
+        },
+
+        "value_props": {
+            away_team: away_players[:10],
+            home_team: home_players[:10]
+        },
+
+        "line_movement_signals": game_movers,
+
+        "parlay_correlations": correlations,
+
+        "summary": {
+            "total_props_analyzed": len(odds),
+            "props_with_edge": len([p for p in away_players + home_players if p['edge'] >= 3]),
+            "sharp_movers": len(game_movers)
+        },
+
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@app.get("/intelligence/daily-brief")
+async def get_daily_betting_brief(
+    week: int = Query(12, description="NFL week"),
+    min_edge: float = Query(3.0, description="Minimum edge for top props"),
+    auto_refresh: bool = Query(True, description="Auto-refresh stale data first")
+):
+    """
+    DAILY BETTING INTELLIGENCE - Everything you need before betting:
+    - Auto-refreshes stale data
+    - Top value props across all games
+    - Key injuries league-wide
+    - Sharp line movements
+    - Best parlay candidates
+    """
+    results = {"data_refreshed": False}
+
+    # Auto-refresh if requested
+    if auto_refresh:
+        freshness = await check_data_freshness()
+        if freshness["needs_refresh"]:
+            refresh_result = await auto_refresh_endpoint(week=week, year=2024)
+            results["data_refreshed"] = True
+            results["refresh_details"] = refresh_result
+
+    # Get all latest data
+    all_odds = OddsRepository.get_latest_odds()
+    all_projections = ProjectionsRepository.get_latest_projections()
+    all_injuries = InjuriesRepository.get_latest_injuries()
+    all_movers = OddsRepository.get_hot_movers(min_movement=1.5, hours=48)
+
+    # Find top value props
+    top_props = []
+    proj_lookup = {(p['player_name'].lower(), p['prop_type']): p for p in all_projections}
+
+    for odd in all_odds:
+        key = (odd['player_name'].lower(), odd['prop_type'])
+        proj = proj_lookup.get(key)
+
+        if proj:
+            edge = abs(proj.get('projection', odd['line']) - odd['line'])
+            if edge >= min_edge:
+                top_props.append({
+                    "player": odd['player_name'],
+                    "game_id": odd.get('game_id', ''),
+                    "prop_type": odd['prop_type'],
+                    "line": odd['line'],
+                    "projection": proj.get('projection'),
+                    "edge": round(edge, 2),
+                    "side": "OVER" if proj.get('projection', 0) > odd['line'] else "UNDER",
+                    "confidence": proj.get('hit_prob_over') if proj.get('projection', 0) > odd['line'] else proj.get('hit_prob_under')
+                })
+
+    top_props.sort(key=lambda x: x['edge'], reverse=True)
+
+    # Key injuries (OUT only)
+    key_injuries = [i for i in all_injuries if i.get('status') == 'OUT']
+    injuries_by_team = {}
+    for inj in key_injuries:
+        team = inj.get('team', 'UNK')
+        if team not in injuries_by_team:
+            injuries_by_team[team] = []
+        injuries_by_team[team].append({
+            "player": inj['player_name'],
+            "position": inj['position'],
+            "injury": inj['injury_type']
+        })
+
+    # Sharp action signals (big movers)
+    sharp_signals = [m for m in all_movers if abs(m.get('movement', 0)) >= 2.0]
+
+    return {
+        "source": "DAILY_INTELLIGENCE",
+        "week": week,
+        "generated_at": datetime.now().isoformat(),
+
+        "top_value_props": top_props[:15],
+
+        "key_injuries_by_team": injuries_by_team,
+
+        "sharp_line_movement": [
+            {
+                "player": m['player_name'],
+                "prop": m['prop_type'],
+                "movement": m['movement'],
+                "direction": "UP" if m['movement'] > 0 else "DOWN",
+                "signal": "Sharp money likely"
+            }
+            for m in sharp_signals[:10]
+        ],
+
+        "parlay_candidates": top_props[:6],  # Top edge props for parlays
+
+        "summary": {
+            "total_props_analyzed": len(all_odds),
+            "props_with_edge": len(top_props),
+            "teams_with_key_injuries": len(injuries_by_team),
+            "sharp_signals": len(sharp_signals)
+        },
+
+        "action_items": [
+            f"Found {len(top_props)} props with {min_edge}%+ edge",
+            f"{len(injuries_by_team)} teams have key players OUT",
+            f"{len(sharp_signals)} props showing sharp action"
+        ]
+    }
+
+
+# Alias for the auto_refresh function to avoid naming conflict
+async def auto_refresh_endpoint(week: int, year: int):
+    return await auto_refresh(week=week, year=year)
+
+
+@app.get("/intelligence/player/{player_name}")
+async def player_full_outlook(
+    player_name: str,
+    include_history: bool = Query(True, description="Include projection history")
+):
+    """
+    COMPLETE PLAYER OUTLOOK - Everything about one player:
+    - All current props with projections
+    - Injury status and history
+    - Projection trends over time
+    - Line movement on their props
+    - Usage/efficiency metrics
+    """
+    # Get all props for this player
+    odds = OddsRepository.get_latest_odds(player_name=player_name)
+    projections = ProjectionsRepository.get_latest_projections(player_name=player_name)
+    injuries = InjuriesRepository.get_injury_history(player_name, weeks=4)
+
+    # Get projection history for main props
+    proj_history = {}
+    if include_history and projections:
+        for prop_type in set(p['prop_type'] for p in projections):
+            history = ProjectionsRepository.get_projection_history(
+                player_name, prop_type, limit=5
+            )
+            if history:
+                proj_history[prop_type] = history
+
+    # Match odds with projections
+    props_analysis = []
+    proj_lookup = {p['prop_type']: p for p in projections}
+
+    for odd in odds:
+        proj = proj_lookup.get(odd['prop_type'], {})
+
+        # Check for line movement
+        movement = OddsRepository.get_line_movement(
+            player_name, odd['prop_type'], days=3
+        )
+
+        line_change = 0
+        if len(movement) >= 2:
+            line_change = movement[-1]['line'] - movement[0]['line']
+
+        props_analysis.append({
+            "prop_type": odd['prop_type'],
+            "line": odd['line'],
+            "projection": proj.get('projection'),
+            "std_dev": proj.get('std_dev'),
+            "edge": round(abs(proj.get('projection', odd['line']) - odd['line']), 2) if proj else 0,
+            "side": "OVER" if proj.get('projection', odd['line']) > odd['line'] else "UNDER",
+            "line_movement_3d": round(line_change, 1),
+            "confidence": proj.get('hit_prob_over') if proj.get('projection', 0) > odd['line'] else proj.get('hit_prob_under')
+        })
+
+    props_analysis.sort(key=lambda x: x['edge'], reverse=True)
+
+    # Current injury status
+    current_injury = None
+    if injuries:
+        latest = injuries[0]
+        current_injury = {
+            "status": latest['status'],
+            "injury": latest['injury_type'],
+            "reported": latest['reported_at']
+        }
+
+    return {
+        "source": "PLAYER_OUTLOOK",
+        "player": player_name,
+        "generated_at": datetime.now().isoformat(),
+
+        "injury_status": current_injury,
+        "injury_history": injuries[:5] if injuries else [],
+
+        "current_props": props_analysis,
+
+        "projection_trends": proj_history,
+
+        "best_bet": props_analysis[0] if props_analysis else None,
+
+        "summary": {
+            "total_props": len(props_analysis),
+            "props_with_edge": len([p for p in props_analysis if p['edge'] >= 3]),
+            "is_injured": current_injury is not None and current_injury['status'] in ['OUT', 'DOUBTFUL']
+        }
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
