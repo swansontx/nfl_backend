@@ -23,7 +23,8 @@ from backend.database.local_db import (
     init_database, get_database_status,
     OddsRepository, ProjectionsRepository, InjuriesRepository,
     GamesRepository, ResultsRepository, ValuePropsRepository,
-    ModelRunsRepository
+    ModelRunsRepository, PlayerStatsRepository, TeamStatsRepository,
+    RostersRepository, SchedulesRepository
 )
 
 # Import ingestion modules
@@ -1160,6 +1161,480 @@ async def player_full_outlook(
             "props_with_edge": len([p for p in props_analysis if p['edge'] >= 3]),
             "is_injured": current_injury is not None and current_injury['status'] in ['OUT', 'DOUBTFUL']
         }
+    }
+
+
+# ============ STATS ENDPOINTS (for general knowledge queries) ============
+
+@app.get("/stats/player/{player_name}")
+async def get_player_stats(
+    player_name: str,
+    season: int = Query(2025, description="NFL season")
+):
+    """
+    FULL PLAYER STATS - Like ESPN player page:
+    - Season totals
+    - Weekly breakdowns
+    - Bio information
+    - All relevant stats
+    """
+    # Get season totals
+    totals = PlayerStatsRepository.get_player_season_totals(player_name, season)
+
+    # Get weekly stats
+    weekly = PlayerStatsRepository.get_player_stats(player_name, season)
+
+    # Get player bio
+    bio = RostersRepository.get_player_info(player_name)
+
+    if not totals and not weekly and not bio:
+        return {
+            "source": "LOCAL_DB",
+            "player": player_name,
+            "error": "Player not found",
+            "message": "Player stats not in database. Run /populate/stats first."
+        }
+
+    return {
+        "source": "LOCAL_DB",
+        "player": player_name,
+        "season": season,
+
+        "bio": {
+            "team": bio.get('team') if bio else totals.get('team') if totals else None,
+            "position": bio.get('position') if bio else totals.get('position') if totals else None,
+            "jersey": bio.get('jersey_number') if bio else None,
+            "height": bio.get('height') if bio else None,
+            "weight": bio.get('weight') if bio else None,
+            "college": bio.get('college') if bio else None,
+            "years_exp": bio.get('years_exp') if bio else None
+        } if bio else None,
+
+        "season_totals": totals,
+
+        "weekly_stats": weekly,
+
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@app.get("/stats/team/{team}")
+async def get_team_stats(
+    team: str,
+    season: int = Query(2025, description="NFL season")
+):
+    """
+    FULL TEAM STATS - Team profile and stats:
+    - Team record and rankings
+    - Key players by position
+    - Roster information
+    """
+    # Get team stats
+    stats = TeamStatsRepository.get_team_stats(team, season)
+
+    # Get team players
+    players = PlayerStatsRepository.get_team_players(team, season)
+
+    # Get roster
+    roster = RostersRepository.get_team_roster(team, season)
+
+    # Get team schedule
+    schedule = SchedulesRepository.get_team_schedule(team, season)
+
+    return {
+        "source": "LOCAL_DB",
+        "team": team,
+        "season": season,
+
+        "team_stats": stats,
+
+        "key_players": {
+            "offense": [p for p in players if p['position'] in ['QB', 'RB', 'WR', 'TE']][:10],
+            "all": players[:20]
+        },
+
+        "roster_count": len(roster),
+        "roster_by_position": _group_roster_by_position(roster) if roster else {},
+
+        "schedule": {
+            "total_games": len(schedule),
+            "completed": len([g for g in schedule if g.get('home_score') is not None]),
+            "upcoming": [g for g in schedule if g.get('home_score') is None][:4],
+            "results": [g for g in schedule if g.get('home_score') is not None][-4:]
+        },
+
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+def _group_roster_by_position(roster):
+    """Helper to group roster by position."""
+    grouped = {}
+    for player in roster:
+        pos = player.get('position', 'UNK')
+        if pos not in grouped:
+            grouped[pos] = []
+        grouped[pos].append({
+            "name": player['player_name'],
+            "number": player.get('jersey_number'),
+            "depth": player.get('depth_chart_position')
+        })
+    return grouped
+
+
+@app.get("/stats/leaders/{stat_type}")
+async def get_league_leaders(
+    stat_type: str,
+    season: int = Query(2025, description="NFL season"),
+    limit: int = Query(20, description="Number of leaders")
+):
+    """
+    LEAGUE LEADERS - Top players in each stat category:
+    - passing_yards, passing_tds
+    - rushing_yards, rushing_tds
+    - receiving_yards, receiving_tds, receptions
+    - fantasy, fantasy_ppr
+    """
+    valid_stats = [
+        'passing_yards', 'passing_tds', 'rushing_yards', 'rushing_tds',
+        'receiving_yards', 'receiving_tds', 'receptions', 'fantasy', 'fantasy_ppr'
+    ]
+
+    if stat_type not in valid_stats:
+        return {
+            "error": f"Invalid stat_type. Use one of: {', '.join(valid_stats)}"
+        }
+
+    leaders = PlayerStatsRepository.get_league_leaders(stat_type, season, limit)
+
+    return {
+        "source": "LOCAL_DB",
+        "stat_type": stat_type,
+        "season": season,
+        "leaders": [
+            {
+                "rank": i + 1,
+                "player": l['player_name'],
+                "team": l['team'],
+                "position": l['position'],
+                "value": l['value']
+            }
+            for i, l in enumerate(leaders)
+        ],
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@app.get("/stats/schedule")
+async def get_schedule(
+    season: int = Query(2025, description="NFL season"),
+    week: Optional[int] = Query(None, description="Specific week")
+):
+    """Get full season schedule."""
+    schedule = SchedulesRepository.get_schedule(season, week)
+
+    return {
+        "source": "LOCAL_DB",
+        "season": season,
+        "week": week,
+        "games": schedule,
+        "count": len(schedule),
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@app.get("/stats/rankings")
+async def get_team_rankings(season: int = Query(2025, description="NFL season")):
+    """Get all teams ranked by record."""
+    teams = TeamStatsRepository.get_all_teams(season)
+
+    return {
+        "source": "LOCAL_DB",
+        "season": season,
+        "standings": [
+            {
+                "rank": i + 1,
+                "team": t['team'],
+                "wins": t['wins'],
+                "losses": t['losses'],
+                "ties": t.get('ties', 0),
+                "points_scored": t.get('points_scored'),
+                "points_allowed": t.get('points_allowed')
+            }
+            for i, t in enumerate(teams)
+        ],
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+# ============ DATA POPULATION ENDPOINTS ============
+
+@app.post("/populate/stats")
+async def populate_player_stats(
+    season: int = Query(2025, description="NFL season"),
+    week: Optional[int] = Query(None, description="Specific week to load")
+):
+    """
+    Populate player stats from nflverse data files.
+    Loads weekly stats for all players.
+    """
+    import pandas as pd
+
+    stats_file = PROJECT_ROOT / "inputs" / f"player_stats_{season}.csv"
+    if not stats_file.exists():
+        # Try combined file
+        stats_file = PROJECT_ROOT / "inputs" / f"player_stats_2024_{season}.csv"
+
+    if not stats_file.exists():
+        return {
+            "error": f"Stats file not found: {stats_file}",
+            "message": "Run /fetch/nflverse first to download stats"
+        }
+
+    try:
+        df = pd.read_csv(stats_file)
+
+        # Filter by week if specified
+        if week:
+            df = df[df['week'] == week]
+
+        stats_data = []
+        for _, row in df.iterrows():
+            stats_data.append({
+                'player_id': row.get('player_id'),
+                'player_name': row.get('player_name') or row.get('player_display_name'),
+                'team': row.get('recent_team') or row.get('team'),
+                'position': row.get('position'),
+                'season': int(row.get('season', season)),
+                'week': int(row.get('week', 0)),
+                'games_played': 1,
+                'pass_attempts': row.get('attempts'),
+                'pass_completions': row.get('completions'),
+                'pass_yards': row.get('passing_yards'),
+                'pass_tds': row.get('passing_tds'),
+                'interceptions': row.get('interceptions'),
+                'sacks': row.get('sacks'),
+                'sack_yards': row.get('sack_yards'),
+                'pass_rating': row.get('passer_rating'),
+                'rush_attempts': row.get('carries'),
+                'rush_yards': row.get('rushing_yards'),
+                'rush_tds': row.get('rushing_tds'),
+                'rush_yards_per_attempt': row.get('rushing_yards') / row.get('carries') if row.get('carries') else None,
+                'targets': row.get('targets'),
+                'receptions': row.get('receptions'),
+                'rec_yards': row.get('receiving_yards'),
+                'rec_tds': row.get('receiving_tds'),
+                'yards_per_reception': row.get('receiving_yards') / row.get('receptions') if row.get('receptions') else None,
+                'fantasy_points': row.get('fantasy_points'),
+                'fantasy_points_ppr': row.get('fantasy_points_ppr'),
+                'air_yards': row.get('receiving_air_yards'),
+                'yards_after_catch': row.get('receiving_yards_after_catch'),
+                'epa': row.get('receiving_epa') or row.get('rushing_epa'),
+                'cpoe': None,
+                'snap_pct': None,
+                'route_participation': None
+            })
+
+        count = PlayerStatsRepository.upsert_player_stats(stats_data)
+
+        return {
+            "success": True,
+            "source": "NFLVERSE",
+            "records_loaded": count,
+            "season": season,
+            "week": week,
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/populate/schedule")
+async def populate_schedule(season: int = Query(2025, description="NFL season")):
+    """Populate full season schedule from nflverse."""
+    import pandas as pd
+
+    # Look for schedule file
+    schedule_file = None
+    for pattern in [f"schedules.csv", f"schedule_{season}.csv", "schedules_*.csv"]:
+        files = list((PROJECT_ROOT / "inputs").glob(pattern))
+        if files:
+            schedule_file = files[0]
+            break
+
+    if not schedule_file:
+        # Try fetching directly from nflverse
+        try:
+            from backend.ingestion.fetch_nflverse_schedules import fetch_schedule
+            output_dir = PROJECT_ROOT / "inputs"
+            fetch_schedule(season, output_dir)
+            schedule_file = output_dir / f"schedule_{season}.csv"
+        except Exception as e:
+            return {
+                "error": f"Schedule file not found and fetch failed: {str(e)}",
+                "message": "Download schedule data first"
+            }
+
+    try:
+        df = pd.read_csv(schedule_file)
+
+        # Filter to season
+        if 'season' in df.columns:
+            df = df[df['season'] == season]
+
+        schedules = df.to_dict('records')
+        count = SchedulesRepository.upsert_schedules(schedules)
+
+        return {
+            "success": True,
+            "source": "NFLVERSE",
+            "games_loaded": count,
+            "season": season,
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/populate/rosters")
+async def populate_rosters(
+    season: int = Query(2025, description="NFL season"),
+    week: int = Query(12, description="Week for roster snapshot")
+):
+    """Populate rosters from nflverse."""
+    import pandas as pd
+
+    roster_file = PROJECT_ROOT / "inputs" / f"weekly_rosters_{season}.csv"
+    if not roster_file.exists():
+        roster_file = PROJECT_ROOT / "inputs" / "weekly_rosters.csv"
+
+    if not roster_file.exists():
+        return {
+            "error": "Roster file not found",
+            "message": "Run /fetch/nflverse first"
+        }
+
+    try:
+        df = pd.read_csv(roster_file)
+
+        # Filter to season/week
+        if 'season' in df.columns:
+            df = df[df['season'] == season]
+        if 'week' in df.columns:
+            df = df[df['week'] == week]
+
+        rosters = []
+        for _, row in df.iterrows():
+            rosters.append({
+                'player_id': row.get('player_id') or row.get('gsis_id'),
+                'player_name': row.get('player_name') or row.get('full_name'),
+                'team': row.get('team'),
+                'position': row.get('position'),
+                'jersey_number': row.get('jersey_number'),
+                'status': row.get('status'),
+                'height': row.get('height'),
+                'weight': row.get('weight'),
+                'birth_date': row.get('birth_date'),
+                'college': row.get('college'),
+                'years_exp': row.get('years_exp'),
+                'season': season,
+                'week': week,
+                'depth_chart_position': row.get('depth_chart_position')
+            })
+
+        count = RostersRepository.upsert_rosters(rosters)
+
+        return {
+            "success": True,
+            "source": "NFLVERSE",
+            "players_loaded": count,
+            "season": season,
+            "week": week,
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/populate/all")
+async def populate_all_data(
+    season: int = Query(2025, description="NFL season"),
+    week: int = Query(12, description="Current week"),
+    fetch_first: bool = Query(False, description="Fetch from nflverse first"),
+    include_odds: bool = Query(True, description="Fetch DraftKings odds from OddsAPI")
+):
+    """
+    POPULATE ALL DATA - Load complete database for season:
+    - Season schedule
+    - Player stats (all weeks)
+    - Current rosters
+    - Injuries
+    - DraftKings odds (for betting analysis)
+
+    This is the recommended way to initialize the database.
+    """
+    results = {}
+
+    # Optionally fetch data first
+    if fetch_first:
+        try:
+            nfl_result = await fetch_nflverse(season, include_all=True)
+            results["fetch"] = "success"
+        except Exception as e:
+            results["fetch"] = f"error: {str(e)}"
+
+    # Populate schedule
+    try:
+        schedule_result = await populate_schedule(season)
+        results["schedule"] = f"loaded {schedule_result.get('games_loaded', 0)} games"
+    except Exception as e:
+        results["schedule"] = f"error: {str(e)}"
+
+    # Populate player stats
+    try:
+        stats_result = await populate_player_stats(season)
+        results["player_stats"] = f"loaded {stats_result.get('records_loaded', 0)} records"
+    except Exception as e:
+        results["player_stats"] = f"error: {str(e)}"
+
+    # Populate rosters
+    try:
+        roster_result = await populate_rosters(season, week)
+        results["rosters"] = f"loaded {roster_result.get('players_loaded', 0)} players"
+    except Exception as e:
+        results["rosters"] = f"error: {str(e)}"
+
+    # Populate injuries
+    try:
+        injury_result = await fetch_injuries(week, season)
+        results["injuries"] = f"fetched {injury_result.records_inserted} injuries"
+    except Exception as e:
+        results["injuries"] = f"error: {str(e)}"
+
+    # Fetch DraftKings odds from OddsAPI
+    if include_odds:
+        try:
+            odds_result = await fetch_odds(week, season)
+            results["odds"] = f"fetched {odds_result.records_inserted} prop lines"
+        except Exception as e:
+            results["odds"] = f"error: {str(e)}"
+
+    return {
+        "success": True,
+        "results": results,
+        "season": season,
+        "week": week,
+        "timestamp": datetime.now().isoformat(),
+        "next_steps": [
+            "Check /stats/leaders/passing_yards for QB leaders",
+            "Check /stats/team/KC for team profile",
+            "Check /stats/schedule for full season schedule",
+            "Check /odds/latest for current prop lines",
+            "Check /odds/movers for line movement signals"
+        ]
     }
 
 

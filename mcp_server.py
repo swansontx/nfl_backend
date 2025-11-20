@@ -392,6 +392,127 @@ async def list_tools():
                     }
                 }
             }
+        ),
+
+        # ========== STATS/KNOWLEDGE TOOLS (for general queries) ==========
+        Tool(
+            name="get_player_stats",
+            description="FULL PLAYER PROFILE - Like ESPN page: season totals, weekly stats, bio. Use for quick knowledge queries.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "player_name": {
+                        "type": "string",
+                        "description": "Player name (e.g., 'Patrick Mahomes')"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2025
+                    }
+                },
+                "required": ["player_name"]
+            }
+        ),
+        Tool(
+            name="get_team_profile",
+            description="FULL TEAM PROFILE - Stats, roster, key players, schedule. Use for quick team knowledge queries.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team": {
+                        "type": "string",
+                        "description": "Team abbreviation (e.g., 'KC', 'BUF', 'SF')"
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2025
+                    }
+                },
+                "required": ["team"]
+            }
+        ),
+        Tool(
+            name="get_league_leaders",
+            description="LEAGUE LEADERS - Top players in passing yards, rushing yards, receiving yards, TDs, fantasy points, etc.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "stat_type": {
+                        "type": "string",
+                        "description": "Stat category: passing_yards, passing_tds, rushing_yards, rushing_tds, receiving_yards, receiving_tds, receptions, fantasy, fantasy_ppr",
+                        "enum": ["passing_yards", "passing_tds", "rushing_yards", "rushing_tds", "receiving_yards", "receiving_tds", "receptions", "fantasy", "fantasy_ppr"]
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2025
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Number of leaders to return",
+                        "default": 20
+                    }
+                },
+                "required": ["stat_type"]
+            }
+        ),
+        Tool(
+            name="get_schedule",
+            description="Get full NFL schedule for season or specific week.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2025
+                    },
+                    "week": {
+                        "type": "integer",
+                        "description": "Specific week (optional - all weeks if not specified)"
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="get_team_rankings",
+            description="Get all teams ranked by wins/losses - league standings.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2025
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="populate_database",
+            description="POPULATE ALL DATA - Load schedule, player stats, rosters, injuries, and odds for the season. Run this first!",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2025
+                    },
+                    "week": {
+                        "type": "integer",
+                        "description": "Current week number",
+                        "default": 12
+                    },
+                    "fetch_first": {
+                        "type": "boolean",
+                        "description": "Fetch from nflverse first (slower)",
+                        "default": False
+                    }
+                }
+            }
         )
     ]
 
@@ -572,6 +693,62 @@ async def call_tool(name: str, arguments: dict):
                 response = await client.get(
                     f"{API_BASE}/model/runs",
                     params={"limit": limit}
+                )
+
+            # ========== STATS/KNOWLEDGE TOOLS ==========
+            elif name == "get_player_stats":
+                player_name = arguments.get("player_name", "")
+                season = arguments.get("season", 2025)
+                response = await client.get(
+                    f"{API_BASE}/stats/player/{player_name}",
+                    params={"season": season}
+                )
+
+            elif name == "get_team_profile":
+                team = arguments.get("team", "")
+                season = arguments.get("season", 2025)
+                response = await client.get(
+                    f"{API_BASE}/stats/team/{team}",
+                    params={"season": season}
+                )
+
+            elif name == "get_league_leaders":
+                stat_type = arguments.get("stat_type", "passing_yards")
+                season = arguments.get("season", 2025)
+                limit = arguments.get("limit", 20)
+                response = await client.get(
+                    f"{API_BASE}/stats/leaders/{stat_type}",
+                    params={"season": season, "limit": limit}
+                )
+
+            elif name == "get_schedule":
+                season = arguments.get("season", 2025)
+                week = arguments.get("week")
+                params = {"season": season}
+                if week:
+                    params["week"] = week
+                response = await client.get(f"{API_BASE}/stats/schedule", params=params)
+
+            elif name == "get_team_rankings":
+                season = arguments.get("season", 2025)
+                response = await client.get(
+                    f"{API_BASE}/stats/rankings",
+                    params={"season": season}
+                )
+
+            elif name == "populate_database":
+                season = arguments.get("season", 2025)
+                week = arguments.get("week", 12)
+                fetch_first = arguments.get("fetch_first", False)
+                response = await client.post(
+                    f"{API_BASE}/populate/all",
+                    params={
+                        "season": season,
+                        "week": week,
+                        "fetch_first": fetch_first,
+                        "include_odds": True
+                    },
+                    timeout=180.0  # 3 minutes for full population
                 )
 
             else:
