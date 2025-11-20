@@ -144,6 +144,76 @@ class GamePicksGenerator:
         weights = [0.4, 0.3, 0.2, 0.1][:len(values)]
         return sum(v * w for v, w in zip(values, weights)) / sum(weights)
 
+    def get_player_trend(self, player_id: str, stat_col: str) -> Dict:
+        """Get player's recent trend for a stat."""
+        player_df = self.stats[
+            self.stats['player_id'] == player_id
+        ].sort_values('week', ascending=False)
+
+        if len(player_df) < 2 or stat_col not in player_df.columns:
+            return {'trend': 'stable', 'recent': [], 'consistency': 'unknown'}
+
+        values = player_df[stat_col].head(4).dropna().tolist()
+        if len(values) < 2:
+            return {'trend': 'stable', 'recent': values, 'consistency': 'unknown'}
+
+        # Trend: compare recent to older
+        recent_avg = np.mean(values[:2]) if len(values) >= 2 else values[0]
+        older_avg = np.mean(values[2:]) if len(values) > 2 else recent_avg
+
+        if recent_avg > older_avg * 1.15:
+            trend = 'up'
+        elif recent_avg < older_avg * 0.85:
+            trend = 'down'
+        else:
+            trend = 'stable'
+
+        # Consistency: low variance = consistent
+        if len(values) >= 3:
+            cv = np.std(values) / np.mean(values) if np.mean(values) > 0 else 1
+            if cv < 0.25:
+                consistency = 'very_consistent'
+            elif cv < 0.4:
+                consistency = 'consistent'
+            else:
+                consistency = 'volatile'
+        else:
+            consistency = 'unknown'
+
+        return {'trend': trend, 'recent': values, 'consistency': consistency}
+
+    def generate_justification(self, player: str, team: str, prop: str, direction: str,
+                                projection: float, line: float, buffer: float,
+                                trend_info: Dict, opponent: str) -> str:
+        """Generate a short justification for why this pick makes sense."""
+        reasons = []
+
+        # Buffer reasoning
+        buffer_pct = (buffer / projection * 100) if projection > 0 else 0
+        if direction == 'UNDER':
+            reasons.append(f"Line {buffer} above proj ({buffer_pct:.0f}% cushion)")
+
+        # Trend reasoning
+        if trend_info['trend'] == 'down' and direction == 'UNDER':
+            reasons.append("trending down recently")
+        elif trend_info['trend'] == 'up' and direction == 'OVER':
+            reasons.append("trending up recently")
+        elif trend_info['trend'] == 'stable':
+            reasons.append("consistent performer")
+
+        # Consistency reasoning
+        if trend_info['consistency'] == 'very_consistent':
+            reasons.append("very predictable output")
+        elif trend_info['consistency'] == 'volatile' and direction == 'UNDER':
+            reasons.append("volatile - buffer helps")
+
+        # Recent values context
+        if trend_info['recent']:
+            recent_str = '/'.join([str(int(v)) if v == int(v) else str(round(v, 1)) for v in trend_info['recent'][:3]])
+            reasons.append(f"L3: {recent_str}")
+
+        return "; ".join(reasons[:3])
+
     def generate_picks(self, team1: str, team2: str) -> List[Dict]:
         """Generate value picks for a matchup."""
         picks = []
@@ -190,6 +260,12 @@ class GamePicksGenerator:
                 if strategy['prop'] == 'interceptions' and projection < 0.3:
                     continue
 
+                # Get trend info for justification
+                trend_info = self.get_player_trend(player_id, stat_col)
+
+                # Determine opponent
+                opponent = team2 if team == team1 else team1
+
                 # Calculate the line
                 if strategy['dir'] == 'UNDER':
                     line = projection + strategy['buffer']
@@ -215,6 +291,12 @@ class GamePicksGenerator:
                 elif strategy['prop'] == 'receptions' and projection < 3:
                     is_backup = True
 
+                # Generate justification
+                justification = self.generate_justification(
+                    player_name, team, strategy['prop'], strategy['dir'],
+                    projection, line, strategy['buffer'], trend_info, opponent
+                )
+
                 picks.append({
                     'player': player_name,
                     'team': team,
@@ -229,6 +311,9 @@ class GamePicksGenerator:
                     'est_ev': strategy['ev'],
                     'category': strategy.get('category', 'other'),
                     'is_backup': is_backup,
+                    'justification': justification,
+                    'trend': trend_info['trend'],
+                    'recent_values': trend_info['recent'][:3],
                 })
 
         # Sort by EV
@@ -304,30 +389,48 @@ class GamePicksGenerator:
             # Show individual picks
             print("\nAvailable Picks:")
             print("-" * 70)
-            for i, p in enumerate(parlay_picks[:8], 1):
+            for i, p in enumerate(parlay_picks[:6], 1):
                 backup_tag = " [BACKUP]" if p.get('is_backup') else ""
-                print(f"{i}. {p['player']}{backup_tag} ({p['team']})")
+                trend_arrow = "↓" if p.get('trend') == 'down' else "↑" if p.get('trend') == 'up' else "→"
+                print(f"{i}. {p['player']}{backup_tag} ({p['team']}) {trend_arrow}")
                 print(f"   {p['prop']} {p['direction']} {p['line']}")
                 print(f"   Proj: {p['projection']} | Hit: {p['est_hit_rate']}% | Odds: {p['est_odds']}")
+                if p.get('justification'):
+                    print(f"   WHY: {p['justification']}")
 
             # Build suggested parlays for this narrative
             if len(parlay_picks) >= 2:
                 print("\nSuggested 2-Leg:")
                 legs = parlay_picks[:2]
                 combined = 1
+                teams_involved = set()
                 for p in legs:
                     print(f"  • {p['player']} {p['prop']} {p['direction']} {p['line']} ({p['est_hit_rate']}%)")
                     combined *= (p['est_hit_rate']/100)
+                    teams_involved.add(p['team'])
                 print(f"  Combined hit rate: {combined*100:.1f}%")
+                # Parlay justification
+                if len(teams_involved) == 2:
+                    print(f"  WHY: Props from both teams - uncorrelated outcomes")
+                elif len(teams_involved) == 1:
+                    print(f"  WHY: Same team narrative - if defense shows up, both hit")
 
             if len(parlay_picks) >= 3:
                 print("\nSuggested 3-Leg:")
                 legs = parlay_picks[:3]
                 combined = 1
+                teams_involved = set()
+                props_involved = set()
                 for p in legs:
                     print(f"  • {p['player']} {p['prop']} {p['direction']} {p['line']} ({p['est_hit_rate']}%)")
                     combined *= (p['est_hit_rate']/100)
+                    teams_involved.add(p['team'])
+                    props_involved.add(p['prop'])
                 print(f"  Combined hit rate: {combined*100:.1f}%")
+                # Parlay justification
+                diversified = len(teams_involved) > 1 or len(props_involved) > 1
+                if diversified:
+                    print(f"  WHY: Diversified across {'teams' if len(teams_involved) > 1 else 'prop types'}")
 
         # Cross-narrative "Best of" parlay
         print(f"\n\n{'='*70}")
