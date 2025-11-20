@@ -76,6 +76,8 @@ class PropLineFetcher:
         self.sport = "americanfootball_nfl"
 
         # Prop markets to fetch (comprehensive list from Odds API)
+        # All prop markets we want to fetch
+        # We'll dynamically check which are available per event
         self.prop_markets = [
             # FULL GAME - Passing props
             'player_pass_yds',
@@ -100,18 +102,62 @@ class PropLineFetcher:
             # FULL GAME - Kicking props
             'player_kicking_points',
             'player_field_goals',
+            'player_field_goals_made',
 
             # FULL GAME - Touchdown props
             'player_anytime_td',
+            'player_first_td',
             'player_last_td',
+            '1st_td_scorer',
+            'last_td_scorer',
 
             # FULL GAME - Defensive props
             'player_tackles_assists',
             'player_sacks',
+            'player_interceptions',
 
             # FULL GAME - Combo props
             'player_pass_rush_yds',
+            'player_pass_tds_rush_tds',
+            'player_receptions_rush_yds',
             'player_rush_reception_yds',
+
+            # FIRST HALF (1H) props
+            'player_1h_pass_yds',
+            'player_1h_pass_tds',
+            'player_1h_pass_completions',
+            'player_1h_rush_yds',
+            'player_1h_rush_tds',
+            'player_1h_receptions',
+            'player_1h_reception_yds',
+            'player_1h_anytime_td',
+
+            # FIRST QUARTER (1Q) props
+            'player_1q_pass_yds',
+            'player_1q_pass_tds',
+            'player_1q_pass_completions',
+            'player_1q_rush_yds',
+            'player_1q_rush_tds',
+            'player_1q_receptions',
+            'player_1q_reception_yds',
+            'player_1q_anytime_td',
+
+            # SECOND HALF (2H) props
+            'player_2h_pass_yds',
+            'player_2h_pass_tds',
+            'player_2h_rush_yds',
+            'player_2h_receptions',
+            'player_2h_reception_yds',
+
+            # THIRD QUARTER (3Q) props
+            'player_3q_pass_yds',
+            'player_3q_rush_yds',
+            'player_3q_reception_yds',
+
+            # FOURTH QUARTER (4Q) props
+            'player_4q_pass_yds',
+            'player_4q_rush_yds',
+            'player_4q_reception_yds'
         ]
 
         # Sportsbooks to track
