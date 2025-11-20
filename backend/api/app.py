@@ -37,6 +37,7 @@ from backend.api.team_database import get_team, get_all_teams, get_division_team
 from backend.api.schedule_loader import schedule_loader, Game
 from backend.api.boxscore_generator import boxscore_generator
 from backend.api.injury_impact_analyzer import injury_analyzer, get_injury_impact_for_game
+from backend.api.situational_analyzer import situational_analyzer, analyze_game_situation, get_top_situations
 from backend.config import settings, check_environment
 
 app = FastAPI(
@@ -353,6 +354,149 @@ async def get_database_status():
     """
     from backend.database.local_db import get_database_status
     return get_database_status()
+
+
+# ============================================================================
+# Situational Analysis Endpoints
+# ============================================================================
+
+@app.get('/game/{game_id}/situation', tags=['Analysis'])
+async def get_game_situation(game_id: str, home_team: str, away_team: str,
+                             season: int = 2024, week: int = 12):
+    """Get complete situational analysis for a game.
+
+    Compounds all data to identify betting edges:
+    - Trending form (last 3 games vs season)
+    - Weather impact
+    - Rest/schedule advantages
+    - Positional matchup grades
+
+    Returns detailed analysis with specific prop targets.
+    """
+    analysis = analyze_game_situation(game_id, home_team, away_team, season, week)
+
+    return {
+        'game_id': game_id,
+        'matchup': f"{away_team} @ {home_team}",
+        'season': season,
+        'week': week,
+        'home_form': {
+            'team': analysis.home_form.team,
+            'momentum': analysis.home_form.momentum,
+            'form_grade': analysis.home_form.form_grade,
+            'narrative': analysis.home_form.form_narrative,
+            'recent_points': analysis.home_form.recent_points_avg,
+            'season_points': analysis.home_form.season_points_avg
+        },
+        'away_form': {
+            'team': analysis.away_form.team,
+            'momentum': analysis.away_form.momentum,
+            'form_grade': analysis.away_form.form_grade,
+            'narrative': analysis.away_form.form_narrative,
+            'recent_points': analysis.away_form.recent_points_avg,
+            'season_points': analysis.away_form.season_points_avg
+        },
+        'weather': {
+            'temperature': analysis.weather.temperature,
+            'wind': analysis.weather.wind_speed,
+            'is_dome': analysis.weather.is_dome,
+            'narrative': analysis.weather.weather_narrative,
+            'props': analysis.weather.weather_props
+        },
+        'schedule': {
+            'home': {
+                'days_rest': analysis.home_schedule.days_rest,
+                'rest_advantage': analysis.home_schedule.rest_advantage,
+                'narrative': analysis.home_schedule.schedule_narrative
+            },
+            'away': {
+                'days_rest': analysis.away_schedule.days_rest,
+                'rest_advantage': analysis.away_schedule.rest_advantage,
+                'narrative': analysis.away_schedule.schedule_narrative
+            }
+        },
+        'positional_edges': [
+            {
+                'team': edge.team,
+                'position': edge.position,
+                'grade': edge.grade,
+                'edge_score': edge.edge_score,
+                'insight': edge.insight,
+                'props': edge.target_props
+            }
+            for edge in analysis.positional_edges
+        ],
+        'key_situations': analysis.key_situations,
+        'prop_targets': analysis.prop_targets
+    }
+
+
+@app.get('/week/{week}/situations', tags=['Analysis'])
+async def get_week_betting_situations(week: int, season: int = 2024, min_edge: float = 15.0):
+    """Get top betting situations across all games in a week.
+
+    Identifies SMASH SPOTS and favorable matchups for:
+    - Positional advantages (QB vs weak pass D, RB vs weak rush D)
+    - Hot/cold team momentum
+    - Weather impacts
+    - Rest advantages
+
+    Returns situations sorted by edge score.
+    """
+    situations = get_top_situations(season, week, min_edge)
+
+    return {
+        'season': season,
+        'week': week,
+        'min_edge': min_edge,
+        'total_situations': len(situations),
+        'situations': situations
+    }
+
+
+@app.get('/team/{team}/form', tags=['Analysis'])
+async def get_team_trending_form(team: str, season: int = 2024, week: int = 12):
+    """Get trending form analysis for a team.
+
+    Compares last 3 games vs season average for:
+    - Scoring
+    - Passing yards
+    - Rushing yards
+    - Points allowed
+
+    Returns momentum indicator (hot/cold/neutral) and form grade.
+    """
+    form = situational_analyzer.get_trending_form(team.upper(), season, week)
+
+    return {
+        'team': team.upper(),
+        'season': season,
+        'week': week,
+        'momentum': form.momentum,
+        'form_grade': form.form_grade,
+        'narrative': form.form_narrative,
+        'scoring': {
+            'recent_avg': form.recent_points_avg,
+            'season_avg': form.season_points_avg,
+            'trend': form.scoring_trend,
+            'trend_pct': form.scoring_trend_pct
+        },
+        'passing': {
+            'recent_avg': form.recent_pass_yards_avg,
+            'season_avg': form.season_pass_yards_avg,
+            'trend': form.pass_trend
+        },
+        'rushing': {
+            'recent_avg': form.recent_rush_yards_avg,
+            'season_avg': form.season_rush_yards_avg,
+            'trend': form.rush_trend
+        },
+        'defense': {
+            'recent_allowed': form.recent_points_allowed_avg,
+            'season_allowed': form.season_points_allowed_avg,
+            'trend': form.defense_trend
+        }
+    }
 
 
 @app.get('/game/{game_id}/projections')
