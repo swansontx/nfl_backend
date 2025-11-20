@@ -1,0 +1,176 @@
+========================================
+NFL BACKEND DATA PIPELINE AUDIT
+Executive Summary
+========================================
+
+KEY FINDINGS:
+
+1. DATA SOURCES DOWNLOADED: 11/14 (79%)
+   ✓ Complete: player_stats, play_by_play, rosters, snap_counts, 
+              depth_charts, ftn_charting, pfr_advstats, schedules
+   ✗ Missing: nextgen_stats, participations, combine
+
+2. DATABASE TABLES: 14 total
+   ✓ Fully Populated: 10 tables
+   ⚠ API-Dependent: 2 tables (injuries, odds_snapshots)
+   ✗ Empty: 5 tables (projections, results, value_props, games, nextgen_stats)
+
+3. REFRESH METHODS: 10 implemented
+   ✓ Working: refresh_player_stats, refresh_play_by_play, refresh_snap_counts,
+              refresh_ftn_charting, refresh_pfr_advanced, refresh_rosters,
+              refresh_schedules, refresh_team_stats, refresh_injuries, refresh_odds
+   ✗ Missing: refresh_results, refresh_projections, refresh_nextgen_stats,
+              refresh_participations, refresh_value_props
+
+4. STARTUP INITIALIZATION: refresh_all() calls most methods
+   ✓ Working: 8/10 refresh methods called on startup
+   ✗ Missing: nextgen_stats refresh not called
+
+========================================
+CRITICAL ISSUES (FIX FIRST):
+========================================
+
+ISSUE #1: DOWNLOADED DATA NOT STORED
+  3 GB of Next Gen Stats data downloaded but NEVER stored in database
+  - ngs_passing_2024_2025.csv (278 KB) → No table, No refresh
+  - ngs_receiving_2024_2025.csv (446 KB) → No table, No refresh
+  - ngs_rushing_2024_2025.csv (195 KB) → No table, No refresh
+  
+  ACTION: Create nextgen_stats table + refresh_nextgen_stats() method
+
+ISSUE #2: TABLE DEFINITIONS WITHOUT DATA
+  5 database tables exist but have NO refresh methods
+  - projections: Table exists, never populated (needs model)
+  - results: Table exists, never populated (for backtesting)
+  - value_props: Table exists, never populated (needs analysis)
+  - games: Table exists, appears DEPRECATED (use schedules instead)
+  - model_runs: Logging only, not for loading data
+  
+  ACTION: Implement refresh_results() and refresh_projections() methods
+
+ISSUE #3: INCOMPLETE DOWNLOAD
+  schedules table populated but fetch_nflverse.py doesn't download it!
+  - schedules.csv must be downloaded manually or from elsewhere
+  - refresh_schedules() works fine, but data source unclear
+  
+  ACTION: Add schedules to fetch_nflverse.py download list
+
+========================================
+DATA FLOW STATUS:
+========================================
+
+WORKING PIPELINES (8/10):
+  player_stats:    DOWNLOADED → TABLE → REFRESH ✓
+  play_by_play:    DOWNLOADED → TABLE → REFRESH ✓
+  snap_counts:     DOWNLOADED → TABLE → REFRESH ✓
+  ftn_charting:    DOWNLOADED → TABLE → REFRESH ✓
+  pfr_advanced:    DOWNLOADED → TABLE → REFRESH ✓
+  rosters:         DOWNLOADED → TABLE → REFRESH ✓
+  team_stats:      DOWNLOADED → TABLE → REFRESH ✓
+  schedules:       FOUND (not fetched) → TABLE → REFRESH ⚠
+  injuries:        API FETCHED → TABLE → REFRESH ✓
+  odds_snapshots:  API FETCHED → TABLE → REFRESH ✓
+
+BROKEN PIPELINES (3):
+  nextgen_stats:   DOWNLOADED → NO TABLE → NO REFRESH ✗
+  participations:  DOWNLOADED → NO TABLE → NO REFRESH ✗
+  combine:         DOWNLOADED → NO TABLE → NO REFRESH ✗
+
+EMPTY TABLES (5):
+  projections:     NO SOURCE → TABLE (EMPTY) → NO REFRESH ✗
+  results:         NO SOURCE → TABLE (EMPTY) → NO REFRESH ✗
+  value_props:     NO SOURCE → TABLE (EMPTY) → NO REFRESH ✗
+  games:           NO SOURCE → TABLE (DEPRECATED) → NO REFRESH ✗
+  model_runs:      LOGGING ONLY (Not for data loading) ⚠
+
+========================================
+ANALYZER IMPACT:
+========================================
+
+defense_analyzer.py:
+  ✓ Uses play_by_play (EPA, WPA, coverage) - DATA AVAILABLE
+  ✓ Uses team_stats (rankings) - DATA AVAILABLE
+
+situational_analyzer.py:
+  ✓ Uses team_stats (rankings) - DATA AVAILABLE
+  ✓ Uses play_by_play (metrics) - DATA AVAILABLE
+
+prediction_engine.py:
+  ✓ Uses player_stats - DATA AVAILABLE
+  ✓ Uses play_by_play - DATA AVAILABLE
+  ✓ Uses snap_counts - DATA AVAILABLE
+  ✗ Needs nextgen_stats - DATA MISSING
+
+injury_impact_analyzer.py:
+  ✓ Uses injuries - DATA AVAILABLE
+  ✓ Uses rosters - DATA AVAILABLE
+  ✓ Uses player_stats - DATA AVAILABLE
+
+========================================
+FILE INVENTORY:
+========================================
+
+PROPER UTILIZATION (8 files → 8 tables):
+  player_stats_2024_2025.csv (12 MB) ✓
+  play_by_play_2025.parquet (12 MB) ✓
+  schedules_2024_2025.csv (185 KB) ✓
+  snap_counts_2024_2025.csv (4.3 MB) ✓
+  rosters_weekly_2024_2025.csv (27 MB) ✓
+  depth_charts_2024_2025.csv (45 MB) ✓
+  team_stats_2024_2025.csv (283 KB) ✓
+  injuries_2024_2025.csv (950 KB) ✓
+
+UNUSED DATA (9 files → WASTED):
+  ngs_passing_2024_2025.csv (278 KB) ✗
+  ngs_receiving_2024_2025.csv (446 KB) ✗
+  ngs_rushing_2024_2025.csv (195 KB) ✗
+  players.csv (8.3 MB) ✗
+  teams.csv ✗
+  officials_2024_2025.csv ✗
+  participations_* (downloaded but files don't exist locally)
+  combine.csv (downloaded but file doesn't exist locally)
+
+DUPLICATE/UNCLEAR FILES (7 files):
+  player_stats_2025.csv (816 KB) - Different from _2024_2025.csv?
+  player_stats_enhanced_2025.csv (6.7 MB) - Where from?
+  player_stats_2025_from_pbp.csv - Generated from PBP?
+  red_zone_stats_2025.csv (151 KB) - No table defined
+  kicker_stats_2025.csv (36 KB) - No table defined
+  defensive_stats_from_pbp_2025.csv - Generated from PBP?
+  games_2025_with_quarters.csv - For games table?
+
+========================================
+RECOMMENDED ACTIONS:
+========================================
+
+IMMEDIATE (Next sprint):
+  [ ] Create nextgen_stats table schema
+  [ ] Implement refresh_nextgen_stats() method
+  [ ] Implement refresh_results() method
+  [ ] Add schedules download to fetch_nflverse.py
+  [ ] Add nextgen_stats to startup_refresh()
+
+PRIORITY (Soon):
+  [ ] Investigate games vs schedules duplication
+  [ ] Verify ftn_charting file location/download
+  [ ] Implement refresh_projections() method
+  [ ] Document all non-nflverse files in inputs/
+
+ENHANCEMENT (Later):
+  [ ] Create participations table (if needed)
+  [ ] Create combine table for draft history
+  [ ] Create kicker_stats table
+  [ ] Create player_metadata table
+  [ ] Add data validation/integrity checks
+  [ ] Consolidate duplicate player_stats files
+
+========================================
+DOCUMENTATION SAVED:
+========================================
+
+  NFL_DATA_PIPELINE_AUDIT.md - Full audit report (21 KB)
+  DATA_PIPELINE_MAPPING.md - Detailed mapping table (12 KB)
+
+Review these for detailed findings and code references.
+
+========================================
