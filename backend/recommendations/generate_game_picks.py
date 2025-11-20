@@ -552,6 +552,11 @@ class GamePicksGenerator:
                                        trend_info: Dict, consistency: str) -> Dict:
         """Calculate alternate line suggestion for better hit rate.
 
+        KEY INSIGHT: Consistent players with small edges are IDEAL for alt lines.
+        - Consistent player = predictable output range
+        - Small edge = line is close to projection
+        - Small buffer = almost guaranteed hit for consistent players
+
         Based on backtest data, optimal buffers by prop type:
         - passing_yards: 10% (~25 yds on 250 line)
         - rushing_yards: 5% (~4 yds on 80 line)
@@ -623,13 +628,25 @@ class GamePicksGenerator:
         # Calculate line difference
         line_diff = abs(alt_line - line)
 
+        # Consistency boost for hit rate
+        # Consistent players benefit MORE from alt lines because their range is narrow
+        consistency_multiplier = {
+            'very_consistent': 1.25,  # 25% boost to alt line value
+            'consistent': 1.10,       # 10% boost
+            'volatile': 0.90,         # 10% reduction (need bigger buffers)
+            'unknown': 1.0
+        }.get(consistency, 1.0)
+
         # Estimate hit rates (UNDERs hit ~7% more than OVERs based on backtest)
         if direction == 'UNDER':
             base_hit_rate = 52 + min(edge_pct * 1.2, 18)
-            alt_hit_rate = base_hit_rate + (buffer_pct * 60)  # 5% buffer = +3%, 10% = +6%
+            # Consistent players get bigger boost from buffer
+            buffer_boost = (buffer_pct * 60) * consistency_multiplier
+            alt_hit_rate = base_hit_rate + buffer_boost
         else:
             base_hit_rate = 45 + min(edge_pct * 1.2, 18)
-            alt_hit_rate = base_hit_rate + (buffer_pct * 50)
+            buffer_boost = (buffer_pct * 50) * consistency_multiplier
+            alt_hit_rate = base_hit_rate + buffer_boost
 
         # Calculate odds at alt line
         odds_map = {0.05: -130, 0.10: -150, 0.15: -180}
@@ -638,31 +655,60 @@ class GamePicksGenerator:
         # Determine recommendation strength
         reasons = []
 
-        # Always recommend for small/medium edges
-        if edge_pct < 8:
-            reasons.append(f"+{line_diff:.0f} yds buffer")
+        # PRIORITY 1: Consistent players with small/medium edges = IDEAL for alt lines
+        if consistency == 'very_consistent':
+            if edge_pct < 10:
+                reasons.append("consistent + tight line")
+            elif edge_pct < 15:
+                reasons.append("very consistent")
+        elif consistency == 'consistent':
+            if edge_pct < 8:
+                reasons.append("consistent + marginal edge")
 
-        # Extra reasons
-        if consistency == 'volatile':
-            reasons.append("volatile")
+        # PRIORITY 2: Small edges benefit from safety buffer
+        if edge_pct < 5 and not reasons:
+            reasons.append(f"tight line, +{line_diff:.0f} buffer")
+        elif edge_pct < 10 and not reasons:
+            reasons.append(f"+{line_diff:.0f} safety margin")
+
+        # Extra context
+        if consistency == 'volatile' and not any('volatile' in r for r in reasons):
+            reasons.append("volatile, needs buffer")
         if direction == 'OVER' and trend_info.get('trend') == 'down':
             reasons.append("↓ trend")
         elif direction == 'UNDER' and trend_info.get('trend') == 'up':
             reasons.append("↑ trend")
 
-        # Always recommend alt for yards props (user decides)
-        use_alt = len(reasons) > 0 or edge_pct < 12
+        # Recommend alt lines for:
+        # 1. Consistent players with edges < 15%
+        # 2. Any player with edges < 10%
+        # 3. Volatile players (they need the buffer)
+        use_alt = (
+            (consistency in ['very_consistent', 'consistent'] and edge_pct < 15) or
+            (edge_pct < 10) or
+            (consistency == 'volatile') or
+            len(reasons) > 0
+        )
+
+        # Confidence based on consistency + hit rate
+        if consistency == 'very_consistent' and alt_hit_rate >= 70:
+            confidence = 'very_high'
+        elif alt_hit_rate >= 65:
+            confidence = 'high'
+        else:
+            confidence = 'medium'
 
         return {
             'use_alt': use_alt,
             'alt_line': alt_line,
             'alt_odds': alt_odds,
-            'reason': ", ".join(reasons) if reasons else f"+{line_diff:.0f} yds safety",
-            'confidence': 'high' if alt_hit_rate >= 65 else 'medium',
-            'estimated_hit_rate': round(min(alt_hit_rate, 85), 0),
+            'reason': ", ".join(reasons[:2]) if reasons else f"+{line_diff:.0f} buffer",
+            'confidence': confidence,
+            'estimated_hit_rate': round(min(alt_hit_rate, 88), 0),
             'standard_hit_rate': round(min(base_hit_rate, 80), 0),
             'buffer_pct': buffer_pct * 100,
-            'line_diff': line_diff
+            'line_diff': line_diff,
+            'consistency': consistency
         }
 
     def generate_picks(self, team1: str, team2: str) -> List[Dict]:
