@@ -76,6 +76,8 @@ class PropLineFetcher:
         self.sport = "americanfootball_nfl"
 
         # Prop markets to fetch (comprehensive list from Odds API)
+        # All prop markets we want to fetch
+        # We'll dynamically check which are available per event
         self.prop_markets = [
             # FULL GAME - Passing props
             'player_pass_yds',
@@ -231,6 +233,11 @@ class PropLineFetcher:
 
         try:
             response = requests.get(url, params=params, timeout=10)
+
+            # Handle 422 silently - market not available for this event
+            if response.status_code == 422:
+                return {}
+
             response.raise_for_status()
 
             data = response.json()
@@ -242,8 +249,67 @@ class PropLineFetcher:
             return data
 
         except requests.exceptions.RequestException as e:
-            print(f"  ✗ Error fetching {market} for {game_id}: {e}")
+            # Only print real errors, not 422s
+            if '422' not in str(e):
+                print(f"  ✗ Error fetching {market} for {game_id}: {e}")
             return {}
+
+    def fetch_all_prop_odds_for_game(
+        self,
+        game_id: str,
+        markets: List[str],
+        bookmakers: Optional[List[str]] = None
+    ) -> Dict:
+        """Fetch ALL prop odds for a game in a single API call.
+
+        The Odds API supports comma-separated markets in one request.
+        This is MUCH more efficient than one call per market.
+
+        Args:
+            game_id: The Odds API game ID
+            markets: List of prop markets to fetch
+            bookmakers: List of bookmaker keys (optional)
+
+        Returns:
+            Dict with all prop odds data
+        """
+        url = f"{self.base_url}/sports/{self.sport}/events/{game_id}/odds"
+
+        # Join all markets with commas
+        markets_str = ','.join(markets)
+
+        params = {
+            'apiKey': self.api_key,
+            'regions': 'us',
+            'markets': markets_str,
+            'oddsFormat': 'american',
+            'dateFormat': 'iso'
+        }
+
+        if bookmakers:
+            params['bookmakers'] = ','.join(bookmakers)
+
+        try:
+            response = requests.get(url, params=params, timeout=30)  # Longer timeout for big request
+
+            if response.status_code == 422:
+                # Some markets not available - fall back to individual calls
+                print(f"  ⚠ Batch request failed, falling back to individual calls")
+                return None
+
+            response.raise_for_status()
+
+            data = response.json()
+
+            # Check remaining requests
+            remaining = response.headers.get('x-requests-remaining', 'unknown')
+            print(f"  ✓ Fetched all markets in ONE call: {remaining} requests remaining")
+
+            return data
+
+        except requests.exceptions.RequestException as e:
+            print(f"  ⚠ Batch request failed: {e}")
+            return None
 
     def process_prop_data_with_movement(
         self,
@@ -424,54 +490,87 @@ class PropLineFetcher:
                 'props': {}
             }
 
-            # Fetch each prop market
-            for market in self.prop_markets:
-                raw_data = self.fetch_prop_odds_for_game(
-                    game_id,
-                    market,
-                    self.bookmakers
-                )
+            # Try batch fetch first (ONE API call for all markets)
+            batch_data = self.fetch_all_prop_odds_for_game(
+                game_id,
+                self.prop_markets,
+                self.bookmakers
+            )
 
-                if raw_data:
-                    props = self.process_prop_data_with_movement(
-                        raw_data,
+            if batch_data and 'bookmakers' in batch_data:
+                # Process batch response - markets are in bookmaker.markets
+                for bookmaker in batch_data.get('bookmakers', []):
+                    for market_data in bookmaker.get('markets', []):
+                        market_key = market_data.get('key', '')
+                        if market_key:
+                            # Create a fake single-market response for processing
+                            single_market_data = {
+                                'bookmakers': [{
+                                    'key': bookmaker.get('key'),
+                                    'markets': [market_data]
+                                }]
+                            }
+                            props = self.process_prop_data_with_movement(
+                                single_market_data,
+                                market_key,
+                                snapshot_time
+                            )
+                            if props:
+                                if market_key not in game_props['props']:
+                                    game_props['props'][market_key] = []
+                                game_props['props'][market_key].extend(props)
+                                total_props += len(props)
+                                print(f"    ✓ {market_key}: {len(props)} props")
+            else:
+                # Fall back to individual market calls
+                print(f"  Fetching markets individually...")
+                for market in self.prop_markets:
+                    raw_data = self.fetch_prop_odds_for_game(
+                        game_id,
                         market,
-                        snapshot_time
+                        self.bookmakers
                     )
 
-                    if props:
-                        # Calculate movement for each prop
-                        props_with_movement = []
-                        for prop in props:
-                            # Find previous snapshot for this player/bookmaker
-                            prev_prop = self._find_previous_prop(
-                                previous_snapshots,
-                                game_id,
-                                market,
-                                prop['player_name'],
-                                prop['bookmaker']
-                            )
+                    if raw_data:
+                        props = self.process_prop_data_with_movement(
+                            raw_data,
+                            market,
+                            snapshot_time
+                        )
 
-                            # Calculate movement
-                            movement = self.calculate_line_movement(prop, prev_prop)
-                            prop['movement'] = movement
+                        if props:
+                            # Calculate movement for each prop
+                            props_with_movement = []
+                            for prop in props:
+                                # Find previous snapshot for this player/bookmaker
+                                prev_prop = self._find_previous_prop(
+                                    previous_snapshots,
+                                    game_id,
+                                    market,
+                                    prop['player_name'],
+                                    prop['bookmaker']
+                                )
 
-                            # Track hot movers
-                            if movement['is_hot_mover']:
-                                hot_movers.append({
-                                    'player': prop['player_name'],
-                                    'market': market,
-                                    'movement': movement['line_movement'],
-                                    'opening_line': movement['opening_line'],
-                                    'current_line': movement['current_line'],
-                                    'bookmaker': prop['bookmaker']
-                                })
+                                # Calculate movement
+                                movement = self.calculate_line_movement(prop, prev_prop)
+                                prop['movement'] = movement
 
-                            props_with_movement.append(prop)
+                                # Track hot movers
+                                if movement['is_hot_mover']:
+                                    hot_movers.append({
+                                        'player': prop['player_name'],
+                                        'market': market,
+                                        'movement': movement['line_movement'],
+                                        'opening_line': movement['opening_line'],
+                                        'current_line': movement['current_line'],
+                                        'bookmaker': prop['bookmaker']
+                                    })
 
-                        game_props['props'][market] = props_with_movement
-                        total_props += len(props_with_movement)
-                        print(f"    ✓ {market}: {len(props_with_movement)} props")
+                                props_with_movement.append(prop)
+
+                            game_props['props'][market] = props_with_movement
+                            total_props += len(props_with_movement)
+                            print(f"    ✓ {market}: {len(props_with_movement)} props")
 
                 # Rate limit: sleep between requests
                 time.sleep(0.5)

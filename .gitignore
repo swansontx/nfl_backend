@@ -13,3 +13,6 @@ outputs/*.parquet
 outputs/odds/
 outputs/predictions/
 outputs/reports/
+
+# Fetched data (regenerated from APIs)
+inputs/injuries_*.csv

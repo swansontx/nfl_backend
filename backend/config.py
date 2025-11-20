@@ -65,6 +65,39 @@ class Settings(BaseSettings):
         description="Maximum stake as % of bankroll (5%)"
     )
 
+    # Empirical Standard Deviations by Prop Type (from backtest analysis)
+    # These should be updated periodically based on model performance
+    # Formula: sqrt(mean((actual - prediction)^2)) from backtest results
+    prop_std_devs: dict = Field(
+        default={
+            # Yardage props (Normal distribution)
+            'passing_yards': 55.0,   # Higher variance for QB passing
+            'rushing_yards': 22.0,   # Moderate variance for RB rushing
+            'receiving_yards': 18.0, # Moderate variance for WR/TE
+            'pass_yards': 55.0,
+            'rush_yards': 22.0,
+            'rec_yards': 18.0,
+
+            # Count props (Poisson distribution - std derived from backtest)
+            'receptions': 1.8,
+            'completions': 4.5,
+            'attempts': 6.0,
+            'carries': 3.5,
+            'targets': 2.2,
+            'interceptions': 0.7,
+
+            # TD props (Poisson - rare events)
+            'passing_tds': 0.85,
+            'rushing_tds': 0.45,
+            'receiving_tds': 0.38,
+            'pass_tds': 0.85,
+            'rush_tds': 0.45,
+            'rec_tds': 0.38,
+            'anytime_td': 0.5,
+        },
+        description="Empirical standard deviations by prop type from backtest analysis"
+    )
+
     # Paths
     base_dir: Path = Field(default_factory=lambda: Path(__file__).parent.parent)
     inputs_dir: Path = Field(default_factory=lambda: Path("inputs"))

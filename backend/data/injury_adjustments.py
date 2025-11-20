@@ -269,7 +269,9 @@ class InjuryAdjuster:
 
         for name, injury in self.injuries.items():
             status = injury.get('injury_status') or injury.get('status', '')
-            if status.lower() in ['questionable', 'q']:
+            # Handle NaN values by converting to string
+            status_str = str(status).lower() if status else ''
+            if status_str in ['questionable', 'q']:
                 questionable.append({
                     'name': injury.get('player_name', name),
                     'team': injury.get('team', 'UNK'),
@@ -289,7 +291,9 @@ class InjuryAdjuster:
 
         for name, injury in self.injuries.items():
             status = injury.get('injury_status') or injury.get('status', '')
-            if status.lower() in ['out', 'o', 'ir', 'ir-r', 'pup', 'nfi', 'suspended']:
+            # Handle NaN values by converting to string
+            status_str = str(status).lower() if status else ''
+            if status_str in ['out', 'o', 'ir', 'ir-r', 'pup', 'nfi', 'suspended']:
                 out_players.append({
                     'name': injury.get('player_name', name),
                     'team': injury.get('team', 'UNK'),
