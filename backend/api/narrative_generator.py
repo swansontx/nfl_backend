@@ -358,6 +358,261 @@ class NarrativeTemplates:
         )
 
     @staticmethod
+    def weather_prop_impact(weather: Dict, prop_type: str) -> Narrative:
+        """Generate weather impact narrative for specific prop types.
+
+        Args:
+            weather: Weather data with impact analysis
+            prop_type: Type of prop (passing, rushing, kicking, etc.)
+
+        Returns:
+            Narrative object
+        """
+        impact = weather.get('weather_impact', {})
+        is_dome = weather.get('is_dome', False)
+
+        if is_dome:
+            return Narrative(
+                narrative_type="weather_prop",
+                content=f"Indoor game - weather not a factor for {prop_type} props.",
+                generated_at=datetime.now().isoformat(),
+                confidence=1.0,
+                supporting_stats={'is_dome': True, 'prop_type': prop_type}
+            )
+
+        # Get adjustments
+        passing_adj = impact.get('passing_adjustment', 0)
+        kicking_adj = impact.get('kicking_adjustment', 0)
+        rushing_adj = impact.get('rushing_adjustment', 0)
+        notes = impact.get('notes', [])
+
+        temp = weather.get('temperature', 70)
+        wind = weather.get('wind_speed', 0)
+        gusts = weather.get('wind_gusts', 0)
+        precip = weather.get('precipitation_chance', 0)
+
+        if prop_type in ['passing', 'pass_yds', 'pass_tds', 'completions']:
+            adj = passing_adj
+            if adj <= -10:
+                content = (
+                    f"WEATHER FADE: High winds ({wind} mph, gusts {gusts}) and/or precipitation "
+                    f"expected to significantly reduce passing production ({adj}% adjustment). "
+                    f"Strongly consider UNDER on passing yards and completions. "
+                    f"Interception props may have value."
+                )
+                confidence = 0.80
+            elif adj <= -5:
+                content = (
+                    f"Weather Impact: Conditions ({temp}F, {wind} mph wind) project {adj}% reduction "
+                    f"in passing production. Lean UNDER on passing yards props."
+                )
+                confidence = 0.70
+            else:
+                content = (
+                    f"Minimal weather impact on passing props. "
+                    f"Conditions: {temp}F, {wind} mph wind. Play normally."
+                )
+                confidence = 0.55
+            recommendation = "UNDER" if adj <= -5 else "NEUTRAL"
+
+        elif prop_type in ['rushing', 'rush_yds', 'rush_attempts']:
+            adj = rushing_adj
+            if adj >= 5:
+                content = (
+                    f"WEATHER BOOST: Poor conditions favor the ground game (+{adj}% adjustment). "
+                    f"Teams will lean on the run in {weather.get('condition', 'bad weather')}. "
+                    f"Look for OVER on rushing yards and attempts for lead backs."
+                )
+                confidence = 0.75
+                recommendation = "OVER"
+            else:
+                content = (
+                    f"Weather conditions neutral for rushing. "
+                    f"No significant adjustment expected."
+                )
+                confidence = 0.55
+                recommendation = "NEUTRAL"
+
+        elif prop_type in ['kicking', 'field_goals', 'kicking_points']:
+            adj = kicking_adj
+            if adj <= -15:
+                content = (
+                    f"KICKER NIGHTMARE: {gusts}+ mph gusts make long FGs extremely risky. "
+                    f"Expect more conservative 4th down decisions. "
+                    f"Strong UNDER on kicking points props."
+                )
+                confidence = 0.85
+                recommendation = "UNDER"
+            elif adj <= -5:
+                content = (
+                    f"Wind Impact: {wind} mph winds project {adj}% reduction in kicking accuracy. "
+                    f"Consider UNDER on kicking points and avoid long FG props."
+                )
+                confidence = 0.70
+                recommendation = "UNDER"
+            else:
+                content = (
+                    f"Manageable conditions for kickers. "
+                    f"Wind: {wind} mph. No major adjustment needed."
+                )
+                confidence = 0.55
+                recommendation = "NEUTRAL"
+
+        elif prop_type in ['total', 'game_total', 'over_under']:
+            total_adj = impact.get('total_adjustment', 0)
+            if total_adj <= -2:
+                content = (
+                    f"TOTAL IMPACT: Weather projects {abs(total_adj):.1f} fewer points than expected. "
+                    f"{' '.join(notes)}. "
+                    f"Lean UNDER on game total."
+                )
+                confidence = 0.75
+                recommendation = "UNDER"
+            else:
+                content = (
+                    f"No significant weather impact on game total expected. "
+                    f"Conditions: {temp}F, {wind} mph wind."
+                )
+                confidence = 0.55
+                recommendation = "NEUTRAL"
+        else:
+            content = f"Weather notes for {prop_type}: {'; '.join(notes)}" if notes else "No specific weather impact noted."
+            confidence = 0.5
+            recommendation = "NEUTRAL"
+
+        return Narrative(
+            narrative_type="weather_prop",
+            content=content,
+            generated_at=datetime.now().isoformat(),
+            confidence=confidence,
+            supporting_stats={
+                'prop_type': prop_type,
+                'adjustment': adj if 'adj' in dir() else 0,
+                'recommendation': recommendation,
+                'temperature': temp,
+                'wind_speed': wind,
+                'wind_gusts': gusts,
+                'precipitation_chance': precip
+            }
+        )
+
+    @staticmethod
+    def prop_value_alert(prop: Dict, model_proj: float, line: float, edge: float) -> Narrative:
+        """Generate value alert narrative for a specific prop.
+
+        Args:
+            prop: Prop data with player, type
+            model_proj: Model projection
+            line: Current line
+            edge: Edge percentage
+
+        Returns:
+            Narrative object
+        """
+        player = prop.get('player_name', 'Player')
+        prop_type = prop.get('prop_type', 'stat')
+        side = "OVER" if model_proj > line else "UNDER"
+
+        if edge >= 15:
+            confidence = 0.85
+            content = (
+                f"STRONG VALUE: {player} {prop_type} {side} {line}. "
+                f"Model projects {model_proj:.1f} ({edge:.0f}% edge). "
+                f"This is a significant market inefficiency - high confidence play."
+            )
+        elif edge >= 8:
+            confidence = 0.75
+            content = (
+                f"VALUE PLAY: {player} {prop_type} {side} {line}. "
+                f"Model: {model_proj:.1f} ({edge:.0f}% edge). "
+                f"Good edge suggests market hasn't fully priced this situation."
+            )
+        elif edge >= 5:
+            confidence = 0.65
+            content = (
+                f"LEAN: {player} {prop_type} {side} {line}. "
+                f"Model: {model_proj:.1f} ({edge:.0f}% edge). "
+                f"Moderate edge - consider as part of larger play set."
+            )
+        else:
+            confidence = 0.55
+            content = (
+                f"WATCH: {player} {prop_type} at {line}. "
+                f"Model: {model_proj:.1f} ({edge:.0f}% edge). "
+                f"Minimal edge - wait for better number or pass."
+            )
+
+        return Narrative(
+            narrative_type="prop_value",
+            content=content,
+            generated_at=datetime.now().isoformat(),
+            confidence=confidence,
+            supporting_stats={
+                'player': player,
+                'prop_type': prop_type,
+                'line': line,
+                'projection': model_proj,
+                'edge': edge,
+                'recommendation': side if edge >= 5 else "PASS"
+            }
+        )
+
+    @staticmethod
+    def parlay_correlation(props: List[Dict], correlation: float) -> Narrative:
+        """Generate correlation narrative for parlay legs.
+
+        Args:
+            props: List of prop data
+            correlation: Correlation coefficient between props
+
+        Returns:
+            Narrative object
+        """
+        player_names = [p.get('player_name', 'Player') for p in props[:2]]
+
+        if correlation >= 0.6:
+            content = (
+                f"POSITIVE CORRELATION: {player_names[0]} and {player_names[1]} props "
+                f"are highly correlated ({correlation:.0%}). If one hits, the other likely will too. "
+                f"Good for parlays but reduces diversification."
+            )
+            confidence = 0.75
+            recommendation = "PARLAY_FRIENDLY"
+        elif correlation >= 0.3:
+            content = (
+                f"MODERATE CORRELATION: Some correlation between these props ({correlation:.0%}). "
+                f"Partial diversification - acceptable for same-game parlays."
+            )
+            confidence = 0.65
+            recommendation = "ACCEPTABLE"
+        elif correlation >= -0.2:
+            content = (
+                f"INDEPENDENT: Props are essentially uncorrelated ({correlation:.0%}). "
+                f"Good diversification for multi-leg parlays."
+            )
+            confidence = 0.70
+            recommendation = "GOOD_DIVERSIFICATION"
+        else:
+            content = (
+                f"NEGATIVE CORRELATION: Props move in opposite directions ({correlation:.0%}). "
+                f"Avoid combining in same parlay - one hitting likely means other misses."
+            )
+            confidence = 0.75
+            recommendation = "AVOID_PARLAY"
+
+        return Narrative(
+            narrative_type="parlay_correlation",
+            content=content,
+            generated_at=datetime.now().isoformat(),
+            confidence=confidence,
+            supporting_stats={
+                'players': player_names,
+                'correlation': correlation,
+                'recommendation': recommendation
+            }
+        )
+
+    @staticmethod
     def contrarian_angle(public_betting: Dict, sharp_money: Dict) -> Narrative:
         """Generate contrarian betting narrative.
 
