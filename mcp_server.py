@@ -723,6 +723,36 @@ async def list_tools():
                 },
                 "required": ["team"]
             }
+        ),
+
+        # ========== CROSS-GAME PARLAY TOOLS ==========
+        Tool(
+            name="best_props_all_games",
+            description="BEST PROPS ACROSS ALL GAMES - Find the highest edge props across every game in a week for cross-game parlays. Returns top props sorted by edge with game context. USE THIS when asked for 'best props', 'parlay legs', or props across multiple games.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number",
+                        "default": 12
+                    },
+                    "min_edge": {
+                        "type": "number",
+                        "description": "Minimum edge percentage (default 3.0)",
+                        "default": 3.0
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max number of props to return (default 20)",
+                        "default": 20
+                    },
+                    "prop_types": {
+                        "type": "string",
+                        "description": "Filter by prop types (comma-separated, e.g., 'pass_yards,rush_yards')"
+                    }
+                }
+            }
         )
     ]
 
@@ -1055,6 +1085,24 @@ async def call_tool(name: str, arguments: dict):
                 response = await client.get(
                     f"{API_BASE}/team/{team}/defense",
                     params={"season": season}
+                )
+
+            # ========== CROSS-GAME PARLAY TOOLS ==========
+            elif name == "best_props_all_games":
+                week = arguments.get("week", 12)
+                min_edge = arguments.get("min_edge", 3.0)
+                limit = arguments.get("limit", 20)
+                prop_types = arguments.get("prop_types")
+                params = {
+                    "min_edge": min_edge,
+                    "limit": limit,
+                    "week": week
+                }
+                if prop_types:
+                    params["prop_types"] = prop_types
+                response = await client.get(
+                    f"{API_BASE}/analysis/quick-props",
+                    params=params
                 )
 
             else:
