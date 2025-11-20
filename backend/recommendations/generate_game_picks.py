@@ -492,6 +492,11 @@ class GamePicksGenerator:
             team = player['team']
             position = player['position']
 
+            # Skip players who are OUT
+            injury_status = self.injuries.get(player_name, '')
+            if injury_status.lower() == 'out':
+                continue
+
             # Determine which props to check
             if position == 'QB':
                 props = ['passing_yards', 'passing_tds', 'interceptions', 'rushing_yards']

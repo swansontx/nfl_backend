@@ -409,11 +409,25 @@ def _prepare_usage_training_data(player_features: Dict, prop_type: str) -> pd.Da
             )
             df[f'{col}_lag_1'] = df.groupby('player_id')[col].shift(1)
 
-    # Calculate share metrics (NEW!)
-    # TODO: Need team totals to calculate actual shares
-    # For now, approximate
-    df['carry_share_rolling_3'] = df['rushing_attempts_rolling_3'] / 25  # Approx team rushes
-    df['target_share_rolling_3'] = df['targets_rolling_3'] / 35  # Approx team targets
+    # Calculate share metrics using actual team totals
+    # First calculate team totals per game
+    if 'team' in df.columns and 'week' in df.columns:
+        team_totals = df.groupby(['team', 'week']).agg({
+            'rushing_attempts': 'sum',
+            'targets': 'sum'
+        }).reset_index()
+        team_totals.columns = ['team', 'week', 'team_rush_att', 'team_targets']
+
+        # Merge back
+        df = df.merge(team_totals, on=['team', 'week'], how='left')
+
+        # Calculate actual shares
+        df['carry_share_rolling_3'] = df['rushing_attempts_rolling_3'] / df['team_rush_att'].clip(lower=1)
+        df['target_share_rolling_3'] = df['targets_rolling_3'] / df['team_targets'].clip(lower=1)
+    else:
+        # Fallback to estimates if team/week not available
+        df['carry_share_rolling_3'] = df['rushing_attempts_rolling_3'] / 25
+        df['target_share_rolling_3'] = df['targets_rolling_3'] / 35
 
     return df
 
