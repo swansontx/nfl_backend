@@ -397,7 +397,75 @@ class WeeksBacktester:
             dc_multiplier = self.get_depth_chart_multiplier(player_name, week, position)
             base_projection = base_projection * dc_multiplier
 
+        # Apply weather adjustment if game info available
+        if opponent and week:
+            weather_multiplier = self.get_weather_multiplier(features.get('team', ''), opponent, week, stat_col)
+            base_projection = base_projection * weather_multiplier
+
         return round(base_projection, 1) if base_projection > 0 else None
+
+    def get_weather_multiplier(self, team: str, opponent: str, week: int, stat_col: str) -> float:
+        """Get weather adjustment multiplier for outdoor games.
+
+        High wind and cold temps reduce passing efficiency.
+
+        Returns:
+            Multiplier between 0.85 and 1.0 (weather never helps)
+        """
+        if len(self.schedules) == 0:
+            return 1.0
+
+        # Find the game
+        game = self.schedules[
+            (self.schedules['season'] == self.season) &
+            (self.schedules['week'] == week) &
+            ((self.schedules['home_team'] == team) | (self.schedules['away_team'] == team))
+        ]
+
+        if len(game) == 0:
+            return 1.0
+
+        game = game.iloc[0]
+        roof = game.get('roof', 'outdoors')
+        temp = game.get('temp', 65)
+        wind = game.get('wind', 5)
+
+        # Dome games have no weather impact
+        if roof in ['dome', 'closed']:
+            return 1.0
+
+        # Handle NaN values
+        if pd.isna(temp):
+            temp = 65
+        if pd.isna(wind):
+            wind = 5
+
+        multiplier = 1.0
+
+        # Only affect passing stats for weather
+        if stat_col in ['passing_yards', 'completions', 'attempts', 'passing_tds']:
+            # High wind penalty (≥15 mph)
+            if wind >= 15:
+                wind_penalty = 0.07  # 7% reduction for high wind
+                if wind >= 20:
+                    wind_penalty = 0.12  # 12% reduction for very high wind
+                multiplier *= (1 - wind_penalty)
+
+            # Cold temperature penalty (<45F)
+            if temp < 45:
+                cold_penalty = 0.05  # 5% reduction for cold
+                if temp < 32:
+                    cold_penalty = 0.10  # 10% reduction for freezing
+                multiplier *= (1 - cold_penalty)
+
+        # Receiving yards also affected by weather
+        elif stat_col in ['receiving_yards', 'receiving_tds']:
+            if wind >= 15:
+                multiplier *= 0.95  # 5% reduction
+            if temp < 45:
+                multiplier *= 0.97  # 3% reduction
+
+        return max(0.85, multiplier)  # Cap at 15% reduction
 
     def get_actual_result(self, player_id: str, week: int, prop_type: str) -> Optional[float]:
         """Get actual result for a player in a specific week."""

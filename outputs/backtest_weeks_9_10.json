@@ -5,7 +5,7 @@
       9,
       10
     ],
-    "timestamp": "2025-11-20T20:25:26.248529",
+    "timestamp": "2025-11-20T20:28:09.416002",
     "total_predictions": 21
   },
   "summary": {
@@ -14,18 +14,18 @@
     "incorrect": 6,
     "pushes": 0,
     "hit_rate": 71.4,
-    "mae": 38.19,
-    "rmse": 44.22,
-    "avg_edge": 10.9,
-    "avg_pct_error": 46.0
+    "mae": 37.66,
+    "rmse": 43.77,
+    "avg_edge": 10.15,
+    "avg_pct_error": 45.7
   },
   "by_prop_type": {
     "passing_yards": {
       "predictions": 13,
       "correct": 10,
       "hit_rate": 76.9,
-      "mae": 48.89,
-      "avg_edge": 17.7
+      "mae": 47.9,
+      "avg_edge": 16.71
     },
     "rushing_yards": {
       "predictions": 4,
@@ -38,8 +38,8 @@
       "predictions": 4,
       "correct": 3,
       "hit_rate": 75.0,
-      "mae": 22.57,
-      "avg_edge": -4.38
+      "mae": 23.02,
+      "avg_edge": -5.08
     }
   },
   "by_position": {
@@ -47,7 +47,7 @@
       "predictions": 13,
       "correct": 10,
       "hit_rate": 76.9,
-      "mae": 48.89
+      "mae": 47.9
     },
     "RB": {
       "predictions": 4,
@@ -59,7 +59,7 @@
       "predictions": 4,
       "correct": 3,
       "hit_rate": 75.0,
-      "mae": 22.57
+      "mae": 23.02
     }
   },
   "by_week": {
@@ -67,7 +67,7 @@
       "predictions": 11,
       "correct": 8,
       "hit_rate": 72.7,
-      "mae": 37.74
+      "mae": 36.73
     },
     "10": {
       "predictions": 10,
@@ -122,9 +122,9 @@
     {
       "player": "Amon-Ra St. Brown",
       "prop_type": "receiving_yards",
-      "projection": 56.5,
+      "projection": 53.7,
       "actual": 56,
-      "error": 0.5
+      "error": -2.3
     },
     {
       "player": "Amon-Ra St. Brown",
@@ -169,6 +169,13 @@
       "error": -20.5
     },
     {
+      "player": "Jared Goff",
+      "prop_type": "passing_yards",
+      "projection": 171.3,
+      "actual": 145,
+      "error": 26.3
+    },
+    {
       "player": "Derrick Henry",
       "prop_type": "rushing_yards",
       "projection": 77.4,
@@ -181,13 +188,6 @@
       "projection": 197.2,
       "actual": 231,
       "error": -33.8
-    },
-    {
-      "player": "Matthew Stafford",
-      "prop_type": "passing_yards",
-      "projection": 327.0,
-      "actual": 293,
-      "error": 34.0
     }
   ],
   "worst_misses": [
@@ -317,14 +317,14 @@
       "opponent": "GB",
       "position": "QB",
       "prop_type": "passing_yards",
-      "projection": 184.2,
+      "projection": 171.3,
       "line": 255.5,
       "actual": "145",
-      "error": 39.2,
-      "abs_error": 39.2,
-      "pct_error": 27.0,
-      "edge": -71.3,
-      "edge_pct": -27.9,
+      "error": 26.3,
+      "abs_error": 26.3,
+      "pct_error": 18.1,
+      "edge": -84.2,
+      "edge_pct": -33.0,
       "recommend_over": "False",
       "correct": 1,
       "over_hit": 0,
@@ -455,14 +455,14 @@
       "opponent": "GB",
       "position": "WR",
       "prop_type": "receiving_yards",
-      "projection": 56.5,
+      "projection": 53.7,
       "line": 75.5,
       "actual": "56",
-      "error": 0.5,
-      "abs_error": 0.5,
-      "pct_error": 0.9,
-      "edge": -19.0,
-      "edge_pct": -25.2,
+      "error": -2.3,
+      "abs_error": 2.3,
+      "pct_error": 4.1,
+      "edge": -21.8,
+      "edge_pct": -28.9,
       "recommend_over": "False",
       "correct": 1,
       "over_hit": 0,
