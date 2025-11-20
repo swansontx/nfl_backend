@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "nfl-betting": {
+      "command": "python",
+      "args": ["mcp_server.py"],
+      "cwd": "/home/user/nfl_backend",
+      "env": {
+        "ODDS_API_KEY": "${ODDS_API_KEY}"
+      }
+    }
+  }
+}
