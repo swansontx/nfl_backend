@@ -751,7 +751,7 @@ class GamesRepository:
             return count
 
     @staticmethod
-    def get_games(week: Optional[int] = None, season: int = 2024) -> List[Dict]:
+    def get_games(week: Optional[int] = None, season: int = 2025) -> List[Dict]:
         """Get games for a week/season."""
         with get_db() as conn:
             cursor = conn.cursor()

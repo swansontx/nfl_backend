@@ -24,6 +24,7 @@ from backend.database.local_db import (
     OddsRepository
 )
 from backend.ingestion.fetch_injuries import InjuryFetcher
+from backend.ingestion.fetch_nflverse import fetch_nflverse
 from backend.api.odds_api import odds_api
 from backend.config import settings
 
@@ -241,6 +242,38 @@ class DataRefreshManager:
         self.inputs_dir = settings.inputs_dir
         self.last_refresh: Dict[str, datetime] = {}
         self.refresh_in_progress: Dict[str, bool] = {}
+        self._nflverse_downloaded: Dict[int, bool] = {}
+
+    def _ensure_nflverse_data(self, season: int) -> bool:
+        """Ensure nflverse data is downloaded for a season.
+
+        Args:
+            season: Season year
+
+        Returns:
+            True if data exists or was downloaded successfully
+        """
+        # Check if already downloaded this session
+        if self._nflverse_downloaded.get(season, False):
+            return True
+
+        # Check if files exist
+        pbp_file = self.inputs_dir / f'play_by_play_{season}.csv'
+        stats_file = self.inputs_dir / f'player_stats_{season}.csv'
+
+        if pbp_file.exists() and stats_file.exists():
+            self._nflverse_downloaded[season] = True
+            return True
+
+        # Download from nflverse
+        logger.info(f"Downloading nflverse data for {season} season...")
+        try:
+            fetch_nflverse(season, self.inputs_dir, include_all=True)
+            self._nflverse_downloaded[season] = True
+            return True
+        except Exception as e:
+            logger.error(f"Error downloading nflverse data: {e}")
+            return False
 
     def is_stale(self, data_type: str) -> bool:
         """Check if data type is stale and needs refresh.
@@ -260,11 +293,12 @@ class DataRefreshManager:
 
         return age_hours > threshold_hours
 
-    async def refresh_all(self, force: bool = False) -> Dict:
+    async def refresh_all(self, force: bool = False, season: int = None) -> Dict:
         """Refresh all data sources with smart staleness checking.
 
         Args:
             force: Force refresh even if recently updated
+            season: Season year (defaults to current)
 
         Returns:
             Dict with refresh results for each data type
@@ -274,6 +308,16 @@ class DataRefreshManager:
         # Initialize database if needed
         init_database()
         ensure_advanced_tables()
+
+        # Determine season
+        if season is None:
+            now = datetime.now()
+            season = now.year if now.month >= 9 else now.year - 1
+
+        # Ensure nflverse data is downloaded first
+        if force or self.is_stale('play_by_play'):
+            logger.info(f"Ensuring nflverse data for {season} season...")
+            self._ensure_nflverse_data(season)
 
         # Run all refreshes (with staleness check if not forced)
         if force or self.is_stale('injuries'):
@@ -543,11 +587,12 @@ class DataRefreshManager:
         finally:
             self.refresh_in_progress['schedules'] = False
 
-    async def refresh_player_stats(self, force: bool = False) -> Dict:
+    async def refresh_player_stats(self, force: bool = False, season: int = None) -> Dict:
         """Refresh player stats from CSV files.
 
         Args:
             force: Force refresh
+            season: Season year (defaults to current)
 
         Returns:
             Dict with refresh results
@@ -560,8 +605,18 @@ class DataRefreshManager:
         try:
             logger.info("Refreshing player stats...")
 
+            # Determine season
+            if season is None:
+                now = datetime.now()
+                season = now.year if now.month >= 9 else now.year - 1
+
             # Find player stats files
             stats_files = list(self.inputs_dir.glob('player_stats*.csv'))
+
+            # If no files found, download from nflverse
+            if not stats_files:
+                self._ensure_nflverse_data(season)
+                stats_files = list(self.inputs_dir.glob('player_stats*.csv'))
 
             if not stats_files:
                 return {
@@ -731,11 +786,12 @@ class DataRefreshManager:
         finally:
             self.refresh_in_progress['rosters'] = False
 
-    async def refresh_play_by_play(self, force: bool = False) -> Dict:
+    async def refresh_play_by_play(self, force: bool = False, season: int = None) -> Dict:
         """Refresh play-by-play data from nflverse parquet files.
 
         Args:
             force: Force refresh
+            season: Season year (defaults to current)
 
         Returns:
             Dict with refresh results
@@ -751,10 +807,27 @@ class DataRefreshManager:
             # Ensure PBP table exists
             ensure_pbp_table()
 
+            # Determine season
+            if season is None:
+                now = datetime.now()
+                season = now.year if now.month >= 9 else now.year - 1
+
             # Find play-by-play files
             pbp_files = list(self.inputs_dir.glob('play_by_play*.parquet')) + \
                        list(self.inputs_dir.glob('pbp*.parquet')) + \
-                       list(self.inputs_dir.glob('*pbp*.csv'))
+                       list(self.inputs_dir.glob('play_by_play*.csv'))
+
+            # If no files found, download from nflverse
+            if not pbp_files or force:
+                logger.info(f"Downloading nflverse data for {season} season...")
+                try:
+                    fetch_nflverse(season, self.inputs_dir, include_all=True)
+                    # Re-check for files after download
+                    pbp_files = list(self.inputs_dir.glob('play_by_play*.parquet')) + \
+                               list(self.inputs_dir.glob('pbp*.parquet')) + \
+                               list(self.inputs_dir.glob('play_by_play*.csv'))
+                except Exception as e:
+                    logger.error(f"Error downloading nflverse data: {e}")
 
             if not pbp_files:
                 return {

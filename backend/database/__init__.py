@@ -1,29 +1,37 @@
-"""Database module for PostgreSQL integration.
+"""Database module for NFL betting data.
 
-Provides SQLAlchemy ORM models, session management, and CRUD operations.
+Two database options available:
+1. SQLite (local_db.py) - Simple, no dependencies, used by default
+2. PostgreSQL (optional) - For production, requires SQLAlchemy
 
-Environment Variables Required:
-    DATABASE_URL: Full PostgreSQL connection string
-        Format: postgresql://user:password@host:port/dbname
+For SQLite (default):
+    from backend.database.local_db import init_database, get_database_status
 
-Example:
+For PostgreSQL (optional):
     from backend.database import get_db, engine
-    from backend.database.models import User, BetHistory
-
-    # Get database session
-    session = next(get_db())
-
-    # Query users
-    users = session.query(User).filter(User.is_active == True).all()
 """
 
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session
 from typing import Generator
 import os
 
-# Base class for ORM models (always available)
-Base = declarative_base()
+# Lazy-load SQLAlchemy only when PostgreSQL is used
+_Base = None
+
+def _get_base():
+    """Get SQLAlchemy Base (lazy-loaded)."""
+    global _Base
+    if _Base is None:
+        try:
+            from sqlalchemy.ext.declarative import declarative_base
+            _Base = declarative_base()
+        except ImportError:
+            raise ImportError("SQLAlchemy required for PostgreSQL. Install with: pip install sqlalchemy")
+    return _Base
+
+@property
+def Base():
+    """Backward-compatible Base accessor."""
+    return _get_base()
 
 # Lazy-load PostgreSQL connection only when needed
 _engine = None
@@ -68,12 +76,12 @@ def get_session_local():
     return _SessionLocal
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db():
     """Get database session (FastAPI dependency).
 
     Usage:
         @app.get("/users")
-        def get_users(db: Session = Depends(get_db)):
+        def get_users(db = Depends(get_db)):
             return db.query(User).all()
     """
     _init_postgres()
@@ -84,7 +92,7 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-def get_db_session() -> Session:
+def get_db_session():
     """Get database session (direct use).
 
     Usage:

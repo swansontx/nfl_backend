@@ -347,8 +347,25 @@ class PicksPipeline:
             odds_data = self._fetch_odds()
 
         if not odds_data:
-            print("Warning: No odds data available, using sample data")
-            odds_data = self._get_sample_odds()
+            print("ERROR: No odds data available.")
+            print("Please either:")
+            print("  1. Set ODDS_API_KEY environment variable and ensure network access")
+            print("  2. Pass pre-loaded odds_data to generate_picks()")
+            print("  3. Load odds from: inputs/odds/player_props_latest.json")
+            return PicksReport(
+                generated_at=datetime.now().isoformat(),
+                week=week,
+                games_analyzed=0,
+                props_screened=0,
+                single_picks=[],
+                parlays=[],
+                total_edge_dollars=0,
+                total_stake_dollars=0,
+                best_single=None,
+                best_parlay=None,
+                by_game_exposure={},
+                by_prop_type={},
+            )
 
         # Screen all props
         all_picks = []
@@ -448,9 +465,14 @@ class PicksPipeline:
 
         prop_type = prop_type_map.get(market_key, market_key.replace('player_', ''))
 
+        # Validate player name
+        if not player_name or not player_name.strip():
+            return None
+
         # Find player in features
+        first_name = player_name.split()[0] if player_name.split() else player_name
         player_df = player_features[
-            player_features['player_display_name'].str.contains(player_name.split()[0], case=False, na=False)
+            player_features['player_display_name'].str.contains(first_name, case=False, na=False)
         ]
 
         if len(player_df) == 0:
@@ -617,6 +639,10 @@ class PicksPipeline:
                 dec = 1 + (100 / abs(leg.odds))
             decimal_odds *= dec
 
+        # Guard against division by zero
+        if decimal_odds <= 1.0:
+            return None  # Invalid odds
+
         if decimal_odds >= 2.0:
             combined_odds = int((decimal_odds - 1) * 100)
         else:
@@ -667,38 +693,19 @@ class PicksPipeline:
 
         return []
 
-    def _get_sample_odds(self) -> List[Dict]:
-        """Get sample odds data for testing."""
-        return [
-            {
-                "id": "sample_game_1",
-                "home_team": "Kansas City Chiefs",
-                "away_team": "Buffalo Bills",
-                "bookmakers": [
-                    {
-                        "key": "draftkings",
-                        "markets": [
-                            {
-                                "key": "player_pass_yds",
-                                "outcomes": [
-                                    {"name": "Over", "description": "Patrick Mahomes", "price": -115, "point": 275.5},
-                                    {"name": "Under", "description": "Patrick Mahomes", "price": -105, "point": 275.5},
-                                    {"name": "Over", "description": "Josh Allen", "price": -110, "point": 265.5},
-                                    {"name": "Under", "description": "Josh Allen", "price": -110, "point": 265.5},
-                                ]
-                            },
-                            {
-                                "key": "player_rush_yds",
-                                "outcomes": [
-                                    {"name": "Over", "description": "James Cook", "price": -110, "point": 55.5},
-                                    {"name": "Under", "description": "James Cook", "price": -110, "point": 55.5},
-                                ]
-                            },
-                        ]
-                    }
-                ]
-            }
-        ]
+    def _load_saved_odds(self) -> List[Dict]:
+        """Load saved odds from disk if available."""
+        odds_file = Path("inputs/odds/player_props_latest.json")
+        if not odds_file.exists():
+            return []
+
+        try:
+            with open(odds_file) as f:
+                data = json.load(f)
+            return data.get('events', [])
+        except Exception as e:
+            print(f"Error loading saved odds: {e}")
+            return []
 
     def to_json(self, report: PicksReport) -> str:
         """Convert report to JSON string."""

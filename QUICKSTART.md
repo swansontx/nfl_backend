@@ -1,291 +1,256 @@
-# NFL Backend - Quick Start Guide
+# NFL Betting Props - Quick Start Guide
 
-Complete guide to get the NFL prop prediction system up and running.
-
-## Prerequisites
+## 1. Virtual Environment Setup
 
 ```bash
-# Python 3.9+
-python --version
+# Navigate to project
+cd /path/to/nfl_backend
+
+# Create virtual environment
+python -m venv venv
+
+# Activate it
+# Mac/Linux:
+source venv/bin/activate
+
+# Windows:
+venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
 ```
 
-## Step 1: Ingest Data
+**Required packages** (if no requirements.txt):
+```bash
+pip install pandas numpy requests fastapi uvicorn xgboost lightgbm scikit-learn
+```
 
-Download nflverse data (play-by-play + advanced metrics) for multiple seasons:
+---
+
+## 2. Pull Latest Branch
 
 ```bash
-# Option A: Use the master workflow (recommended)
-python workflow_train_and_backtest.py --seasons 2023 2024
+# Navigate to your project folder
+cd /path/to/nfl_backend
 
-# Option B: Manual ingestion
-python -m backend.ingestion.fetch_nflverse --year 2023 --output inputs/
-python -m backend.ingestion.fetch_nflverse --year 2024 --output inputs/
+# Fetch the latest from remote
+git fetch origin claude/nfl-betting-props-dev-01J82MkeBwHiJEeGdaEhPUn2
+
+# Switch to the branch (if not already on it)
+git checkout claude/nfl-betting-props-dev-01J82MkeBwHiJEeGdaEhPUn2
+
+# Pull latest changes
+git pull origin claude/nfl-betting-props-dev-01J82MkeBwHiJEeGdaEhPUn2
 ```
 
-This downloads:
-- **Play-by-play data** with 300+ columns (EPA, CPOE, success rate, WPA, air yards, YAC, QB pressure)
-- **Player stats** (weekly aggregates)
-- **Rosters** (player positions and team assignments)
-- **Next Gen Stats** (player tracking data)
-- **Snap counts** (participation percentages)
-- **PFR advanced stats** (Pro Football Reference metrics)
-- **Depth charts** (positional rankings)
+**If you get merge conflicts** (like with `data/nfl_betting.db`):
+```bash
+# Remove conflicting file (it will be recreated)
+rm data/nfl_betting.db
 
-**Output**: `inputs/2023_play_by_play.parquet`, `inputs/2024_play_by_play.parquet`, etc.
+# Pull again
+git pull origin claude/nfl-betting-props-dev-01J82MkeBwHiJEeGdaEhPUn2
+```
 
 ---
 
-## Step 2: Extract Features
+## 3. Initialize SQLite Database & Populate Data
 
-Extract player-level features from play-by-play data:
+### Step 1: Initialize the database
+```bash
+python -c "from backend.database.local_db import init_database; init_database()"
+```
+
+This creates `data/nfl_betting.db` with all tables.
+
+### Step 2: Start the API server (handles data population)
+```bash
+python start_server.py --auto-update
+```
+
+Or manually:
+```bash
+python api_server.py
+```
+
+The server starts on `http://localhost:8000`
+
+### Step 3: Populate data via API endpoints
+
+Open another terminal and run:
 
 ```bash
-# Option A: Use workflow (recommended)
-python workflow_train_and_backtest.py --seasons 2023 2024
+# Populate all data at once
+curl -X POST http://localhost:8000/populate/all
 
-# Option B: Manual extraction
-python -m backend.features.extract_player_pbp_features \
-    --pbp-file inputs/2023_play_by_play.parquet \
-    --roster-file inputs/2023_weekly_rosters.parquet \
-    --output outputs/features/2023_player_features.json
+# Or individually:
+curl -X POST http://localhost:8000/populate/schedules
+curl -X POST http://localhost:8000/populate/player-stats
+curl -X POST http://localhost:8000/populate/injuries
+curl -X POST http://localhost:8000/populate/odds  # Requires ODDS_API_KEY
 ```
 
-**Features extracted per player per game**:
-- **Basic stats**: passing_yards, passing_tds, completions, attempts, interceptions
-- **EPA metrics**: total_epa, qb_epa, rushing_epa, receiving_epa
-- **CPOE**: cpoe_sum, cpoe_count (completion % over expected)
-- **Success rate**: success_plays / total_plays
-- **WPA**: win_probability_added
-- **Air yards & YAC**: air_epa, yac_epa, xyac_sum, xyac_count
-- **QB pressure**: qb_hits, qb_hurries, qb_pressures
-
-**Output**: `outputs/features/2023_player_features.json`
+### Step 4: Check database status
+```bash
+curl http://localhost:8000/database/status
+```
 
 ---
 
-## Step 3: Train Models
+## 4. Fetch Real Sportsbook Odds
 
-Train XGBoost/LightGBM model to predict passing yards using advanced metrics:
+### Set up Odds API key
+```bash
+# Get free key at https://the-odds-api.com/ (500 requests/month)
+export ODDS_API_KEY=your_key_here
+```
+
+### Fetch odds into database
+```bash
+# Via API
+curl -X POST http://localhost:8000/populate/odds
+
+# Or directly
+python -m backend.ingestion.fetch_odds
+```
+
+---
+
+## 5. Start MCP Server (for Claude integration)
 
 ```bash
-# Option A: Use workflow (recommended)
-python workflow_train_and_backtest.py --seasons 2023 2024
-
-# Option B: Manual training
-python -m backend.modeling.train_passing_model \
-    --season 2024 \
-    --features-file outputs/features/2024_player_features.json \
-    --output outputs/models/passing_model_2024.pkl \
-    --model-type xgboost
+python mcp_server.py
 ```
 
-**Model features**:
-- **Primary signals** (30% weight): EPA avg, CPOE avg, success rate, WPA avg
-- **Pressure metrics** (10% weight): QB pressure rate, hit rate
-- **Rolling windows** (30% weight): 3-game and 5-game rolling averages
-- **Traditional context** (20% weight): yards/attempt, completion %, air yards
-- **Game context** (10% weight): games played, attempts
-
-**Training approach**:
-- Time-based split: Train on early weeks, validate on mid weeks, test on late weeks
-- XGBoost with 200 estimators, max_depth=6, learning_rate=0.05
-- Early stopping on validation set to prevent overfitting
-
-**Output**:
-- `outputs/models/passing_model_2024.pkl` (trained model)
-- `outputs/models/passing_model_2024_metrics.json` (training metrics)
+The MCP server exposes tools for:
+- Fetching game predictions
+- Analyzing prop values
+- Generating picks
+- Accessing player statistics
 
 ---
 
-## Step 4: Run Backtest
+## 6. Generate Picks
 
-Validate model accuracy on test data:
-
+### Via command line:
 ```bash
-# Option A: Use workflow (recommended)
-python workflow_train_and_backtest.py --seasons 2023 2024
-
-# Option B: Manual backtest
-python -m backend.calib_backtest.run_backtest \
-    --season 2024 \
-    --model-path outputs/models/passing_model_2024.pkl \
-    --features-file outputs/features/2024_player_features.json \
-    --actuals-file outputs/features/2024_player_features.json \
-    --output outputs/backtest/backtest_report_2024.json
+python -m backend.recommendations.generate_game_picks --team1 HOU --team2 BUF
 ```
 
-**Backtest analysis**:
-- **Accuracy metrics**: RMSE, MAE, R², MAPE
-- **Calibration**: Predicted vs actual bins
-- **Weekly breakdown**: Error analysis by week
-- **Position-specific**: Metrics per position
-
-**Output**: `outputs/backtest/backtest_report_2024.json`
-
----
-
-## Complete Workflow (Recommended)
-
-Run the entire pipeline in one command:
-
+### Via API:
 ```bash
-# Train and backtest on 2024 data
-python workflow_train_and_backtest.py --seasons 2024
-
-# Multi-season training (train on 2023, backtest on 2024)
-python workflow_train_and_backtest.py --seasons 2023 2024
-
-# Skip data ingestion if already downloaded
-python workflow_train_and_backtest.py --seasons 2024 --skip-ingestion
-
-# Train only (skip backtest)
-python workflow_train_and_backtest.py --seasons 2024 --train-only
-
-# Backtest only (use existing model)
-python workflow_train_and_backtest.py --seasons 2024 --backtest-only \
-    --model-path outputs/models/passing_model_2024.pkl
+curl "http://localhost:8000/picks/HOU/BUF"
 ```
+
+Output saved to `outputs/picks_HOU_BUF.json`
 
 ---
 
-## Optional: Injury Data
+## 7. Common Workflows
 
-Fetch current injury reports (for adjusting predictions):
-
+### Daily workflow (game day):
 ```bash
-python -m backend.ingestion.fetch_injuries \
-    --output inputs/injuries/ \
-    --week 14
+# 1. Activate environment
+source venv/bin/activate
+
+# 2. Start server with auto-update
+python start_server.py --auto-update
+
+# 3. Fetch fresh odds (separate terminal)
+curl -X POST http://localhost:8000/populate/odds
+
+# 4. Generate picks for today's games
+curl "http://localhost:8000/picks/KC/BUF"
 ```
 
-**Output**: `inputs/injuries/injuries_week_14.json`
-
-Uses ESPN API (free, no API key required).
-
----
-
-## Optional: Prop Betting Lines (Future)
-
-For betting ROI analysis, fetch prop lines from The Odds API:
-
+### Weekly workflow (update all data):
 ```bash
-# Requires ODDS_API_KEY environment variable
-export ODDS_API_KEY="your_api_key_here"
-
-python -m backend.ingestion.fetch_prop_lines \
-    --output outputs/prop_lines/ \
-    --week 14
+# Full data refresh
+curl -X POST http://localhost:8000/populate/all
 ```
 
-**Note**: Not required for initial model training/validation. Only needed for betting ROI calculation.
-
----
-
-## API Server
-
-Start the FastAPI server to serve predictions:
-
+### Using the Orchestrator (full pipeline):
 ```bash
-cd backend/api
-uvicorn app:app --reload --host 0.0.0.0 --port 8000
+# Run full pipeline: data + features + training + predictions
+python -m backend.orchestration.orchestrator --season 2024 --full
+
+# Just fetch data and features (no training)
+python -m backend.orchestration.orchestrator --season 2024
+
+# Training + predictions only
+python -m backend.orchestration.orchestrator --season 2024 --train --predict
+
+# Generate picks for specific game
+python -m backend.orchestration.orchestrator --season 2024 --picks --team1 HOU --team2 BUF
+
+# Backtest mode
+python -m backend.orchestration.orchestrator --season 2023 --backtest
+
+# List all pipeline stages
+python -m backend.orchestration.orchestrator --list-stages
 ```
 
-**Available endpoints**:
-- `GET /api/v1/teams` - List all NFL teams
-- `GET /api/v1/teams/{team_id}/stats` - Team statistics
-- `GET /api/v1/games` - List games (filterable by week, season, team)
-- `GET /api/v1/games/{game_id}` - Game details
-- `GET /api/v1/games/{game_id}/insights` - Matchup insights
-- `GET /api/v1/players` - Search players
-- `GET /api/v1/players/{player_id}` - Player details
-- `GET /api/v1/players/{player_id}/stats` - Player statistics
-- `GET /api/v1/players/{player_id}/gamelogs` - Player game logs
+The orchestrator runs stages in order:
+1. Initialize SQLite database
+2. Fetch nflverse data (PBP, player stats, rosters)
+3. Fetch NFL schedules
+4. Fetch sportsbook odds (requires ODDS_API_KEY)
+5. Fetch injury reports
+6. Extract player PBP features
+7. Apply smoothing and rolling windows
+8. Build roster & injury indexes
+9. (Optional) Train models
+10. (Optional) Generate projections
+11. (Optional) Run backtests
+12. (Optional) Generate game picks
 
 ---
 
-## Expected Results
+## 8. Troubleshooting
 
-After running the complete workflow on 2024 data, you should see:
-
-**Training metrics**:
-- Validation RMSE: ~25-35 yards
-- Validation MAE: ~18-25 yards
-- Validation R²: 0.40-0.55
-
-**Backtest metrics**:
-- Test RMSE: ~28-38 yards
-- Test MAE: ~20-28 yards
-- Test R²: 0.35-0.50
-
-**Interpretation**:
-- RMSE ~30 means predictions are typically within 30 yards of actual
-- R² ~0.45 means model explains 45% of variance (good for NFL props)
-- These metrics validate the model can accurately predict passing yards using advanced metrics
-
----
-
-## Directory Structure After Workflow
-
-```
-nfl_backend/
-├── inputs/                              # Raw data from nflverse
-│   ├── 2023_play_by_play.parquet
-│   ├── 2024_play_by_play.parquet
-│   ├── 2023_player_stats.parquet
-│   ├── 2023_weekly_rosters.parquet
-│   ├── injuries/                        # Optional injury data
-│   └── ...
-├── outputs/
-│   ├── features/                        # Extracted player features
-│   │   ├── 2023_player_features.json
-│   │   └── 2024_player_features.json
-│   ├── models/                          # Trained models
-│   │   ├── passing_model_2024.pkl
-│   │   └── passing_model_2024_metrics.json
-│   ├── backtest/                        # Backtest reports
-│   │   └── backtest_report_2024.json
-│   ├── prop_lines/                      # Optional prop lines
-│   └── workflow_summary.json            # Overall workflow results
-├── cache/                               # nflverse download cache
-└── workflow.log                         # Execution log
+### "No module named X"
+```bash
+pip install X
 ```
 
----
+### Database locked
+```bash
+# Kill any running servers, then restart
+pkill -f "python.*server"
+python start_server.py
+```
 
-## Next Steps
+### SQLAlchemy import error
+The system uses SQLite (local_db.py), not PostgreSQL. If you see SQLAlchemy errors, they're from unused PostgreSQL code - ignore them.
 
-1. **Review backtest results**: Check `outputs/backtest/backtest_report_2024.json`
-2. **Analyze feature importance**: See which advanced metrics (EPA, CPOE, success rate) matter most
-3. **Build matchup analyzer**: Use trained model with matchup edges for game-specific predictions
-4. **Add contextual splits**: Analyze performance vs elite defenses, high pressure situations
-5. **Integrate with frontend**: Connect API endpoints to React frontend
-
----
-
-## Troubleshooting
-
-**Issue**: `FileNotFoundError: inputs/2024_play_by_play.parquet`
-- **Fix**: Run data ingestion first: `python -m backend.ingestion.fetch_nflverse --year 2024`
-
-**Issue**: `ModuleNotFoundError: No module named 'nfl_data_py'`
-- **Fix**: Install dependencies: `pip install -r requirements.txt`
-
-**Issue**: Training takes too long
-- **Fix**: Use fewer seasons or reduce model complexity: `--model-type lightgbm`
-
-**Issue**: Low R² score (<0.30)
-- **Check**: Are you using time-based splits? (Don't shuffle data)
-- **Check**: Are advanced metrics being extracted? (EPA, CPOE, success rate)
-- **Check**: Is sample size sufficient? (Need at least 200+ player-games)
+### No odds data
+1. Check ODDS_API_KEY is set
+2. Run: `curl -X POST http://localhost:8000/populate/odds`
+3. Check: `curl http://localhost:8000/database/status`
 
 ---
 
-## Resources
+## 9. File Locations
 
-- **Advanced Metrics Guide**: `docs/ADVANCED_METRICS.md`
-- **Matchup Analysis Guide**: `docs/MATCHUP_ANALYSIS.md`
-- **API Documentation**: `docs/API_ENDPOINTS.md`
-- **nflverse Data**: https://github.com/nflverse/nflverse-data
+| What | Where |
+|------|-------|
+| SQLite Database | `data/nfl_betting.db` |
+| Input CSVs | `inputs/` |
+| Trained Models | `outputs/models/` |
+| Generated Picks | `outputs/picks_*.json` |
+| API Server | `api_server.py` (port 8000) |
+| MCP Server | `mcp_server.py` |
+
+---
+
+## 10. Key API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/` | GET | Server status & database overview |
+| `/database/status` | GET | Data inventory |
+| `/populate/all` | POST | Refresh all data |
+| `/populate/odds` | POST | Fetch sportsbook lines |
+| `/picks/{team1}/{team2}` | GET | Generate picks for matchup |
+| `/predictions/{game_id}` | GET | Get projections for game |
+| `/injuries/{team}` | GET | Team injury report |

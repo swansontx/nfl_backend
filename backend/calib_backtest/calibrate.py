@@ -118,15 +118,27 @@ def run_calibration(historical_preds_path: Path,
     """
     print(f"Running {method} calibration")
 
-    # TODO: Load historical data
-    # with open(historical_preds_path) as f:
-    #     predictions = json.load(f)
-    # with open(historical_actuals_path) as f:
-    #     actuals = json.load(f)
+    # Load historical data
+    if not historical_preds_path.exists():
+        print(f"ERROR: Predictions file not found: {historical_preds_path}")
+        print("Run backtests first to generate predictions data.")
+        return
 
-    # Placeholder data
-    predictions = [0.1, 0.3, 0.5, 0.7, 0.9]
-    actuals = [0.0, 0.0, 0.5, 1.0, 1.0]
+    if not historical_actuals_path.exists():
+        print(f"ERROR: Actuals file not found: {historical_actuals_path}")
+        print("Ensure you have actual outcome data available.")
+        return
+
+    with open(historical_preds_path) as f:
+        predictions = json.load(f)
+    with open(historical_actuals_path) as f:
+        actuals = json.load(f)
+
+    if not predictions or not actuals:
+        print("ERROR: Empty predictions or actuals data")
+        return
+
+    print(f"Loaded {len(predictions)} predictions and {len(actuals)} actuals")
 
     # Fit calibrator
     calibrator = Calibrator(method=method)

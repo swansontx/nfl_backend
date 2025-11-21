@@ -58,7 +58,7 @@ import requests
 import json
 import time
 from typing import Dict, List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 
 
@@ -76,88 +76,138 @@ class PropLineFetcher:
         self.sport = "americanfootball_nfl"
 
         # Prop markets to fetch (comprehensive list from Odds API)
-        # All prop markets we want to fetch
+        # All prop markets we want to fetch - 80+ markets
         # We'll dynamically check which are available per event
         self.prop_markets = [
-            # FULL GAME - Passing props
+            # FULL GAME - Passing props (8)
             'player_pass_yds',
             'player_pass_tds',
             'player_pass_completions',
             'player_pass_attempts',
             'player_pass_interceptions',
             'player_pass_longest_completion',
+            'player_passer_rating',
+            'player_pass_first_downs',
 
-            # FULL GAME - Rushing props
+            # FULL GAME - Rushing props (6)
             'player_rush_yds',
             'player_rush_tds',
             'player_rush_attempts',
             'player_rush_longest',
+            'player_rush_first_downs',
+            'player_rush_yds_longest',
 
-            # FULL GAME - Receiving props
+            # FULL GAME - Receiving props (7)
             'player_receptions',
             'player_reception_yds',
             'player_reception_tds',
             'player_reception_longest',
+            'player_targets',
+            'player_rec_first_downs',
+            'player_reception_yds_longest',
 
-            # FULL GAME - Kicking props
+            # FULL GAME - Kicking props (5)
             'player_kicking_points',
             'player_field_goals',
             'player_field_goals_made',
+            'player_extra_points_made',
+            'player_longest_field_goal',
 
-            # FULL GAME - Touchdown props
+            # FULL GAME - Touchdown props (8)
             'player_anytime_td',
             'player_first_td',
             'player_last_td',
+            'player_2_plus_tds',
+            'player_3_plus_tds',
             '1st_td_scorer',
             'last_td_scorer',
+            'player_anytime_td_scorer',
 
-            # FULL GAME - Defensive props
+            # FULL GAME - Defensive props (12)
             'player_tackles_assists',
+            'player_solo_tackles',
             'player_sacks',
             'player_interceptions',
+            'player_def_tds',
+            'player_forced_fumbles',
+            'player_fumble_recoveries',
+            'player_passes_defended',
+            'player_qb_hits',
+            'player_tackles_for_loss',
+            'player_blocked_kicks',
+            'player_safeties',
 
-            # FULL GAME - Combo props
+            # FULL GAME - Combo props (8)
             'player_pass_rush_yds',
             'player_pass_tds_rush_tds',
             'player_receptions_rush_yds',
             'player_rush_reception_yds',
+            'player_rush_rec_tds',
+            'player_rush_rec_yds',
+            'player_pass_rush_tds',
+            'player_total_tds',
 
-            # FIRST HALF (1H) props
+            # FULL GAME - Turnover props (4)
+            'player_turnovers',
+            'player_fumbles',
+            'player_fumbles_lost',
+            'player_ints_thrown',
+
+            # FIRST HALF (1H) props (12)
             'player_1h_pass_yds',
             'player_1h_pass_tds',
             'player_1h_pass_completions',
+            'player_1h_pass_attempts',
             'player_1h_rush_yds',
             'player_1h_rush_tds',
+            'player_1h_rush_attempts',
             'player_1h_receptions',
             'player_1h_reception_yds',
+            'player_1h_reception_tds',
             'player_1h_anytime_td',
+            'player_1h_tackles_assists',
 
-            # FIRST QUARTER (1Q) props
+            # FIRST QUARTER (1Q) props (12)
             'player_1q_pass_yds',
             'player_1q_pass_tds',
             'player_1q_pass_completions',
+            'player_1q_pass_attempts',
             'player_1q_rush_yds',
             'player_1q_rush_tds',
+            'player_1q_rush_attempts',
             'player_1q_receptions',
             'player_1q_reception_yds',
+            'player_1q_reception_tds',
             'player_1q_anytime_td',
+            'player_1q_tackles_assists',
 
-            # SECOND HALF (2H) props
+            # SECOND HALF (2H) props (10)
             'player_2h_pass_yds',
             'player_2h_pass_tds',
+            'player_2h_pass_completions',
             'player_2h_rush_yds',
+            'player_2h_rush_tds',
             'player_2h_receptions',
             'player_2h_reception_yds',
+            'player_2h_reception_tds',
+            'player_2h_anytime_td',
+            'player_2h_tackles_assists',
 
-            # THIRD QUARTER (3Q) props
+            # THIRD QUARTER (3Q) props (6)
             'player_3q_pass_yds',
+            'player_3q_pass_tds',
             'player_3q_rush_yds',
+            'player_3q_rush_tds',
             'player_3q_reception_yds',
+            'player_3q_anytime_td',
 
-            # FOURTH QUARTER (4Q) props
+            # FOURTH QUARTER (4Q) props (6)
             'player_4q_pass_yds',
+            'player_4q_pass_tds',
             'player_4q_rush_yds',
-            'player_4q_reception_yds'
+            'player_4q_rush_tds',
+            'player_4q_reception_yds',
+            'player_4q_anytime_td'
         ]
 
         # Sportsbooks to track
@@ -176,6 +226,47 @@ class PropLineFetcher:
 
         # User can only bet on DraftKings
         self.primary_book = 'draftkings'
+
+    def _check_should_fetch(self, output_dir: Path, week: Optional[int], min_hours: float = 2.0) -> Tuple[bool, Optional[datetime], float]:
+        """Check if we should fetch based on last fetch time.
+
+        Args:
+            output_dir: Directory containing snapshot files
+            week: Week number
+            min_hours: Minimum hours between fetches (default: 2 hours)
+
+        Returns:
+            Tuple of (should_fetch, last_fetch_time, hours_since_last)
+        """
+        week_str = f"week_{week}" if week else "current"
+        latest_file = output_dir / f"snapshot_{week_str}_latest.json"
+
+        if not latest_file.exists():
+            return True, None, float('inf')
+
+        try:
+            # Check file modification time
+            file_mtime = datetime.fromtimestamp(latest_file.stat().st_mtime)
+            hours_since = (datetime.now() - file_mtime).total_seconds() / 3600
+
+            # Also check the snapshot_timestamp in the file for accuracy
+            with open(latest_file) as f:
+                data = json.load(f)
+                # Get timestamp from first game
+                for game_id, game_data in data.items():
+                    timestamp_str = game_data.get('snapshot_timestamp')
+                    if timestamp_str:
+                        fetched_at = datetime.fromisoformat(timestamp_str)
+                        hours_since = (datetime.now() - fetched_at).total_seconds() / 3600
+                        file_mtime = fetched_at
+                        break
+
+            should_fetch = hours_since >= min_hours
+            return should_fetch, file_mtime, hours_since
+
+        except Exception as e:
+            print(f"  ⚠ Could not check last fetch time: {e}")
+            return True, None, float('inf')
 
     def fetch_upcoming_games(self) -> List[Dict]:
         """Fetch list of upcoming NFL games.
@@ -435,19 +526,63 @@ class PropLineFetcher:
         self,
         output_dir: Path,
         week: Optional[int] = None,
-        load_previous: bool = True
+        load_previous: bool = True,
+        min_hours: float = 2.0,
+        force: bool = False
     ) -> Dict:
         """Fetch current snapshot and calculate movement from previous snapshot.
+
+        Uses smart time-based checking to avoid redundant API calls.
+        Will skip fetching if data was retrieved within min_hours.
 
         Args:
             output_dir: Directory to save/load snapshots
             week: Week number (for filename)
             load_previous: Whether to load previous snapshot for movement calc
+            min_hours: Minimum hours between fetches (default: 2.0)
+            force: Force fetch even if recent data exists (default: False)
 
         Returns:
             Dict with snapshot data and movement metrics
         """
         output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Check if we should fetch based on last fetch time
+        if not force:
+            should_fetch, last_fetch, hours_since = self._check_should_fetch(output_dir, week, min_hours)
+
+            if not should_fetch:
+                print(f"\n{'='*60}")
+                print(f"Odds data is current")
+                print(f"{'='*60}")
+                print(f"✓ Last fetched: {last_fetch.strftime('%Y-%m-%d %H:%M:%S')} ({hours_since:.1f} hours ago)")
+                print(f"✓ Next fetch allowed in: {min_hours - hours_since:.1f} hours")
+                print(f"  Use force=True to override")
+                print(f"{'='*60}\n")
+
+                # Return existing snapshot data
+                week_str = f"week_{week}" if week else "current"
+                latest_file = output_dir / f"snapshot_{week_str}_latest.json"
+                if latest_file.exists():
+                    with open(latest_file) as f:
+                        existing_data = json.load(f)
+                        # Count props in existing data
+                        total_props = 0
+                        for game_data in existing_data.values():
+                            for props in game_data.get('props', {}).values():
+                                total_props += len(props)
+                        return {
+                            'games': len(existing_data),
+                            'props': total_props,
+                            'skipped': True,
+                            'reason': f'Data fetched {hours_since:.1f} hours ago (min: {min_hours} hours)',
+                            'snapshot_time': last_fetch.isoformat() if last_fetch else None
+                        }
+                return {'games': 0, 'props': 0, 'skipped': True}
+
+        if force:
+            print(f"\n⚠ Force fetch enabled - bypassing time check")
+
         snapshot_time = datetime.now()
 
         print(f"\n{'='*60}")

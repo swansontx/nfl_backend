@@ -16,12 +16,23 @@ import requests
 import time
 from pathlib import Path
 
+# Import dynamic season/week detection
+from backend.utils.nfl_calendar import get_current_season, get_current_week
+
 # Project root
 PROJECT_ROOT = Path(__file__).parent
 
+# Get current season and week dynamically
+CURRENT_SEASON = get_current_season()
+CURRENT_WEEK = get_current_week()
 
-def auto_update_database(season: int = 2025, week: int = 12):
+
+def auto_update_database(season: int = None, week: int = None):
     """Auto-update database with fresh data after server starts."""
+    if season is None:
+        season = CURRENT_SEASON
+    if week is None:
+        week = CURRENT_WEEK
     print("\nAuto-updating database...")
     print("=" * 50)
 
@@ -87,14 +98,14 @@ def main():
     parser.add_argument(
         "--season", "-s",
         type=int,
-        default=2025,
-        help="NFL season (default: 2025)"
+        default=CURRENT_SEASON,
+        help=f"NFL season (default: {CURRENT_SEASON})"
     )
     parser.add_argument(
         "--week", "-w",
         type=int,
-        default=12,
-        help="Current NFL week (default: 12)"
+        default=CURRENT_WEEK,
+        help=f"Current NFL week (default: {CURRENT_WEEK})"
     )
     parser.add_argument(
         "--no-reload",

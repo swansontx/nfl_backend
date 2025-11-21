@@ -1,0 +1,1023 @@
+{
+  "backtest_info": {
+    "season": 2024,
+    "weeks": [
+      9,
+      10
+    ],
+    "timestamp": "2025-11-20T21:06:40.957739",
+    "strategy": "alt_lines",
+    "buffers_tested": [
+      "5%",
+      "10%",
+      "15%",
+      "20%",
+      "25%",
+      "30%"
+    ]
+  },
+  "results_by_buffer": {
+    "5%": {
+      "buffer": "5%",
+      "odds": -130,
+      "over": {
+        "bets": 3425,
+        "wins": 1349,
+        "hit_rate": 39.4,
+        "profit": -134980,
+        "roi": -30.3
+      },
+      "under": {
+        "bets": 3425,
+        "wins": 1784,
+        "hit_rate": 52.1,
+        "profit": -34930,
+        "roi": -7.8
+      },
+      "combined": {
+        "bets": 6850,
+        "wins": 3133,
+        "hit_rate": 45.7,
+        "profit": -169910,
+        "roi": -19.1
+      }
+    },
+    "10%": {
+      "buffer": "10%",
+      "odds": -150,
+      "over": {
+        "bets": 3425,
+        "wins": 1462,
+        "hit_rate": 42.7,
+        "profit": -148250,
+        "roi": -28.9
+      },
+      "under": {
+        "bets": 3425,
+        "wins": 1845,
+        "hit_rate": 53.9,
+        "profit": -52500,
+        "roi": -10.2
+      },
+      "combined": {
+        "bets": 6850,
+        "wins": 3307,
+        "hit_rate": 48.3,
+        "profit": -200750,
+        "roi": -19.5
+      }
+    },
+    "15%": {
+      "buffer": "15%",
+      "odds": -180,
+      "over": {
+        "bets": 3425,
+        "wins": 1536,
+        "hit_rate": 44.8,
+        "profit": -186420,
+        "roi": -30.2
+      },
+      "under": {
+        "bets": 3425,
+        "wins": 1939,
+        "hit_rate": 56.6,
+        "profit": -73580,
+        "roi": -11.9
+      },
+      "combined": {
+        "bets": 6850,
+        "wins": 3475,
+        "hit_rate": 50.7,
+        "profit": -260000,
+        "roi": -21.1
+      }
+    },
+    "20%": {
+      "buffer": "20%",
+      "odds": -220,
+      "over": {
+        "bets": 3425,
+        "wins": 1614,
+        "hit_rate": 47.1,
+        "profit": -237020,
+        "roi": -31.5
+      },
+      "under": {
+        "bets": 3425,
+        "wins": 2003,
+        "hit_rate": 58.5,
+        "profit": -112540,
+        "roi": -14.9
+      },
+      "combined": {
+        "bets": 6850,
+        "wins": 3617,
+        "hit_rate": 52.8,
+        "profit": -349560,
+        "roi": -23.2
+      }
+    },
+    "25%": {
+      "buffer": "25%",
+      "odds": -280,
+      "over": {
+        "bets": 3425,
+        "wins": 1678,
+        "hit_rate": 49.0,
+        "profit": -321360,
+        "roi": -33.5
+      },
+      "under": {
+        "bets": 3425,
+        "wins": 2053,
+        "hit_rate": 59.9,
+        "profit": -178860,
+        "roi": -18.7
+      },
+      "combined": {
+        "bets": 6850,
+        "wins": 3731,
+        "hit_rate": 54.5,
+        "profit": -500220,
+        "roi": -26.1
+      }
+    },
+    "30%": {
+      "buffer": "30%",
+      "odds": -350,
+      "over": {
+        "bets": 3425,
+        "wins": 1765,
+        "hit_rate": 51.5,
+        "profit": -404500,
+        "roi": -33.7
+      },
+      "under": {
+        "bets": 3425,
+        "wins": 2242,
+        "hit_rate": 65.5,
+        "profit": -189850,
+        "roi": -15.8
+      },
+      "combined": {
+        "bets": 6850,
+        "wins": 4007,
+        "hit_rate": 58.5,
+        "profit": -594350,
+        "roi": -24.8
+      }
+    }
+  },
+  "prop_analysis": {
+    "passing_yards": {
+      "buffers": {
+        "5%_over": {
+          "hit_rate": 57.9,
+          "roi": 2.4,
+          "bets": 95
+        },
+        "5%_under": {
+          "hit_rate": 51.6,
+          "roi": -8.7,
+          "bets": 95
+        },
+        "10%_over": {
+          "hit_rate": 64.2,
+          "roi": 7.0,
+          "bets": 95
+        },
+        "10%_under": {
+          "hit_rate": 54.7,
+          "roi": -8.8,
+          "bets": 95
+        },
+        "15%_over": {
+          "hit_rate": 68.4,
+          "roi": 6.4,
+          "bets": 95
+        },
+        "15%_under": {
+          "hit_rate": 63.2,
+          "roi": -1.8,
+          "bets": 95
+        },
+        "20%_over": {
+          "hit_rate": 70.5,
+          "roi": 2.6,
+          "bets": 95
+        },
+        "20%_under": {
+          "hit_rate": 69.5,
+          "roi": 1.1,
+          "bets": 95
+        },
+        "25%_over": {
+          "hit_rate": 71.6,
+          "roi": -2.9,
+          "bets": 95
+        },
+        "25%_under": {
+          "hit_rate": 71.6,
+          "roi": -2.9,
+          "bets": 95
+        },
+        "30%_over": {
+          "hit_rate": 77.9,
+          "roi": 0.2,
+          "bets": 95
+        },
+        "30%_under": {
+          "hit_rate": 74.7,
+          "roi": -3.9,
+          "bets": 95
+        }
+      },
+      "best_buffer": "10%_over",
+      "best_roi": 7.0
+    },
+    "passing_tds": {
+      "buffers": {
+        "5%_over": {
+          "hit_rate": 41.9,
+          "roi": -25.9,
+          "bets": 86
+        },
+        "5%_under": {
+          "hit_rate": 47.7,
+          "roi": -15.7,
+          "bets": 86
+        },
+        "10%_over": {
+          "hit_rate": 48.8,
+          "roi": -18.6,
+          "bets": 86
+        },
+        "10%_under": {
+          "hit_rate": 48.8,
+          "roi": -18.6,
+          "bets": 86
+        },
+        "15%_over": {
+          "hit_rate": 51.2,
+          "roi": -20.4,
+          "bets": 86
+        },
+        "15%_under": {
+          "hit_rate": 51.2,
+          "roi": -20.4,
+          "bets": 86
+        },
+        "20%_over": {
+          "hit_rate": 52.3,
+          "roi": -23.9,
+          "bets": 86
+        },
+        "20%_under": {
+          "hit_rate": 55.8,
+          "roi": -18.8,
+          "bets": 86
+        },
+        "25%_over": {
+          "hit_rate": 52.3,
+          "roi": -29.0,
+          "bets": 86
+        },
+        "25%_under": {
+          "hit_rate": 57.0,
+          "roi": -22.7,
+          "bets": 86
+        },
+        "30%_over": {
+          "hit_rate": 52.3,
+          "roi": -32.7,
+          "bets": 86
+        },
+        "30%_under": {
+          "hit_rate": 58.1,
+          "roi": -25.2,
+          "bets": 86
+        }
+      },
+      "best_buffer": "5%_under",
+      "best_roi": -15.7
+    },
+    "completions": {
+      "buffers": {
+        "5%_over": {
+          "hit_rate": 61.1,
+          "roi": 8.0,
+          "bets": 95
+        },
+        "5%_under": {
+          "hit_rate": 46.3,
+          "roi": -18.1,
+          "bets": 95
+        },
+        "10%_over": {
+          "hit_rate": 67.4,
+          "roi": 12.3,
+          "bets": 95
+        },
+        "10%_under": {
+          "hit_rate": 49.5,
+          "roi": -17.5,
+          "bets": 95
+        },
+        "15%_over": {
+          "hit_rate": 68.4,
+          "roi": 6.4,
+          "bets": 95
+        },
+        "15%_under": {
+          "hit_rate": 62.1,
+          "roi": -3.4,
+          "bets": 95
+        },
+        "20%_over": {
+          "hit_rate": 73.7,
+          "roi": 7.2,
+          "bets": 95
+        },
+        "20%_under": {
+          "hit_rate": 71.6,
+          "roi": 4.1,
+          "bets": 95
+        },
+        "25%_over": {
+          "hit_rate": 80.0,
+          "roi": 8.6,
+          "bets": 95
+        },
+        "25%_under": {
+          "hit_rate": 75.8,
+          "roi": 2.9,
+          "bets": 95
+        },
+        "30%_over": {
+          "hit_rate": 86.3,
+          "roi": 11.0,
+          "bets": 95
+        },
+        "30%_under": {
+          "hit_rate": 76.8,
+          "roi": -1.2,
+          "bets": 95
+        }
+      },
+      "best_buffer": "10%_over",
+      "best_roi": 12.3
+    },
+    "attempts": {
+      "buffers": {
+        "5%_over": {
+          "hit_rate": 57.9,
+          "roi": 2.4,
+          "bets": 95
+        },
+        "5%_under": {
+          "hit_rate": 50.5,
+          "roi": -10.6,
+          "bets": 95
+        },
+        "10%_over": {
+          "hit_rate": 64.2,
+          "roi": 7.0,
+          "bets": 95
+        },
+        "10%_under": {
+          "hit_rate": 53.7,
+          "roi": -10.5,
+          "bets": 95
+        },
+        "15%_over": {
+          "hit_rate": 71.6,
+          "roi": 11.3,
+          "bets": 95
+        },
+        "15%_under": {
+          "hit_rate": 55.8,
+          "roi": -13.2,
+          "bets": 95
+        },
+        "20%_over": {
+          "hit_rate": 77.9,
+          "roi": 13.3,
+          "bets": 95
+        },
+        "20%_under": {
+          "hit_rate": 58.9,
+          "roi": -14.3,
+          "bets": 95
+        },
+        "25%_over": {
+          "hit_rate": 84.2,
+          "roi": 14.3,
+          "bets": 95
+        },
+        "25%_under": {
+          "hit_rate": 70.5,
+          "roi": -4.3,
+          "bets": 95
+        },
+        "30%_over": {
+          "hit_rate": 87.4,
+          "roi": 12.3,
+          "bets": 95
+        },
+        "30%_under": {
+          "hit_rate": 71.6,
+          "roi": -8.0,
+          "bets": 95
+        }
+      },
+      "best_buffer": "25%_over",
+      "best_roi": 14.3
+    },
+    "interceptions": {
+      "buffers": {
+        "5%_over": {
+          "hit_rate": 35.3,
+          "roi": -37.6,
+          "bets": 85
+        },
+        "5%_under": {
+          "hit_rate": 44.7,
+          "roi": -20.9,
+          "bets": 85
+        },
+        "10%_over": {
+          "hit_rate": 36.5,
+          "roi": -39.2,
+          "bets": 85
+        },
+        "10%_under": {
+          "hit_rate": 44.7,
+          "roi": -25.5,
+          "bets": 85
+        },
+        "15%_over": {
+          "hit_rate": 36.5,
+          "roi": -43.3,
+          "bets": 85
+        },
+        "15%_under": {
+          "hit_rate": 47.1,
+          "roi": -26.8,
+          "bets": 85
+        },
+        "20%_over": {
+          "hit_rate": 37.6,
+          "roi": -45.2,
+          "bets": 85
+        },
+        "20%_under": {
+          "hit_rate": 47.1,
+          "roi": -31.6,
+          "bets": 85
+        },
+        "25%_over": {
+          "hit_rate": 37.6,
+          "roi": -48.9,
+          "bets": 85
+        },
+        "25%_under": {
+          "hit_rate": 47.1,
+          "roi": -36.1,
+          "bets": 85
+        },
+        "30%_over": {
+          "hit_rate": 37.6,
+          "roi": -51.6,
+          "bets": 85
+        },
+        "30%_under": {
+          "hit_rate": 55.3,
+          "roi": -28.9,
+          "bets": 85
+        }
+      },
+      "best_buffer": "5%_under",
+      "best_roi": -20.9
+    },
+    "receptions": {
+      "buffers": {
+        "5%_over": {
+          "hit_rate": 37.7,
+          "roi": -33.4,
+          "bets": 770
+        },
+        "5%_under": {
+          "hit_rate": 50.0,
+          "roi": -11.5,
+          "bets": 770
+        },
+        "10%_over": {
+          "hit_rate": 43.0,
+          "roi": -28.4,
+          "bets": 770
+        },
+        "10%_under": {
+          "hit_rate": 51.8,
+          "roi": -13.6,
+          "bets": 770
+        },
+        "15%_over": {
+          "hit_rate": 45.1,
+          "roi": -29.9,
+          "bets": 770
+        },
+        "15%_under": {
+          "hit_rate": 54.4,
+          "roi": -15.4,
+          "bets": 770
+        },
+        "20%_over": {
+          "hit_rate": 48.3,
+          "roi": -29.7,
+          "bets": 770
+        },
+        "20%_under": {
+          "hit_rate": 56.6,
+          "roi": -17.6,
+          "bets": 770
+        },
+        "25%_over": {
+          "hit_rate": 50.9,
+          "roi": -30.9,
+          "bets": 770
+        },
+        "25%_under": {
+          "hit_rate": 57.5,
+          "roi": -21.9,
+          "bets": 770
+        },
+        "30%_over": {
+          "hit_rate": 53.8,
+          "roi": -30.9,
+          "bets": 770
+        },
+        "30%_under": {
+          "hit_rate": 63.0,
+          "roi": -19.0,
+          "bets": 770
+        }
+      },
+      "best_buffer": "5%_under",
+      "best_roi": -11.5
+    },
+    "receiving_yards": {
+      "buffers": {
+        "5%_over": {
+          "hit_rate": 41.1,
+          "roi": -27.3,
+          "bets": 764
+        },
+        "5%_under": {
+          "hit_rate": 57.5,
+          "roi": 1.7,
+          "bets": 764
+        },
+        "10%_over": {
+          "hit_rate": 43.1,
+          "roi": -28.2,
+          "bets": 764
+        },
+        "10%_under": {
+          "hit_rate": 58.9,
+          "roi": -1.8,
+          "bets": 764
+        },
+        "15%_over": {
+          "hit_rate": 44.2,
+          "roi": -31.2,
+          "bets": 764
+        },
+        "15%_under": {
+          "hit_rate": 61.4,
+          "roi": -4.5,
+          "bets": 764
+        },
+        "20%_over": {
+          "hit_rate": 45.5,
+          "roi": -33.7,
+          "bets": 764
+        },
+        "20%_under": {
+          "hit_rate": 62.3,
+          "roi": -9.4,
+          "bets": 764
+        },
+        "25%_over": {
+          "hit_rate": 46.7,
+          "roi": -36.6,
+          "bets": 764
+        },
+        "25%_under": {
+          "hit_rate": 63.7,
+          "roi": -13.5,
+          "bets": 764
+        },
+        "30%_over": {
+          "hit_rate": 48.4,
+          "roi": -37.7,
+          "bets": 764
+        },
+        "30%_under": {
+          "hit_rate": 65.3,
+          "roi": -16.0,
+          "bets": 764
+        }
+      },
+      "best_buffer": "5%_under",
+      "best_roi": 1.7
+    },
+    "receiving_tds": {
+      "buffers": {
+        "5%_over": {
+          "hit_rate": 19.6,
+          "roi": -65.4,
+          "bets": 281
+        },
+        "5%_under": {
+          "hit_rate": 46.3,
+          "roi": -18.1,
+          "bets": 281
+        },
+        "10%_over": {
+          "hit_rate": 20.6,
+          "roi": -65.6,
+          "bets": 281
+        },
+        "10%_under": {
+          "hit_rate": 46.3,
+          "roi": -22.9,
+          "bets": 281
+        },
+        "15%_over": {
+          "hit_rate": 20.6,
+          "roi": -67.9,
+          "bets": 281
+        },
+        "15%_under": {
+          "hit_rate": 46.3,
+          "roi": -28.0,
+          "bets": 281
+        },
+        "20%_over": {
+          "hit_rate": 21.0,
+          "roi": -69.5,
+          "bets": 281
+        },
+        "20%_under": {
+          "hit_rate": 46.3,
+          "roi": -32.7,
+          "bets": 281
+        },
+        "25%_over": {
+          "hit_rate": 21.0,
+          "roi": -71.5,
+          "bets": 281
+        },
+        "25%_under": {
+          "hit_rate": 46.3,
+          "roi": -37.2,
+          "bets": 281
+        },
+        "30%_over": {
+          "hit_rate": 21.4,
+          "roi": -72.5,
+          "bets": 281
+        },
+        "30%_under": {
+          "hit_rate": 68.0,
+          "roi": -12.6,
+          "bets": 281
+        }
+      },
+      "best_buffer": "30%_under",
+      "best_roi": -12.6
+    },
+    "targets": {
+      "buffers": {
+        "5%_over": {
+          "hit_rate": 43.4,
+          "roi": -23.2,
+          "bets": 560
+        },
+        "5%_under": {
+          "hit_rate": 50.5,
+          "roi": -10.6,
+          "bets": 560
+        },
+        "10%_over": {
+          "hit_rate": 47.0,
+          "roi": -21.7,
+          "bets": 560
+        },
+        "10%_under": {
+          "hit_rate": 52.9,
+          "roi": -11.9,
+          "bets": 560
+        },
+        "15%_over": {
+          "hit_rate": 49.8,
+          "roi": -22.5,
+          "bets": 560
+        },
+        "15%_under": {
+          "hit_rate": 55.7,
+          "roi": -13.3,
+          "bets": 560
+        },
+        "20%_over": {
+          "hit_rate": 53.2,
+          "roi": -22.6,
+          "bets": 560
+        },
+        "20%_under": {
+          "hit_rate": 58.0,
+          "roi": -15.6,
+          "bets": 560
+        },
+        "25%_over": {
+          "hit_rate": 55.2,
+          "roi": -25.1,
+          "bets": 560
+        },
+        "25%_under": {
+          "hit_rate": 59.6,
+          "roi": -19.1,
+          "bets": 560
+        },
+        "30%_over": {
+          "hit_rate": 59.6,
+          "roi": -23.3,
+          "bets": 560
+        },
+        "30%_under": {
+          "hit_rate": 63.6,
+          "roi": -18.3,
+          "bets": 560
+        }
+      },
+      "best_buffer": "5%_under",
+      "best_roi": -10.6
+    },
+    "rushing_yards": {
+      "buffers": {
+        "5%_over": {
+          "hit_rate": 37.2,
+          "roi": -34.1,
+          "bets": 231
+        },
+        "5%_under": {
+          "hit_rate": 61.0,
+          "roi": 8.0,
+          "bets": 231
+        },
+        "10%_over": {
+          "hit_rate": 38.5,
+          "roi": -35.8,
+          "bets": 231
+        },
+        "10%_under": {
+          "hit_rate": 62.3,
+          "roi": 3.9,
+          "bets": 231
+        },
+        "15%_over": {
+          "hit_rate": 43.3,
+          "roi": -32.7,
+          "bets": 231
+        },
+        "15%_under": {
+          "hit_rate": 63.6,
+          "roi": -1.0,
+          "bets": 231
+        },
+        "20%_over": {
+          "hit_rate": 44.2,
+          "roi": -35.8,
+          "bets": 231
+        },
+        "20%_under": {
+          "hit_rate": 64.9,
+          "roi": -5.5,
+          "bets": 231
+        },
+        "25%_over": {
+          "hit_rate": 45.0,
+          "roi": -38.9,
+          "bets": 231
+        },
+        "25%_under": {
+          "hit_rate": 65.4,
+          "roi": -11.3,
+          "bets": 231
+        },
+        "30%_over": {
+          "hit_rate": 47.2,
+          "roi": -39.3,
+          "bets": 231
+        },
+        "30%_under": {
+          "hit_rate": 68.4,
+          "roi": -12.1,
+          "bets": 231
+        }
+      },
+      "best_buffer": "5%_under",
+      "best_roi": 8.0
+    },
+    "rushing_tds": {
+      "buffers": {
+        "5%_over": {
+          "hit_rate": 20.0,
+          "roi": -64.6,
+          "bets": 130
+        },
+        "5%_under": {
+          "hit_rate": 45.4,
+          "roi": -19.7,
+          "bets": 130
+        },
+        "10%_over": {
+          "hit_rate": 21.5,
+          "roi": -64.1,
+          "bets": 130
+        },
+        "10%_under": {
+          "hit_rate": 45.4,
+          "roi": -24.4,
+          "bets": 130
+        },
+        "15%_over": {
+          "hit_rate": 21.5,
+          "roi": -66.5,
+          "bets": 130
+        },
+        "15%_under": {
+          "hit_rate": 46.9,
+          "roi": -27.0,
+          "bets": 130
+        },
+        "20%_over": {
+          "hit_rate": 21.5,
+          "roi": -68.7,
+          "bets": 130
+        },
+        "20%_under": {
+          "hit_rate": 46.9,
+          "roi": -31.7,
+          "bets": 130
+        },
+        "25%_over": {
+          "hit_rate": 21.5,
+          "roi": -70.8,
+          "bets": 130
+        },
+        "25%_under": {
+          "hit_rate": 46.9,
+          "roi": -36.3,
+          "bets": 130
+        },
+        "30%_over": {
+          "hit_rate": 21.5,
+          "roi": -72.3,
+          "bets": 130
+        },
+        "30%_under": {
+          "hit_rate": 66.2,
+          "roi": -14.9,
+          "bets": 130
+        }
+      },
+      "best_buffer": "30%_under",
+      "best_roi": -14.9
+    },
+    "carries": {
+      "buffers": {
+        "5%_over": {
+          "hit_rate": 43.3,
+          "roi": -23.3,
+          "bets": 233
+        },
+        "5%_under": {
+          "hit_rate": 54.5,
+          "roi": -3.6,
+          "bets": 233
+        },
+        "10%_over": {
+          "hit_rate": 45.1,
+          "roi": -24.9,
+          "bets": 233
+        },
+        "10%_under": {
+          "hit_rate": 58.8,
+          "roi": -2.0,
+          "bets": 233
+        },
+        "15%_over": {
+          "hit_rate": 48.5,
+          "roi": -24.6,
+          "bets": 233
+        },
+        "15%_under": {
+          "hit_rate": 62.2,
+          "roi": -3.2,
+          "bets": 233
+        },
+        "20%_over": {
+          "hit_rate": 51.1,
+          "roi": -25.7,
+          "bets": 233
+        },
+        "20%_under": {
+          "hit_rate": 63.1,
+          "roi": -8.2,
+          "bets": 233
+        },
+        "25%_over": {
+          "hit_rate": 54.9,
+          "roi": -25.4,
+          "bets": 233
+        },
+        "25%_under": {
+          "hit_rate": 64.8,
+          "roi": -12.0,
+          "bets": 233
+        },
+        "30%_over": {
+          "hit_rate": 57.5,
+          "roi": -26.1,
+          "bets": 233
+        },
+        "30%_under": {
+          "hit_rate": 67.8,
+          "roi": -12.8,
+          "bets": 233
+        }
+      },
+      "best_buffer": "10%_under",
+      "best_roi": -2.0
+    }
+  },
+  "recommendations": {
+    "overall_best": {
+      "buffer": "5%",
+      "roi": -19.1,
+      "hit_rate": 45.7
+    },
+    "by_prop_type": {
+      "passing_yards": {
+        "buffer": "10%_over",
+        "roi": 7.0
+      },
+      "passing_tds": {
+        "buffer": "5%_under",
+        "roi": -15.7
+      },
+      "completions": {
+        "buffer": "10%_over",
+        "roi": 12.3
+      },
+      "attempts": {
+        "buffer": "25%_over",
+        "roi": 14.3
+      },
+      "interceptions": {
+        "buffer": "5%_under",
+        "roi": -20.9
+      },
+      "receptions": {
+        "buffer": "5%_under",
+        "roi": -11.5
+      },
+      "receiving_yards": {
+        "buffer": "5%_under",
+        "roi": 1.7
+      },
+      "receiving_tds": {
+        "buffer": "30%_under",
+        "roi": -12.6
+      },
+      "targets": {
+        "buffer": "5%_under",
+        "roi": -10.6
+      },
+      "rushing_yards": {
+        "buffer": "5%_under",
+        "roi": 8.0
+      },
+      "rushing_tds": {
+        "buffer": "30%_under",
+        "roi": -14.9
+      },
+      "carries": {
+        "buffer": "10%_under",
+        "roi": -2.0
+      }
+    },
+    "strategy": ""
+  }
+}

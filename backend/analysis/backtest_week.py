@@ -173,8 +173,27 @@ def backtest_week(week: int, season: int = 2025) -> Dict:
             error = actual - projection
             pct_error = (error / projection * 100) if projection > 0 else 0
 
-            # Simulate a betting line (projection - 2.5 for over/under)
-            line = round(projection - 2.5, 1)
+            # Load real historical line if available
+            # For now, skip props without real lines
+            # TODO: Load from outputs/backtest_props_*.json when available
+            historical_props_file = Path(f"outputs/backtest_props_nov9_2025.json")
+            line = None
+
+            if historical_props_file.exists():
+                try:
+                    import json
+                    with open(historical_props_file) as f:
+                        props_data = json.load(f)
+                    for prop in props_data.get('props', []):
+                        if prop['player'] == player_name and prop['prop_type'] == prop_type:
+                            line = prop['line']
+                            break
+                except Exception:
+                    pass
+
+            if line is None:
+                # No real line available - skip this prop
+                continue
 
             # Would "over" have hit?
             over_hits = actual > line

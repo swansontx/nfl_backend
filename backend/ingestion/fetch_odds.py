@@ -1,82 +1,374 @@
 """Ingestion: fetch odds from OddsAPI
 
-This script fetches NFL odds data from the OddsAPI and caches responses
-as JSON files in cache/web_event_<id>.json format.
+This script fetches NFL player prop odds from the OddsAPI.
 
-TODOs:
-- Add OddsAPI key management (env var or config)
-- Add CLI args (sport, markets, regions)
-- Add retry/backoff for API calls
-- Add rate limiting to respect API quotas
-- Wire into orchestration/orchestrator
-- Add data validation/schema checking
+Requires:
+- ODDS_API_KEY environment variable set
+- pip install requests
+
+Usage:
+    python -m backend.ingestion.fetch_odds --markets player_pass_yds,player_rush_yds
 """
 
 from pathlib import Path
 import argparse
 import json
-from typing import List, Dict
+import os
+import time
+from typing import List, Dict, Optional, Tuple
+from datetime import datetime, timedelta
+
+try:
+    import requests
+except ImportError:
+    print("ERROR: requests not installed. Run: pip install requests")
+    requests = None
 
 
-def fetch_odds_api(sport: str = 'americanfootball_nfl',
-                   markets: str = 'h2h,spreads,totals',
-                   cache_dir: Path = Path('cache')) -> List[Dict]:
-    """Fetch odds data from OddsAPI and cache results.
+# Available player prop markets
+PLAYER_PROP_MARKETS = [
+    'player_pass_yds',
+    'player_pass_tds',
+    'player_pass_completions',
+    'player_pass_attempts',
+    'player_interceptions',
+    'player_rush_yds',
+    'player_rush_attempts',
+    'player_receptions',
+    'player_reception_yds',
+    'player_anytime_td',
+]
 
-    Args:
-        sport: Sport key (default: americanfootball_nfl)
-        markets: Comma-separated market types
-        cache_dir: Directory to cache API responses
 
-    Returns:
-        List of event dictionaries from the API
+def fetch_nfl_events(api_key: str) -> List[Dict]:
+    """Fetch upcoming NFL events/games."""
+    if not requests:
+        return []
 
-    TODO: Implement actual API call using requests
-    Example API endpoint:
-        https://api.the-odds-api.com/v4/sports/{sport}/odds
-        ?apiKey={key}&regions=us&markets={markets}
-    """
-    cache_dir.mkdir(parents=True, exist_ok=True)
+    url = 'https://api.the-odds-api.com/v4/sports/americanfootball_nfl/events'
+    response = requests.get(url, params={'apiKey': api_key})
 
-    # TODO: Replace with actual API call
-    # import requests
-    # response = requests.get(
-    #     f'https://api.the-odds-api.com/v4/sports/{sport}/odds',
-    #     params={
-    #         'apiKey': os.environ.get('ODDS_API_KEY'),
-    #         'regions': 'us',
-    #         'markets': markets
-    #     }
-    # )
-    # events = response.json()
+    if response.status_code != 200:
+        print(f"Error fetching events: {response.status_code} - {response.text}")
+        return []
 
-    # Placeholder: create sample event
-    sample_event = {
-        'id': 'sample_event_001',
-        'sport_key': sport,
-        'commence_time': '2025-11-24T18:00:00Z',
-        'home_team': 'Buffalo Bills',
-        'away_team': 'Kansas City Chiefs',
-        'bookmakers': []
+    return response.json()
+
+
+def fetch_player_props(api_key: str,
+                       event_id: str,
+                       markets: List[str],
+                       regions: str = 'us',
+                       bookmakers: Optional[str] = None) -> Dict:
+    """Fetch player prop odds for a specific game."""
+    if not requests:
+        return {}
+
+    url = f'https://api.the-odds-api.com/v4/sports/americanfootball_nfl/events/{event_id}/odds'
+
+    params = {
+        'apiKey': api_key,
+        'regions': regions,
+        'markets': ','.join(markets),
+        'oddsFormat': 'american'
     }
 
-    # Cache the event
-    event_file = cache_dir / f"web_event_{sample_event['id']}.json"
-    event_file.write_text(json.dumps(sample_event, indent=2))
-    print(f"Cached event to {event_file}")
+    if bookmakers:
+        params['bookmakers'] = bookmakers
 
-    return [sample_event]
+    response = requests.get(url, params=params)
+
+    if response.status_code == 422:
+        # Props not available yet for this game
+        return {}
+    if response.status_code != 200:
+        print(f"Error fetching props for {event_id}: {response.status_code}")
+        return {}
+
+    remaining = response.headers.get('x-requests-remaining', 'unknown')
+    print(f"API requests remaining: {remaining}")
+
+    return response.json()
+
+
+def _check_should_fetch(output_dir: Path, min_hours: float = 2.0) -> Tuple[bool, Optional[datetime], float]:
+    """Check if we should fetch odds based on last fetch time.
+
+    Args:
+        output_dir: Directory containing odds files
+        min_hours: Minimum hours between fetches (default: 2 hours)
+
+    Returns:
+        Tuple of (should_fetch, last_fetch_time, hours_since_last)
+    """
+    latest_file = output_dir / "player_props_latest.json"
+
+    if not latest_file.exists():
+        return True, None, float('inf')
+
+    try:
+        # Check file modification time
+        file_mtime = datetime.fromtimestamp(latest_file.stat().st_mtime)
+        hours_since = (datetime.now() - file_mtime).total_seconds() / 3600
+
+        # Also check the fetched_at timestamp in the file for accuracy
+        with open(latest_file) as f:
+            data = json.load(f)
+            fetched_at_str = data.get('fetched_at')
+            if fetched_at_str:
+                # Parse ISO format timestamp
+                fetched_at = datetime.fromisoformat(fetched_at_str.replace('Z', '+00:00'))
+                # Convert to local time for comparison
+                if fetched_at.tzinfo:
+                    fetched_at = fetched_at.replace(tzinfo=None)
+                hours_since = (datetime.utcnow() - fetched_at).total_seconds() / 3600
+                file_mtime = fetched_at
+
+        should_fetch = hours_since >= min_hours
+        return should_fetch, file_mtime, hours_since
+
+    except Exception as e:
+        print(f"  ⚠ Could not check last fetch time: {e}")
+        return True, None, float('inf')
+
+
+def fetch_all_props(api_key: str,
+                    markets: List[str] = None,
+                    regions: str = 'us',
+                    bookmakers: str = 'draftkings,fanduel',
+                    output_dir: Path = Path('inputs/odds'),
+                    rate_limit_delay: float = 1.0,
+                    min_hours: float = 2.0,
+                    force: bool = False) -> Dict:
+    """Fetch player props for all upcoming NFL games.
+
+    Uses smart time-based checking to avoid redundant API calls.
+    Will skip fetching if data was retrieved within min_hours.
+
+    Args:
+        api_key: The Odds API key
+        markets: List of markets to fetch (defaults to all player props)
+        regions: API regions (default: 'us')
+        bookmakers: Comma-separated bookmakers (default: 'draftkings,fanduel')
+        output_dir: Output directory for JSON files
+        rate_limit_delay: Delay between API calls in seconds
+        min_hours: Minimum hours between fetches (default: 2.0)
+        force: Force fetch even if recent data exists (default: False)
+
+    Returns:
+        Dict with fetched odds data, or existing data if skipped
+    """
+    if markets is None:
+        markets = PLAYER_PROP_MARKETS
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Check if we should fetch based on last fetch time
+    if not force:
+        should_fetch, last_fetch, hours_since = _check_should_fetch(output_dir, min_hours)
+
+        if not should_fetch:
+            print(f"\n{'='*60}")
+            print(f"Odds data is current")
+            print(f"{'='*60}")
+            print(f"✓ Last fetched: {last_fetch.strftime('%Y-%m-%d %H:%M:%S')} ({hours_since:.1f} hours ago)")
+            print(f"✓ Next fetch allowed in: {min_hours - hours_since:.1f} hours")
+            print(f"  Use force=True to override")
+            print(f"{'='*60}\n")
+
+            # Return existing data
+            return load_latest_odds(output_dir)
+
+    if force:
+        print(f"\n⚠ Force fetch enabled - bypassing time check")
+
+    print("Fetching NFL events...")
+    events = fetch_nfl_events(api_key)
+
+    if not events:
+        print("No events found")
+        return {}
+
+    print(f"Found {len(events)} upcoming games")
+
+    all_odds = {
+        'fetched_at': datetime.utcnow().isoformat(),
+        'events': [],
+        'props_by_player': {}
+    }
+
+    for event in events:
+        event_id = event['id']
+        home = event.get('home_team', 'Unknown')
+        away = event.get('away_team', 'Unknown')
+
+        print(f"\nFetching props for {away} @ {home}...")
+        time.sleep(rate_limit_delay)
+
+        props = fetch_player_props(api_key, event_id, markets, regions, bookmakers)
+
+        if not props:
+            continue
+
+        event_data = {
+            'event_id': event_id,
+            'home_team': home,
+            'away_team': away,
+            'commence_time': event.get('commence_time'),
+            'bookmakers': props.get('bookmakers', [])
+        }
+
+        all_odds['events'].append(event_data)
+
+        # Organize by player
+        for bookmaker in props.get('bookmakers', []):
+            book_name = bookmaker.get('key', 'unknown')
+
+            for market in bookmaker.get('markets', []):
+                market_key = market.get('key', '')
+
+                for outcome in market.get('outcomes', []):
+                    player_name = outcome.get('description', '')
+
+                    if not player_name:
+                        continue
+
+                    if player_name not in all_odds['props_by_player']:
+                        all_odds['props_by_player'][player_name] = {}
+
+                    if market_key not in all_odds['props_by_player'][player_name]:
+                        all_odds['props_by_player'][player_name][market_key] = []
+
+                    all_odds['props_by_player'][player_name][market_key].append({
+                        'bookmaker': book_name,
+                        'event_id': event_id,
+                        'name': outcome.get('name'),
+                        'point': outcome.get('point'),
+                        'price': outcome.get('price'),
+                    })
+
+    # Save to file
+    output_file = output_dir / f"player_props_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
+    with open(output_file, 'w') as f:
+        json.dump(all_odds, f, indent=2)
+
+    print(f"\nSaved odds to {output_file}")
+
+    # Also save latest version
+    latest_file = output_dir / "player_props_latest.json"
+    with open(latest_file, 'w') as f:
+        json.dump(all_odds, f, indent=2)
+
+    return all_odds
+
+
+def load_latest_odds(odds_dir: Path = Path('inputs/odds')) -> Dict:
+    """Load the most recent odds data."""
+    latest_file = odds_dir / "player_props_latest.json"
+
+    if not latest_file.exists():
+        return {}
+
+    with open(latest_file) as f:
+        return json.load(f)
+
+
+def get_player_line(player_name: str,
+                    market: str,
+                    odds_data: Dict = None,
+                    bookmaker: str = 'draftkings') -> Optional[Dict]:
+    """Get a player's line from odds data.
+
+    Args:
+        player_name: Player name
+        market: Market type (e.g., 'player_pass_yds')
+        odds_data: Loaded odds dict (loads latest if None)
+        bookmaker: Preferred bookmaker
+
+    Returns:
+        Dict with line and odds or None
+    """
+    if odds_data is None:
+        odds_data = load_latest_odds()
+
+    props_by_player = odds_data.get('props_by_player', {})
+
+    # Try exact match
+    player_props = props_by_player.get(player_name, {})
+
+    # Fuzzy match if not found
+    if not player_props:
+        player_lower = player_name.lower()
+        for name, props in props_by_player.items():
+            if player_lower in name.lower() or name.lower() in player_lower:
+                player_props = props
+                break
+
+    if not player_props or market not in player_props:
+        return None
+
+    market_props = player_props[market]
+
+    over_line = None
+    under_line = None
+
+    for prop in market_props:
+        if prop['bookmaker'] == bookmaker or bookmaker is None:
+            if prop['name'] == 'Over':
+                over_line = {'line': prop['point'], 'odds': prop['price']}
+            elif prop['name'] == 'Under':
+                under_line = {'line': prop['point'], 'odds': prop['price']}
+
+    if over_line and under_line:
+        return {
+            'over_line': over_line['line'],
+            'over_odds': over_line['odds'],
+            'under_line': under_line['line'],
+            'under_odds': under_line['odds']
+        }
+
+    return None
 
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser(description='Fetch NFL odds from OddsAPI')
-    p.add_argument('--sport', type=str, default='americanfootball_nfl',
-                   help='Sport key (default: americanfootball_nfl)')
-    p.add_argument('--markets', type=str, default='h2h,spreads,totals',
-                   help='Comma-separated market types')
-    p.add_argument('--cache', type=Path, default=Path('cache'),
-                   help='Cache directory for API responses')
+    p = argparse.ArgumentParser(description='Fetch NFL odds from OddsAPI (smart time-based updates)')
+    p.add_argument('--markets', type=str, default=None,
+                   help='Comma-separated player prop markets')
+    p.add_argument('--bookmakers', type=str, default='draftkings,fanduel',
+                   help='Comma-separated bookmakers')
+    p.add_argument('--output', type=Path, default=Path('inputs/odds'),
+                   help='Output directory')
+    p.add_argument('--min-hours', type=float, default=2.0,
+                   help='Minimum hours between fetches (default: 2.0)')
+    p.add_argument('--force', action='store_true',
+                   help='Force fetch even if recent data exists')
+    p.add_argument('--list-markets', action='store_true',
+                   help='List available markets')
     args = p.parse_args()
 
-    events = fetch_odds_api(args.sport, args.markets, args.cache)
-    print(f"Fetched {len(events)} events")
+    if args.list_markets:
+        print("Available player prop markets:")
+        for market in PLAYER_PROP_MARKETS:
+            print(f"  - {market}")
+        exit(0)
+
+    api_key = os.environ.get('ODDS_API_KEY')
+
+    if not api_key:
+        print("ERROR: ODDS_API_KEY environment variable not set")
+        print("\nTo get an API key:")
+        print("1. Go to https://the-odds-api.com/")
+        print("2. Sign up for free (500 requests/month)")
+        print("3. Set: export ODDS_API_KEY=your_key_here")
+        exit(1)
+
+    markets = args.markets.split(',') if args.markets else None
+
+    fetch_all_props(
+        api_key,
+        markets=markets,
+        bookmakers=args.bookmakers,
+        output_dir=args.output,
+        min_hours=args.min_hours,
+        force=args.force
+    )

@@ -133,25 +133,36 @@ def run_backtest(predictions_path: Path,
     """
     print(f"Running backtest for {prop_type} prop")
 
-    # TODO: Load predictions and actuals
-    # with open(predictions_path) as f:
-    #     predictions = json.load(f)
-    # with open(actuals_path) as f:
-    #     actuals = json.load(f)
+    # Load predictions and actuals
+    if not predictions_path.exists():
+        print(f"ERROR: Predictions file not found: {predictions_path}")
+        print("Run model predictions first to generate this file.")
+        return
 
-    # Placeholder data
-    predictions = [0.2, 0.4, 0.6, 0.8, 0.9]
-    actuals = [0, 0, 1, 1, 1]
+    if not actuals_path.exists():
+        print(f"ERROR: Actuals file not found: {actuals_path}")
+        print("Ensure you have actual outcome data available.")
+        return
+
+    with open(predictions_path) as f:
+        predictions = json.load(f)
+    with open(actuals_path) as f:
+        actuals = json.load(f)
+
+    if not predictions or not actuals:
+        print("ERROR: Empty predictions or actuals data")
+        return
+
+    print(f"Loaded {len(predictions)} predictions and {len(actuals)} actuals")
 
     # Calculate metrics
     metrics_calc = BacktestMetrics()
 
     if prop_type == 'classification':
         metrics = metrics_calc.calculate_classification_metrics(predictions, actuals)
-        # Add ROI analysis
-        odds = [2.0] * len(predictions)  # Placeholder odds
-        roi_metrics = metrics_calc.calculate_roi(predictions, actuals, odds)
-        metrics.update(roi_metrics)
+        # ROI analysis requires real odds data
+        # Skip if not available
+        print("Note: ROI analysis requires real odds data - skipping")
     else:
         actuals_float = [float(a) for a in actuals]
         metrics = metrics_calc.calculate_regression_metrics(predictions, actuals_float)

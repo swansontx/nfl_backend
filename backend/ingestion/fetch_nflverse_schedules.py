@@ -12,15 +12,56 @@ import argparse
 import requests
 import time
 from typing import Optional
+from datetime import datetime
 
 
-def fetch_schedule(year: int, out_dir: Path, cache_dir: Optional[Path] = None):
-    """Fetch NFL schedule for a season.
+def _check_remote_modified(url: str, local_file: Path) -> bool:
+    """Check if remote file has been modified since local file was downloaded.
+
+    Uses HTTP HEAD request to compare Last-Modified header with local mtime.
+    Only downloads when remote actually has new data.
+    """
+    if not local_file.exists():
+        return True
+
+    try:
+        response = requests.head(url, timeout=10, allow_redirects=True)
+        if response.status_code != 200:
+            return True
+
+        last_modified = response.headers.get('Last-Modified')
+        if not last_modified:
+            # Check file size instead
+            content_length = response.headers.get('Content-Length')
+            if content_length:
+                local_size = local_file.stat().st_size
+                remote_size = int(content_length)
+                if abs(remote_size - local_size) > 1000:
+                    return True
+            return False
+
+        from email.utils import parsedate_to_datetime
+        remote_mtime = parsedate_to_datetime(last_modified)
+        local_mtime = datetime.fromtimestamp(local_file.stat().st_mtime, tz=remote_mtime.tzinfo)
+        return remote_mtime > local_mtime
+
+    except Exception as e:
+        print(f"  ⚠ Could not check remote: {e}")
+        return False
+
+
+def fetch_schedule(year: int, out_dir: Path, cache_dir: Optional[Path] = None,
+                   force: bool = False):
+    """Fetch NFL schedule for a season with smart incremental updates.
+
+    Uses HTTP conditional requests to check if nflverse has updated the schedule.
+    Only downloads when remote file has new data (e.g., new week scores).
 
     Args:
         year: NFL season year (e.g., 2023, 2024, 2025)
         out_dir: Output directory for schedule data
         cache_dir: Optional cache directory to avoid re-downloading
+        force: Force re-download even if file is current (default: False)
 
     Downloads:
         - inputs/schedule_{year}.csv - Full season schedule with results
@@ -31,26 +72,35 @@ def fetch_schedule(year: int, out_dir: Path, cache_dir: Optional[Path] = None):
         cache_dir.mkdir(parents=True, exist_ok=True)
 
     # nflverse schedule URL
-    schedule_url = f'https://github.com/nflverse/nflverse-data/releases/download/schedules/schedules.csv'
+    schedule_url = 'https://github.com/nflverse/nflverse-data/releases/download/schedules/schedules.csv'
 
     print(f"\n{'='*60}")
-    print(f"Fetching NFL schedules (all seasons)")
+    print(f"Fetching NFL schedule for {year}")
+    if force:
+        print(f"Update: FORCE (re-downloading)")
+    else:
+        print(f"Update: SMART (only download if nflverse has new data)")
     print(f"{'='*60}\n")
 
     output_file = out_dir / f'schedule_{year}.csv'
 
-    # Check if already exists
-    if output_file.exists():
-        print(f"✓ Schedule already exists: {output_file}")
-        return
+    # Check if we need to download
+    if output_file.exists() and not force:
+        if not _check_remote_modified(schedule_url, output_file):
+            size_kb = output_file.stat().st_size / 1024
+            print(f"✓ Schedule is current ({size_kb:.1f} KB)")
+            return
+        else:
+            print(f"↻ Schedule has updates, re-downloading...")
 
     # Check cache
-    if cache_dir:
+    if cache_dir and not force:
         cache_file = cache_dir / f'schedule_{year}.csv'
         if cache_file.exists():
-            print(f"✓ Using cached schedule: {cache_file}")
-            output_file.write_bytes(cache_file.read_bytes())
-            return
+            if not _check_remote_modified(schedule_url, cache_file):
+                print(f"✓ Using cached schedule: {cache_file}")
+                output_file.write_bytes(cache_file.read_bytes())
+                return
 
     # Download the full schedules file
     print(f"⬇ Downloading NFL schedules...")
@@ -130,13 +180,15 @@ def _filter_schedule_by_year(input_file: Path, output_file: Path, year: int):
 
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser(description='Fetch NFL schedules from nflverse')
-    p.add_argument('--year', type=int, default=2024,
+    p = argparse.ArgumentParser(description='Fetch NFL schedules from nflverse (smart incremental updates)')
+    p.add_argument('--year', type=int, default=2025,
                    help='NFL season year (default: 2024)')
     p.add_argument('--out', type=Path, default=Path('inputs'),
                    help='Output directory (default: inputs/)')
     p.add_argument('--cache', type=Path, default=None,
-                   help='Optional cache directory to avoid re-downloading')
+                   help='Optional cache directory')
+    p.add_argument('--force', action='store_true',
+                   help='Force re-download even if current')
     args = p.parse_args()
 
-    fetch_schedule(args.year, args.out, args.cache)
+    fetch_schedule(args.year, args.out, args.cache, args.force)
