@@ -290,7 +290,7 @@ class NFLPropsPipeline:
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description='NFL Props Pipeline Orchestrator')
-    p.add_argument('--season', type=int, default=2024,
+    p.add_argument('--season', type=int, default=2025,
                    help='NFL season year (default: 2024)')
     p.add_argument('--week', type=int, default=None,
                    help='Week number for prediction generation')

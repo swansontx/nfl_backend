@@ -385,7 +385,7 @@ if __name__ == '__main__':
     p = argparse.ArgumentParser(
         description='Fetch nflverse data for a season (smart incremental updates)'
     )
-    p.add_argument('--year', type=int, default=2024,
+    p.add_argument('--year', type=int, default=2025,
                    help='NFL season year (default: 2024)')
     p.add_argument('--out', type=Path, default=Path('inputs'),
                    help='Output directory (default: inputs/)')

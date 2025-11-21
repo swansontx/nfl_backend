@@ -181,7 +181,7 @@ def _filter_schedule_by_year(input_file: Path, output_file: Path, year: int):
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description='Fetch NFL schedules from nflverse (smart incremental updates)')
-    p.add_argument('--year', type=int, default=2024,
+    p.add_argument('--year', type=int, default=2025,
                    help='NFL season year (default: 2024)')
     p.add_argument('--out', type=Path, default=Path('inputs'),
                    help='Output directory (default: inputs/)')

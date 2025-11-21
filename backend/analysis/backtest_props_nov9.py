@@ -267,7 +267,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Backtest props for a week")
     parser.add_argument("--week", type=int, default=10, help="Week to backtest")
-    parser.add_argument("--season", type=int, default=2024, help="Season")
+    parser.add_argument("--season", type=int, default=2025, help="Season")
 
     args = parser.parse_args()
 
