@@ -216,7 +216,7 @@ async def list_tools():
                 "properties": {
                     "game_id": {
                         "type": "string",
-                        "description": "Game ID (e.g., '2024_12_BUF_MIA')"
+                        "description": "Game ID (e.g., '2025_12_BUF_MIA')"
                     }
                 },
                 "required": ["game_id"]
@@ -232,7 +232,7 @@ async def list_tools():
                 "properties": {
                     "game_id": {
                         "type": "string",
-                        "description": "Game ID (e.g., '2024_12_BUF_MIA')"
+                        "description": "Game ID (e.g., '2025_12_BUF_MIA')"
                     }
                 },
                 "required": ["game_id"]
