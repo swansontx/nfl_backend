@@ -52,7 +52,7 @@ async def list_tools():
                     "season": {
                         "type": "integer",
                         "description": "NFL season year",
-                        "default": 2024
+                        "default": 2025
                     }
                 }
             }
@@ -70,7 +70,7 @@ async def list_tools():
                     "season": {
                         "type": "integer",
                         "description": "NFL season year",
-                        "default": 2024
+                        "default": 2025
                     }
                 }
             }
@@ -84,7 +84,7 @@ async def list_tools():
                     "year": {
                         "type": "integer",
                         "description": "NFL season year",
-                        "default": 2024
+                        "default": 2025
                     }
                 }
             }
@@ -103,7 +103,7 @@ async def list_tools():
                     "year": {
                         "type": "integer",
                         "description": "NFL season year",
-                        "default": 2024
+                        "default": 2025
                     }
                 }
             }
@@ -148,7 +148,7 @@ async def list_tools():
                     "year": {
                         "type": "integer",
                         "description": "NFL season year",
-                        "default": 2024
+                        "default": 2025
                     },
                     "force": {
                         "type": "boolean",
@@ -373,7 +373,7 @@ async def list_tools():
                     "season": {
                         "type": "integer",
                         "description": "NFL season year",
-                        "default": 2024
+                        "default": 2025
                     }
                 }
             }
@@ -555,7 +555,7 @@ async def list_tools():
                     "season": {
                         "type": "integer",
                         "description": "NFL season year",
-                        "default": 2024
+                        "default": 2025
                     },
                     "week": {
                         "type": "integer",
@@ -579,7 +579,7 @@ async def list_tools():
                     "season": {
                         "type": "integer",
                         "description": "NFL season year",
-                        "default": 2024
+                        "default": 2025
                     }
                 },
                 "required": ["week"]
@@ -606,7 +606,7 @@ async def list_tools():
                     "season": {
                         "type": "integer",
                         "description": "NFL season year",
-                        "default": 2024
+                        "default": 2025
                     },
                     "week": {
                         "type": "integer",
@@ -630,7 +630,7 @@ async def list_tools():
                     "season": {
                         "type": "integer",
                         "description": "NFL season year",
-                        "default": 2024
+                        "default": 2025
                     },
                     "week": {
                         "type": "integer",
@@ -662,7 +662,7 @@ async def list_tools():
                     "season": {
                         "type": "integer",
                         "description": "NFL season year",
-                        "default": 2024
+                        "default": 2025
                     },
                     "week": {
                         "type": "integer",
@@ -688,7 +688,7 @@ async def list_tools():
                     "season": {
                         "type": "integer",
                         "description": "NFL season year",
-                        "default": 2024
+                        "default": 2025
                     },
                     "last_n_games": {
                         "type": "integer",
@@ -712,7 +712,7 @@ async def list_tools():
                     "season": {
                         "type": "integer",
                         "description": "NFL season year",
-                        "default": 2024
+                        "default": 2025
                     },
                     "last_n_games": {
                         "type": "integer",
@@ -736,7 +736,7 @@ async def list_tools():
                     "season": {
                         "type": "integer",
                         "description": "NFL season year",
-                        "default": 2024
+                        "default": 2025
                     }
                 },
                 "required": ["team"]
@@ -784,7 +784,7 @@ async def call_tool(name: str, arguments: dict):
             # ========== FETCH TOOLS ==========
             if name == "fetch_odds":
                 week = arguments.get("week", 12)
-                season = arguments.get("season", 2024)
+                season = arguments.get("season", 2025)
                 response = await client.post(
                     f"{API_BASE}/fetch/odds",
                     params={"week": week, "season": season}
@@ -792,7 +792,7 @@ async def call_tool(name: str, arguments: dict):
 
             elif name == "fetch_injuries":
                 week = arguments.get("week")
-                season = arguments.get("season", 2024)
+                season = arguments.get("season", 2025)
                 params = {"season": season}
                 if week:
                     params["week"] = week
@@ -802,7 +802,7 @@ async def call_tool(name: str, arguments: dict):
                 )
 
             elif name == "fetch_nflverse":
-                year = arguments.get("year", 2024)
+                year = arguments.get("year", 2025)
                 response = await client.post(
                     f"{API_BASE}/fetch/nflverse",
                     params={"year": year, "include_all": True},
@@ -811,7 +811,7 @@ async def call_tool(name: str, arguments: dict):
 
             elif name == "sync_all_data":
                 week = arguments.get("week", 12)
-                year = arguments.get("year", 2024)
+                year = arguments.get("year", 2025)
                 response = await client.post(
                     f"{API_BASE}/fetch/all",
                     params={"week": week, "year": year}
@@ -834,7 +834,7 @@ async def call_tool(name: str, arguments: dict):
 
             elif name == "auto_refresh":
                 week = arguments.get("week", 12)
-                year = arguments.get("year", 2024)
+                year = arguments.get("year", 2025)
                 force = arguments.get("force", False)
                 response = await client.post(
                     f"{API_BASE}/refresh/auto",
@@ -944,7 +944,7 @@ async def call_tool(name: str, arguments: dict):
 
             elif name == "get_games":
                 week = arguments.get("week")
-                season = arguments.get("season", 2024)
+                season = arguments.get("season", 2025)
                 params = {"season": season}
                 if week:
                     params["week"] = week
@@ -1026,7 +1026,7 @@ async def call_tool(name: str, arguments: dict):
                 game_id = arguments.get("game_id", "")
                 home_team = arguments.get("home_team", "")
                 away_team = arguments.get("away_team", "")
-                season = arguments.get("season", 2024)
+                season = arguments.get("season", 2025)
                 week = arguments.get("week", 12)
                 response = await client.get(
                     f"{API_BASE}/game/{game_id}/evaluate",
@@ -1041,7 +1041,7 @@ async def call_tool(name: str, arguments: dict):
 
             elif name == "evaluate_week":
                 week = arguments.get("week", 12)
-                season = arguments.get("season", 2024)
+                season = arguments.get("season", 2025)
                 response = await client.get(
                     f"{API_BASE}/week/{week}/evaluate",
                     params={"season": season},
@@ -1052,7 +1052,7 @@ async def call_tool(name: str, arguments: dict):
                 game_id = arguments.get("game_id", "")
                 home_team = arguments.get("home_team", "")
                 away_team = arguments.get("away_team", "")
-                season = arguments.get("season", 2024)
+                season = arguments.get("season", 2025)
                 week = arguments.get("week", 12)
                 response = await client.get(
                     f"{API_BASE}/game/{game_id}/situation",
@@ -1066,7 +1066,7 @@ async def call_tool(name: str, arguments: dict):
 
             elif name == "get_team_trending_form":
                 team = arguments.get("team", "")
-                season = arguments.get("season", 2024)
+                season = arguments.get("season", 2025)
                 week = arguments.get("week", 12)
                 response = await client.get(
                     f"{API_BASE}/team/{team}/form",
@@ -1077,7 +1077,7 @@ async def call_tool(name: str, arguments: dict):
                 game_id = arguments.get("game_id", "")
                 home_team = arguments.get("home_team", "")
                 away_team = arguments.get("away_team", "")
-                season = arguments.get("season", 2024)
+                season = arguments.get("season", 2025)
                 week = arguments.get("week", 12)
                 # Use situational endpoint and extract positional edges
                 response = await client.get(
@@ -1093,7 +1093,7 @@ async def call_tool(name: str, arguments: dict):
             # ========== DEFENSE PERFORMANCE TOOLS ==========
             elif name == "get_rush_defense":
                 team = arguments.get("team", "")
-                season = arguments.get("season", 2024)
+                season = arguments.get("season", 2025)
                 last_n_games = arguments.get("last_n_games", 5)
                 response = await client.get(
                     f"{API_BASE}/team/{team}/defense/rush",
@@ -1102,7 +1102,7 @@ async def call_tool(name: str, arguments: dict):
 
             elif name == "get_pass_defense":
                 team = arguments.get("team", "")
-                season = arguments.get("season", 2024)
+                season = arguments.get("season", 2025)
                 last_n_games = arguments.get("last_n_games", 5)
                 response = await client.get(
                     f"{API_BASE}/team/{team}/defense/pass",
@@ -1111,7 +1111,7 @@ async def call_tool(name: str, arguments: dict):
 
             elif name == "get_defense_summary":
                 team = arguments.get("team", "")
-                season = arguments.get("season", 2024)
+                season = arguments.get("season", 2025)
                 response = await client.get(
                     f"{API_BASE}/team/{team}/defense",
                     params={"season": season}
