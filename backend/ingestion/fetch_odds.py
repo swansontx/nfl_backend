@@ -15,8 +15,8 @@ import argparse
 import json
 import os
 import time
-from typing import List, Dict, Optional
-from datetime import datetime
+from typing import List, Dict, Optional, Tuple
+from datetime import datetime, timedelta
 
 try:
     import requests
@@ -91,17 +91,96 @@ def fetch_player_props(api_key: str,
     return response.json()
 
 
+def _check_should_fetch(output_dir: Path, min_hours: float = 2.0) -> Tuple[bool, Optional[datetime], float]:
+    """Check if we should fetch odds based on last fetch time.
+
+    Args:
+        output_dir: Directory containing odds files
+        min_hours: Minimum hours between fetches (default: 2 hours)
+
+    Returns:
+        Tuple of (should_fetch, last_fetch_time, hours_since_last)
+    """
+    latest_file = output_dir / "player_props_latest.json"
+
+    if not latest_file.exists():
+        return True, None, float('inf')
+
+    try:
+        # Check file modification time
+        file_mtime = datetime.fromtimestamp(latest_file.stat().st_mtime)
+        hours_since = (datetime.now() - file_mtime).total_seconds() / 3600
+
+        # Also check the fetched_at timestamp in the file for accuracy
+        with open(latest_file) as f:
+            data = json.load(f)
+            fetched_at_str = data.get('fetched_at')
+            if fetched_at_str:
+                # Parse ISO format timestamp
+                fetched_at = datetime.fromisoformat(fetched_at_str.replace('Z', '+00:00'))
+                # Convert to local time for comparison
+                if fetched_at.tzinfo:
+                    fetched_at = fetched_at.replace(tzinfo=None)
+                hours_since = (datetime.utcnow() - fetched_at).total_seconds() / 3600
+                file_mtime = fetched_at
+
+        should_fetch = hours_since >= min_hours
+        return should_fetch, file_mtime, hours_since
+
+    except Exception as e:
+        print(f"  ⚠ Could not check last fetch time: {e}")
+        return True, None, float('inf')
+
+
 def fetch_all_props(api_key: str,
                     markets: List[str] = None,
                     regions: str = 'us',
                     bookmakers: str = 'draftkings,fanduel',
                     output_dir: Path = Path('inputs/odds'),
-                    rate_limit_delay: float = 1.0) -> Dict:
-    """Fetch player props for all upcoming NFL games."""
+                    rate_limit_delay: float = 1.0,
+                    min_hours: float = 2.0,
+                    force: bool = False) -> Dict:
+    """Fetch player props for all upcoming NFL games.
+
+    Uses smart time-based checking to avoid redundant API calls.
+    Will skip fetching if data was retrieved within min_hours.
+
+    Args:
+        api_key: The Odds API key
+        markets: List of markets to fetch (defaults to all player props)
+        regions: API regions (default: 'us')
+        bookmakers: Comma-separated bookmakers (default: 'draftkings,fanduel')
+        output_dir: Output directory for JSON files
+        rate_limit_delay: Delay between API calls in seconds
+        min_hours: Minimum hours between fetches (default: 2.0)
+        force: Force fetch even if recent data exists (default: False)
+
+    Returns:
+        Dict with fetched odds data, or existing data if skipped
+    """
     if markets is None:
         markets = PLAYER_PROP_MARKETS
 
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Check if we should fetch based on last fetch time
+    if not force:
+        should_fetch, last_fetch, hours_since = _check_should_fetch(output_dir, min_hours)
+
+        if not should_fetch:
+            print(f"\n{'='*60}")
+            print(f"Odds data is current")
+            print(f"{'='*60}")
+            print(f"✓ Last fetched: {last_fetch.strftime('%Y-%m-%d %H:%M:%S')} ({hours_since:.1f} hours ago)")
+            print(f"✓ Next fetch allowed in: {min_hours - hours_since:.1f} hours")
+            print(f"  Use force=True to override")
+            print(f"{'='*60}\n")
+
+            # Return existing data
+            return load_latest_odds(output_dir)
+
+    if force:
+        print(f"\n⚠ Force fetch enabled - bypassing time check")
 
     print("Fetching NFL events...")
     events = fetch_nfl_events(api_key)
@@ -252,13 +331,17 @@ def get_player_line(player_name: str,
 
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser(description='Fetch NFL odds from OddsAPI')
+    p = argparse.ArgumentParser(description='Fetch NFL odds from OddsAPI (smart time-based updates)')
     p.add_argument('--markets', type=str, default=None,
                    help='Comma-separated player prop markets')
     p.add_argument('--bookmakers', type=str, default='draftkings,fanduel',
                    help='Comma-separated bookmakers')
     p.add_argument('--output', type=Path, default=Path('inputs/odds'),
                    help='Output directory')
+    p.add_argument('--min-hours', type=float, default=2.0,
+                   help='Minimum hours between fetches (default: 2.0)')
+    p.add_argument('--force', action='store_true',
+                   help='Force fetch even if recent data exists')
     p.add_argument('--list-markets', action='store_true',
                    help='List available markets')
     args = p.parse_args()
@@ -285,5 +368,7 @@ if __name__ == '__main__':
         api_key,
         markets=markets,
         bookmakers=args.bookmakers,
-        output_dir=args.output
+        output_dir=args.output,
+        min_hours=args.min_hours,
+        force=args.force
     )

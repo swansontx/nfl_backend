@@ -40,7 +40,7 @@ async def list_tools():
         # ========== DATA FETCH TOOLS ==========
         Tool(
             name="fetch_odds",
-            description="Fetch fresh DraftKings prop odds and store in local database. Tracks line movement over time.",
+            description="Fetch fresh DraftKings prop odds and store in local database. Tracks line movement over time. Uses smart time-based checking - skips if data was fetched within min_hours.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -53,6 +53,16 @@ async def list_tools():
                         "type": "integer",
                         "description": "NFL season year",
                         "default": 2025
+                    },
+                    "force": {
+                        "type": "boolean",
+                        "description": "Force fetch even if recent data exists",
+                        "default": False
+                    },
+                    "min_hours": {
+                        "type": "number",
+                        "description": "Minimum hours between fetches (default: 2.0)",
+                        "default": 2.0
                     }
                 }
             }
@@ -785,9 +795,11 @@ async def call_tool(name: str, arguments: dict):
             if name == "fetch_odds":
                 week = arguments.get("week", 12)
                 season = arguments.get("season", 2025)
+                force = arguments.get("force", False)
+                min_hours = arguments.get("min_hours", 2.0)
                 response = await client.post(
                     f"{API_BASE}/fetch/odds",
-                    params={"week": week, "season": season}
+                    params={"week": week, "season": season, "force": force, "min_hours": min_hours}
                 )
 
             elif name == "fetch_injuries":

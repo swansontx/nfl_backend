@@ -171,10 +171,17 @@ def _generate_weather_betting_notes(weather: dict) -> list:
 @app.post("/fetch/odds", response_model=FetchResponse)
 async def fetch_odds(
     week: int = Query(12, description="NFL week number"),
-    season: int = Query(2024, description="NFL season"),
+    season: int = Query(2025, description="NFL season"),
+    force: bool = Query(False, description="Force fetch even if recent data exists"),
+    min_hours: float = Query(2.0, description="Minimum hours between fetches"),
     background_tasks: BackgroundTasks = None
 ):
-    """Fetch odds from The Odds API and store in database."""
+    """Fetch odds from The Odds API and store in database.
+
+    Uses smart time-based checking to avoid redundant API calls.
+    Will skip fetching if data was retrieved within min_hours (default: 2 hours).
+    Use force=True to bypass this check.
+    """
     api_key = os.getenv("ODDS_API_KEY")
     if not api_key:
         raise HTTPException(status_code=400, detail="ODDS_API_KEY not set")
@@ -182,11 +189,21 @@ async def fetch_odds(
     try:
         fetcher = PropLineFetcher(api_key)
 
-        # Fetch from API
+        # Fetch from API with time-based check
         output_dir = PROJECT_ROOT / "outputs" / "prop_lines"
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        result = fetcher.fetch_snapshot_with_movement(output_dir, week)
+        result = fetcher.fetch_snapshot_with_movement(output_dir, week, min_hours=min_hours, force=force)
+
+        # Check if fetch was skipped
+        if result.get('skipped'):
+            return FetchResponse(
+                success=True,
+                source="ODDS_API",
+                records_inserted=0,
+                message=f"Skipped: {result.get('reason', 'Data is current')}",
+                timestamp=result.get('snapshot_time', datetime.now().isoformat())
+            )
 
         # Convert to list of dicts for database
         odds_data = []
@@ -233,7 +250,7 @@ async def fetch_odds(
 @app.post("/fetch/injuries", response_model=FetchResponse)
 async def fetch_injuries(
     week: Optional[int] = Query(None, description="NFL week number"),
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(2025, description="NFL season")
 ):
     """Fetch injury reports from ESPN and store in database."""
     try:
@@ -275,7 +292,7 @@ async def fetch_injuries(
 
 @app.post("/fetch/nflverse")
 async def fetch_nflverse(
-    year: int = Query(2024, description="NFL season year"),
+    year: int = Query(2025, description="NFL season year"),
     include_all: bool = Query(True, description="Include all datasets")
 ):
     """Fetch nflverse data (play-by-play, stats, rosters).
@@ -313,7 +330,7 @@ async def fetch_nflverse(
 @app.post("/fetch/all")
 async def fetch_all(
     week: int = Query(12, description="NFL week"),
-    year: int = Query(2024, description="NFL season"),
+    year: int = Query(2025, description="NFL season"),
     background_tasks: BackgroundTasks = None
 ):
     """Fetch all data sources."""
@@ -449,7 +466,7 @@ async def check_data_freshness(
 @app.post("/refresh/auto")
 async def auto_refresh(
     week: int = Query(12, description="NFL week"),
-    year: int = Query(2024, description="NFL season"),
+    year: int = Query(2025, description="NFL season"),
     odds_max_age_hours: int = Query(4, description="Max age for odds before refresh"),
     injuries_max_age_hours: int = Query(12, description="Max age for injuries before refresh"),
     force: bool = Query(False, description="Force refresh even if data is fresh")
@@ -620,7 +637,7 @@ async def get_projection_history(
 async def store_projections(
     projections: List[dict],
     week: int = Query(..., description="NFL week"),
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(2025, description="NFL season")
 ):
     """Store generated projections in database."""
     inserted = ProjectionsRepository.insert_projections(projections, week, season)
@@ -664,7 +681,7 @@ async def get_injury_history(
 @app.get("/games")
 async def get_games(
     week: Optional[int] = None,
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(2025, description="NFL season")
 ):
     """Get games/schedule."""
     games = GamesRepository.get_games(week, season)
@@ -732,7 +749,7 @@ async def get_value_props_history(
 async def store_value_props(
     props: List[dict],
     week: int = Query(..., description="NFL week"),
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(2025, description="NFL season")
 ):
     """Store value props found."""
     count = ValuePropsRepository.insert_value_props(props, week, season)
@@ -1069,7 +1086,7 @@ async def get_daily_betting_brief(
     if auto_refresh:
         freshness = await check_data_freshness()
         if freshness["needs_refresh"]:
-            refresh_result = await auto_refresh_endpoint(week=week, year=2024)
+            refresh_result = await auto_refresh_endpoint(week=week, year=2025)
             results["data_refreshed"] = True
             results["refresh_details"] = refresh_result
 

@@ -58,7 +58,7 @@ import requests
 import json
 import time
 from typing import Dict, List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 
 
@@ -226,6 +226,47 @@ class PropLineFetcher:
 
         # User can only bet on DraftKings
         self.primary_book = 'draftkings'
+
+    def _check_should_fetch(self, output_dir: Path, week: Optional[int], min_hours: float = 2.0) -> Tuple[bool, Optional[datetime], float]:
+        """Check if we should fetch based on last fetch time.
+
+        Args:
+            output_dir: Directory containing snapshot files
+            week: Week number
+            min_hours: Minimum hours between fetches (default: 2 hours)
+
+        Returns:
+            Tuple of (should_fetch, last_fetch_time, hours_since_last)
+        """
+        week_str = f"week_{week}" if week else "current"
+        latest_file = output_dir / f"snapshot_{week_str}_latest.json"
+
+        if not latest_file.exists():
+            return True, None, float('inf')
+
+        try:
+            # Check file modification time
+            file_mtime = datetime.fromtimestamp(latest_file.stat().st_mtime)
+            hours_since = (datetime.now() - file_mtime).total_seconds() / 3600
+
+            # Also check the snapshot_timestamp in the file for accuracy
+            with open(latest_file) as f:
+                data = json.load(f)
+                # Get timestamp from first game
+                for game_id, game_data in data.items():
+                    timestamp_str = game_data.get('snapshot_timestamp')
+                    if timestamp_str:
+                        fetched_at = datetime.fromisoformat(timestamp_str)
+                        hours_since = (datetime.now() - fetched_at).total_seconds() / 3600
+                        file_mtime = fetched_at
+                        break
+
+            should_fetch = hours_since >= min_hours
+            return should_fetch, file_mtime, hours_since
+
+        except Exception as e:
+            print(f"  ⚠ Could not check last fetch time: {e}")
+            return True, None, float('inf')
 
     def fetch_upcoming_games(self) -> List[Dict]:
         """Fetch list of upcoming NFL games.
@@ -485,19 +526,63 @@ class PropLineFetcher:
         self,
         output_dir: Path,
         week: Optional[int] = None,
-        load_previous: bool = True
+        load_previous: bool = True,
+        min_hours: float = 2.0,
+        force: bool = False
     ) -> Dict:
         """Fetch current snapshot and calculate movement from previous snapshot.
+
+        Uses smart time-based checking to avoid redundant API calls.
+        Will skip fetching if data was retrieved within min_hours.
 
         Args:
             output_dir: Directory to save/load snapshots
             week: Week number (for filename)
             load_previous: Whether to load previous snapshot for movement calc
+            min_hours: Minimum hours between fetches (default: 2.0)
+            force: Force fetch even if recent data exists (default: False)
 
         Returns:
             Dict with snapshot data and movement metrics
         """
         output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Check if we should fetch based on last fetch time
+        if not force:
+            should_fetch, last_fetch, hours_since = self._check_should_fetch(output_dir, week, min_hours)
+
+            if not should_fetch:
+                print(f"\n{'='*60}")
+                print(f"Odds data is current")
+                print(f"{'='*60}")
+                print(f"✓ Last fetched: {last_fetch.strftime('%Y-%m-%d %H:%M:%S')} ({hours_since:.1f} hours ago)")
+                print(f"✓ Next fetch allowed in: {min_hours - hours_since:.1f} hours")
+                print(f"  Use force=True to override")
+                print(f"{'='*60}\n")
+
+                # Return existing snapshot data
+                week_str = f"week_{week}" if week else "current"
+                latest_file = output_dir / f"snapshot_{week_str}_latest.json"
+                if latest_file.exists():
+                    with open(latest_file) as f:
+                        existing_data = json.load(f)
+                        # Count props in existing data
+                        total_props = 0
+                        for game_data in existing_data.values():
+                            for props in game_data.get('props', {}).values():
+                                total_props += len(props)
+                        return {
+                            'games': len(existing_data),
+                            'props': total_props,
+                            'skipped': True,
+                            'reason': f'Data fetched {hours_since:.1f} hours ago (min: {min_hours} hours)',
+                            'snapshot_time': last_fetch.isoformat() if last_fetch else None
+                        }
+                return {'games': 0, 'props': 0, 'skipped': True}
+
+        if force:
+            print(f"\n⚠ Force fetch enabled - bypassing time check")
+
         snapshot_time = datetime.now()
 
         print(f"\n{'='*60}")
