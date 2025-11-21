@@ -7,12 +7,35 @@ venv/
 .Python
 .DS_Store
 
-# Data directories (keeping inputs and models tracked)
+# ===========================================
+# LOCAL DATA - NEVER COMMIT (preserved on git pull)
+# ===========================================
+
+# Database (your historical odds, projections, etc.)
+data/
+*.db
+
+# Downloaded nflverse data (100+ MB files)
+inputs/*.csv
+inputs/*.json
+inputs/*.parquet
+
+# Injuries and odds subdirectories
+inputs/injuries/
+inputs/odds/
+
+# ===========================================
+# GENERATED OUTPUTS
+# ===========================================
 outputs/*.csv
 outputs/*.parquet
 outputs/odds/
 outputs/predictions/
 outputs/reports/
+outputs/prop_lines/
+outputs/models/
 
-# Fetched data (regenerated from APIs)
-inputs/injuries_*.csv
+# ===========================================
+# KEEP IN GIT (reference/example files)
+# ===========================================
+# !inputs/example_*.csv  # Uncomment to keep example files
