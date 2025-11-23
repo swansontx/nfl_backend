@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 from contextlib import contextmanager
 
+from backend.nfl_calendar import get_current_nfl_season
+
 # Database file location
 DB_PATH = Path(__file__).parent.parent.parent / "data" / "nfl_betting.db"
 
@@ -751,8 +753,9 @@ class GamesRepository:
             return count
 
     @staticmethod
-    def get_games(week: Optional[int] = None, season: int = 2024) -> List[Dict]:
+    def get_games(week: Optional[int] = None, season: int = None) -> List[Dict]:
         """Get games for a week/season."""
+        season = season or get_current_nfl_season()
         with get_db() as conn:
             cursor = conn.cursor()
 

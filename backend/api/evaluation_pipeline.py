@@ -26,6 +26,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 from backend.database.local_db import get_db
+from backend.nfl_calendar import get_current_nfl_season, get_current_nfl_week
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +128,7 @@ class EvaluationPipeline:
         return self._prop
 
     def evaluate_game(self, game_id: str, home_team: str, away_team: str,
-                      season: int = 2024, week: int = 12) -> GameEvaluation:
+                      season: int = None, week: int = None) -> GameEvaluation:
         """Run complete evaluation pipeline for a game.
 
         This is the MAIN ENTRY POINT that ensures all analyzers are used.
@@ -142,6 +143,9 @@ class EvaluationPipeline:
         Returns:
             GameEvaluation with all categories scored
         """
+        season = season or get_current_nfl_season()
+        week = week or get_current_nfl_week()
+
         eval_result = GameEvaluation(
             game_id=game_id,
             home_team=home_team,
@@ -579,7 +583,7 @@ class EvaluationPipeline:
 
         return targets[:10]  # Top 10
 
-    def evaluate_week(self, season: int = 2024, week: int = 12) -> List[GameEvaluation]:
+    def evaluate_week(self, season: int = None, week: int = None) -> List[GameEvaluation]:
         """Evaluate all games in a week.
 
         Args:
@@ -589,6 +593,8 @@ class EvaluationPipeline:
         Returns:
             List of GameEvaluation for all games
         """
+        season = season or get_current_nfl_season()
+        week = week or get_current_nfl_week()
         evaluations = []
 
         try:
@@ -624,11 +630,15 @@ evaluation_pipeline = EvaluationPipeline()
 
 
 def evaluate_game(game_id: str, home_team: str, away_team: str,
-                  season: int = 2024, week: int = 12) -> GameEvaluation:
+                  season: int = None, week: int = None) -> GameEvaluation:
     """Evaluate a game using the complete pipeline."""
+    season = season or get_current_nfl_season()
+    week = week or get_current_nfl_week()
     return evaluation_pipeline.evaluate_game(game_id, home_team, away_team, season, week)
 
 
-def evaluate_week(season: int = 2024, week: int = 12) -> List[GameEvaluation]:
+def evaluate_week(season: int = None, week: int = None) -> List[GameEvaluation]:
     """Evaluate all games in a week."""
+    season = season or get_current_nfl_season()
+    week = week or get_current_nfl_week()
     return evaluation_pipeline.evaluate_week(season, week)

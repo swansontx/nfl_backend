@@ -55,6 +55,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 from backend.database.local_db import get_db
+from backend.nfl_calendar import get_current_nfl_season, get_current_nfl_week
 
 logger = logging.getLogger(__name__)
 
@@ -195,8 +196,9 @@ class GameSituation:
 class SituationalAnalyzer:
     """Analyzes situational factors for betting edges."""
 
-    def __init__(self):
+    def __init__(self, season: int = None):
         """Initialize analyzer."""
+        self.season = season or get_current_nfl_season()
         self.team_rankings = self._load_team_rankings()
 
     def _load_team_rankings(self) -> Dict[str, Dict]:
@@ -212,11 +214,11 @@ class SituationalAnalyzer:
                     INNER JOIN (
                         SELECT team, MAX(week) as max_week
                         FROM team_stats
-                        WHERE season = 2024
+                        WHERE season = ?
                         GROUP BY team
                     ) t2 ON t1.team = t2.team AND t1.week = t2.max_week
-                    WHERE t1.season = 2024
-                """)
+                    WHERE t1.season = ?
+                """, (self.season, self.season))
 
                 teams = [dict(row) for row in cursor.fetchall()]
 
@@ -248,8 +250,10 @@ class SituationalAnalyzer:
 
         return rankings
 
-    def get_trending_form(self, team: str, season: int = 2024, week: int = 12) -> TrendingForm:
+    def get_trending_form(self, team: str, season: int = None, week: int = None) -> TrendingForm:
         """Get trending form for a team."""
+        season = season or get_current_nfl_season()
+        week = week or get_current_nfl_week()
         form = TrendingForm(team=team)
 
         try:
@@ -606,8 +610,10 @@ class SituationalAnalyzer:
         return []
 
     def analyze_game(self, game_id: str, home_team: str, away_team: str,
-                     season: int = 2024, week: int = 12) -> GameSituation:
+                     season: int = None, week: int = None) -> GameSituation:
         """Analyze complete situational factors for a game."""
+        season = season or get_current_nfl_season()
+        week = week or get_current_nfl_week()
 
         # Get all components
         home_form = self.get_trending_form(home_team, season, week)
@@ -723,9 +729,11 @@ class SituationalAnalyzer:
             prop_targets=prop_targets
         )
 
-    def get_week_situations(self, season: int = 2024, week: int = 12,
+    def get_week_situations(self, season: int = None, week: int = None,
                             min_edge: float = 15.0) -> List[Dict]:
         """Get all high-edge situations for a week."""
+        season = season or get_current_nfl_season()
+        week = week or get_current_nfl_week()
         all_situations = []
 
         try:
@@ -765,12 +773,16 @@ situational_analyzer = SituationalAnalyzer()
 
 
 def analyze_game_situation(game_id: str, home_team: str, away_team: str,
-                           season: int = 2024, week: int = 12) -> GameSituation:
+                           season: int = None, week: int = None) -> GameSituation:
     """Get complete situational analysis for a game."""
+    season = season or get_current_nfl_season()
+    week = week or get_current_nfl_week()
     return situational_analyzer.analyze_game(game_id, home_team, away_team, season, week)
 
 
-def get_top_situations(season: int = 2024, week: int = 12,
+def get_top_situations(season: int = None, week: int = None,
                        min_edge: float = 15.0) -> List[Dict]:
     """Get top betting situations for a week."""
+    season = season or get_current_nfl_season()
+    week = week or get_current_nfl_week()
     return situational_analyzer.get_week_situations(season, week, min_edge)
