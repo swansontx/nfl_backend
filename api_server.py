@@ -35,6 +35,14 @@ from backend.ingestion.fetch_injuries import InjuryFetcher
 from backend.config import settings
 from backend.nfl_calendar import get_current_season_and_week
 
+# Import analysis modules
+from backend.api.situational_analyzer import (
+    SituationalAnalyzer, analyze_game_situation, get_top_situations
+)
+from backend.api.evaluation_pipeline import (
+    EvaluationPipeline, evaluate_game, evaluate_week
+)
+
 # Project root
 PROJECT_ROOT = Path(__file__).parent
 
@@ -1642,6 +1650,264 @@ async def populate_all_data(
             "Check /odds/latest for current prop lines",
             "Check /odds/movers for line movement signals"
         ]
+    }
+
+
+# ========== EVALUATION & SITUATIONAL ENDPOINTS ==========
+
+@app.get("/game/{game_id}/evaluate")
+async def evaluate_game_endpoint(
+    game_id: str,
+    home_team: str = Query(..., description="Home team abbreviation"),
+    away_team: str = Query(..., description="Away team abbreviation"),
+    season: int = Query(None, description="NFL season"),
+    week: int = Query(None, description="NFL week")
+):
+    """
+    COMPLETE GAME EVALUATION - Run full evaluation pipeline for a game.
+    Returns scored grades (A+ to F) for matchup quality, situational edge,
+    injury impact, and prop value.
+    """
+    season = season or CURRENT_SEASON
+    week = week or CURRENT_WEEK
+
+    try:
+        result = evaluate_game(game_id, home_team, away_team, season, week)
+        return {
+            "game_id": result.game_id,
+            "home_team": result.home_team,
+            "away_team": result.away_team,
+            "overall_score": result.overall_score,
+            "overall_grade": result.overall_grade,
+            "categories": [
+                {
+                    "category": cat.category,
+                    "score": cat.score,
+                    "grade": cat.grade,
+                    "confidence": cat.confidence,
+                    "factors": cat.factors,
+                    "narrative": cat.narrative
+                }
+                for cat in result.category_scores
+            ],
+            "top_props": [
+                {
+                    "player": prop.player,
+                    "team": prop.team,
+                    "prop_type": prop.prop_type,
+                    "direction": prop.direction,
+                    "edge_score": prop.edge_score,
+                    "confidence": prop.confidence,
+                    "reasoning": prop.reasoning
+                }
+                for prop in result.top_props
+            ],
+            "key_factors": result.key_factors,
+            "betting_angles": result.betting_angles,
+            "season": season,
+            "week": week
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/week/{week}/evaluate")
+async def evaluate_week_endpoint(
+    week: int,
+    season: int = Query(None, description="NFL season")
+):
+    """
+    EVALUATE ALL GAMES IN WEEK - Run complete evaluation pipeline for every game.
+    Returns scored analysis for each game with rankings by betting opportunity.
+    """
+    season = season or CURRENT_SEASON
+
+    try:
+        results = evaluate_week(season, week)
+        return {
+            "season": season,
+            "week": week,
+            "games_evaluated": len(results),
+            "evaluations": [
+                {
+                    "game_id": r.game_id,
+                    "matchup": f"{r.away_team} @ {r.home_team}",
+                    "overall_score": r.overall_score,
+                    "overall_grade": r.overall_grade,
+                    "top_props_count": len(r.top_props),
+                    "key_factors": r.key_factors[:3] if r.key_factors else []
+                }
+                for r in results
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/game/{game_id}/situation")
+async def get_game_situation(
+    game_id: str,
+    home_team: str = Query(..., description="Home team abbreviation"),
+    away_team: str = Query(..., description="Away team abbreviation"),
+    season: int = Query(None, description="NFL season"),
+    week: int = Query(None, description="NFL week")
+):
+    """
+    SITUATIONAL ANALYSIS - Analyze situational factors for a game:
+    trending form, weather impact, rest/schedule advantages, positional matchup grades.
+    """
+    season = season or CURRENT_SEASON
+    week = week or CURRENT_WEEK
+
+    try:
+        result = analyze_game_situation(game_id, home_team, away_team, season, week)
+        return {
+            "game_id": result.game_id,
+            "home_team": result.home_team,
+            "away_team": result.away_team,
+            "home_form": {
+                "team": result.home_form.team if result.home_form else None,
+                "form_grade": result.home_form.form_grade if result.home_form else "C",
+                "momentum": result.home_form.momentum if result.home_form else "neutral",
+                "scoring_trend": result.home_form.scoring_trend if result.home_form else "neutral"
+            } if result.home_form else None,
+            "away_form": {
+                "team": result.away_form.team if result.away_form else None,
+                "form_grade": result.away_form.form_grade if result.away_form else "C",
+                "momentum": result.away_form.momentum if result.away_form else "neutral",
+                "scoring_trend": result.away_form.scoring_trend if result.away_form else "neutral"
+            } if result.away_form else None,
+            "positional_edges": [
+                {
+                    "position": edge.position,
+                    "team": edge.team,
+                    "grade": edge.grade,
+                    "edge_score": edge.edge_score,
+                    "insight": edge.insight,
+                    "target_props": edge.target_props
+                }
+                for edge in result.positional_edges
+            ],
+            "key_situations": result.key_situations,
+            "prop_targets": result.prop_targets,
+            "season": season,
+            "week": week
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/team/{team}/form")
+async def get_team_form(
+    team: str,
+    season: int = Query(None, description="NFL season"),
+    week: int = Query(None, description="NFL week")
+):
+    """
+    TRENDING FORM - Get recent form analysis for a team.
+    Compares last 3 games vs season averages for scoring, defense, passing, and rushing.
+    """
+    season = season or CURRENT_SEASON
+    week = week or CURRENT_WEEK
+
+    try:
+        analyzer = SituationalAnalyzer(season)
+        form = analyzer.get_trending_form(team, season, week)
+        return {
+            "team": form.team,
+            "form_grade": form.form_grade,
+            "momentum": form.momentum,
+            "passing": {
+                "recent_avg": form.recent_pass_yards_avg,
+                "season_avg": form.season_pass_yards_avg,
+                "trend": form.pass_trend,
+                "trend_pct": form.pass_trend_pct
+            },
+            "rushing": {
+                "recent_avg": form.recent_rush_yards_avg,
+                "season_avg": form.season_rush_yards_avg,
+                "trend": form.rush_trend,
+                "trend_pct": form.rush_trend_pct
+            },
+            "scoring": {
+                "recent_avg": form.recent_points_avg,
+                "season_avg": form.season_points_avg,
+                "trend": form.scoring_trend,
+                "trend_pct": form.scoring_trend_pct
+            },
+            "defense": {
+                "recent_allowed": form.recent_points_allowed_avg,
+                "season_allowed": form.season_points_allowed_avg,
+                "trend": form.defense_trend
+            },
+            "narrative": form.form_narrative,
+            "season": season,
+            "week": week
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/team/{team}/defense/rush")
+async def get_team_rush_defense(
+    team: str,
+    season: int = Query(None, description="NFL season"),
+    last_n_games: int = Query(5, description="Number of recent games")
+):
+    """
+    RUSH DEFENSE ANALYSIS - How has a team done against the run?
+    Shows each RB's performance vs their average.
+    """
+    season = season or CURRENT_SEASON
+
+    # This would need defense_analyzer imported, but for now return placeholder
+    return {
+        "team": team,
+        "season": season,
+        "last_n_games": last_n_games,
+        "message": "Defense analyzer not yet integrated - coming soon",
+        "rush_defense": []
+    }
+
+
+@app.get("/team/{team}/defense/pass")
+async def get_team_pass_defense(
+    team: str,
+    season: int = Query(None, description="NFL season"),
+    last_n_games: int = Query(5, description="Number of recent games")
+):
+    """
+    PASS DEFENSE ANALYSIS - How has a team done against the pass?
+    Shows each QB's performance vs their average.
+    """
+    season = season or CURRENT_SEASON
+
+    return {
+        "team": team,
+        "season": season,
+        "last_n_games": last_n_games,
+        "message": "Defense analyzer not yet integrated - coming soon",
+        "pass_defense": []
+    }
+
+
+@app.get("/team/{team}/defense")
+async def get_team_defense_summary(
+    team: str,
+    season: int = Query(None, description="NFL season")
+):
+    """
+    COMPLETE DEFENSE ANALYSIS - Get full defense summary with both rush and pass analysis.
+    """
+    season = season or CURRENT_SEASON
+
+    return {
+        "team": team,
+        "season": season,
+        "message": "Defense analyzer not yet integrated - coming soon",
+        "rush_defense": [],
+        "pass_defense": [],
+        "summary": {}
     }
 
 
