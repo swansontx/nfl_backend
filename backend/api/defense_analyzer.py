@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 from backend.database.local_db import get_db
+from backend.nfl_calendar import get_current_nfl_season
 
 logger = logging.getLogger(__name__)
 
@@ -84,18 +85,19 @@ class DefenseAnalyzer:
         """Initialize analyzer."""
         pass
 
-    def get_rush_defense_performance(self, team: str, season: int = 2024,
+    def get_rush_defense_performance(self, team: str, season: int = None,
                                      last_n_games: int = 5) -> DefensePerformance:
         """Get rush defense performance with individual RB matchups.
 
         Args:
             team: Team abbreviation (e.g., 'BUF')
-            season: NFL season year
+            season: NFL season year (defaults to current season)
             last_n_games: Number of recent games to analyze
 
         Returns:
             DefensePerformance with RB matchups and comparisons
         """
+        season = season or get_current_nfl_season()
         result = DefensePerformance(
             team=team.upper(),
             defense_type='rush',
@@ -256,18 +258,19 @@ class DefenseAnalyzer:
 
         return result
 
-    def get_pass_defense_performance(self, team: str, season: int = 2024,
+    def get_pass_defense_performance(self, team: str, season: int = None,
                                      last_n_games: int = 5) -> DefensePerformance:
         """Get pass defense performance with individual QB/WR matchups.
 
         Args:
             team: Team abbreviation
-            season: NFL season year
+            season: NFL season year (defaults to current season)
             last_n_games: Number of recent games to analyze
 
         Returns:
             DefensePerformance with passing matchups
         """
+        season = season or get_current_nfl_season()
         result = DefensePerformance(
             team=team.upper(),
             defense_type='pass',
@@ -408,16 +411,17 @@ class DefenseAnalyzer:
 
         return result
 
-    def get_defense_summary(self, team: str, season: int = 2024) -> Dict:
+    def get_defense_summary(self, team: str, season: int = None) -> Dict:
         """Get complete defense summary with both rush and pass analysis.
 
         Args:
             team: Team abbreviation
-            season: NFL season year
+            season: NFL season year (defaults to current season)
 
         Returns:
             Dict with complete defense analysis
         """
+        season = season or get_current_nfl_season()
         rush = self.get_rush_defense_performance(team, season)
         pass_def = self.get_pass_defense_performance(team, season)
 

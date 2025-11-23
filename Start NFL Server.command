@@ -4,7 +4,6 @@
 
 cd "$(dirname "$0")"
 echo "Starting NFL Betting API Server..."
-echo "Season: 2025 | Week: 12"
 echo ""
 echo "The server will:"
 echo "  1. Initialize database"

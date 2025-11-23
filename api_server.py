@@ -42,6 +42,7 @@ from backend.api.situational_analyzer import (
 from backend.api.evaluation_pipeline import (
     EvaluationPipeline, evaluate_game, evaluate_week
 )
+from backend.api.defense_analyzer import defense_analyzer
 
 # Project root
 PROJECT_ROOT = Path(__file__).parent
@@ -1860,14 +1861,38 @@ async def get_team_rush_defense(
     """
     season = season or CURRENT_SEASON
 
-    # This would need defense_analyzer imported, but for now return placeholder
-    return {
-        "team": team,
-        "season": season,
-        "last_n_games": last_n_games,
-        "message": "Defense analyzer not yet integrated - coming soon",
-        "rush_defense": []
-    }
+    try:
+        result = defense_analyzer.get_rush_defense_performance(team, season, last_n_games)
+        return {
+            "team": result.team,
+            "season": result.season,
+            "defense_type": result.defense_type,
+            "weeks_analyzed": result.weeks_analyzed,
+            "total_yards_allowed": result.total_yards_allowed,
+            "avg_yards_allowed": result.avg_yards_allowed,
+            "total_tds_allowed": result.total_tds_allowed,
+            "held_under_pct": result.held_under_pct,
+            "trending": result.trending,
+            "insight": result.insight,
+            "matchups": [
+                {
+                    "player": m.player_name,
+                    "team": m.team,
+                    "week": m.week,
+                    "yards": m.yards,
+                    "attempts": m.attempts,
+                    "tds": m.touchdowns,
+                    "ypc": m.ypc,
+                    "season_avg": m.season_avg_yards,
+                    "yards_diff": m.yards_diff,
+                    "held_under": m.held_under,
+                    "breakout": m.breakout
+                }
+                for m in result.player_matchups
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/team/{team}/defense/pass")
@@ -1882,13 +1907,37 @@ async def get_team_pass_defense(
     """
     season = season or CURRENT_SEASON
 
-    return {
-        "team": team,
-        "season": season,
-        "last_n_games": last_n_games,
-        "message": "Defense analyzer not yet integrated - coming soon",
-        "pass_defense": []
-    }
+    try:
+        result = defense_analyzer.get_pass_defense_performance(team, season, last_n_games)
+        return {
+            "team": result.team,
+            "season": result.season,
+            "defense_type": result.defense_type,
+            "weeks_analyzed": result.weeks_analyzed,
+            "total_yards_allowed": result.total_yards_allowed,
+            "avg_yards_allowed": result.avg_yards_allowed,
+            "total_tds_allowed": result.total_tds_allowed,
+            "held_under_pct": result.held_under_pct,
+            "insight": result.insight,
+            "matchups": [
+                {
+                    "player": m.player_name,
+                    "team": m.team,
+                    "week": m.week,
+                    "yards": m.yards,
+                    "attempts": m.attempts,
+                    "tds": m.touchdowns,
+                    "ypa": m.ypc,
+                    "season_avg": m.season_avg_yards,
+                    "yards_diff": m.yards_diff,
+                    "held_under": m.held_under,
+                    "breakout": m.breakout
+                }
+                for m in result.player_matchups
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/team/{team}/defense")
@@ -1901,14 +1950,10 @@ async def get_team_defense_summary(
     """
     season = season or CURRENT_SEASON
 
-    return {
-        "team": team,
-        "season": season,
-        "message": "Defense analyzer not yet integrated - coming soon",
-        "rush_defense": [],
-        "pass_defense": [],
-        "summary": {}
-    }
+    try:
+        return defense_analyzer.get_defense_summary(team, season)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
