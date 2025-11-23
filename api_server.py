@@ -31,8 +31,15 @@ from backend.database.local_db import (
 from backend.ingestion.fetch_prop_lines import PropLineFetcher
 from backend.ingestion.fetch_injuries import InjuryFetcher
 
+# Import config and calendar
+from backend.config import settings
+from backend.nfl_calendar import get_current_season_and_week
+
 # Project root
 PROJECT_ROOT = Path(__file__).parent
+
+# Get current season/week
+CURRENT_SEASON, CURRENT_WEEK = get_current_season_and_week()
 
 
 @asynccontextmanager
@@ -983,7 +990,7 @@ async def get_daily_betting_brief(
     if auto_refresh:
         freshness = await check_data_freshness()
         if freshness["needs_refresh"]:
-            refresh_result = await auto_refresh_endpoint(week=week, year=2024)
+            refresh_result = await auto_refresh_endpoint(week=week, year=CURRENT_SEASON)
             results["data_refreshed"] = True
             results["refresh_details"] = refresh_result
 
