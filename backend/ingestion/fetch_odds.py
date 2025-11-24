@@ -43,19 +43,9 @@ def fetch_odds_api(sport: str = 'americanfootball_nfl',
     api_key = os.environ.get('ODDS_API_KEY')
 
     if not api_key:
-        print("Warning: ODDS_API_KEY not set, using placeholder data")
-        # Placeholder: create sample event
-        sample_event = {
-            'id': 'sample_event_001',
-            'sport_key': sport,
-            'commence_time': '2025-11-24T18:00:00Z',
-            'home_team': 'Buffalo Bills',
-            'away_team': 'Kansas City Chiefs',
-            'bookmakers': []
-        }
-        event_file = cache_dir / f"web_event_{sample_event['id']}.json"
-        event_file.write_text(json.dumps(sample_event, indent=2))
-        return [sample_event]
+        print("ERROR: ODDS_API_KEY not set - cannot fetch odds data")
+        print("Set environment variable: export ODDS_API_KEY=your_key_here")
+        return []
 
     try:
         # Fetch odds from The Odds API

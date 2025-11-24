@@ -793,19 +793,8 @@ async def get_news(
             related_teams=[injury['team']]
         ))
 
-    # TODO: Add non-injury news items
-    # Placeholder for demonstration
-    if not category or category == "news":
-        news_items.append(NewsItem(
-            id="news_001",
-            title="NFL Week 12 Preview",
-            summary="Key matchups and storylines for Week 12",
-            source="NFL.com",
-            published_at=datetime.now().isoformat(),
-            category="news",
-            related_players=[],
-            related_teams=[]
-        ))
+    # TODO: Add non-injury news items from external news APIs (ESPN, NFL.com RSS)
+    # Currently only returns injury news from Sleeper API
 
     return news_items[:limit]
 
@@ -1003,40 +992,12 @@ async def get_game_insights(game_id: str):
     # - Historical matchup data
     # - Weather data
 
-    insights = []
-
-    # Example insights (placeholder)
-    insights.append(MatchupInsight(
-        insight_type="trend",
-        title="QB Performance vs. Defense",
-        description="Away team QB has averaged 285 passing yards vs. similar defenses",
-        confidence=0.82,
-        supporting_data={
-            "avg_yards": 285,
-            "sample_size": 6,
-            "trend": "increasing"
-        }
-    ))
-
-    insights.append(MatchupInsight(
-        insight_type="matchup",
-        title="Run Defense Vulnerability",
-        description="Home team allows 4.8 yards per carry, 2nd worst in league",
-        confidence=0.91,
-        supporting_data={
-            "ypc_allowed": 4.8,
-            "league_rank": 30,
-            "last_3_games": 5.2
-        }
-    ))
-
-    # Add weather insight if applicable
-    # TODO: Get stadium location from game_id/schedule
-    # weather = weather_api.get_game_weather(lat, lon, game_time)
-    # if weather['wind_speed'] > 15:
-    #     insights.append(weather_impact_insight)
-
-    return insights
+    # Not yet implemented - requires ML model integration
+    return {
+        "error": "Feature not implemented",
+        "message": "Game insights require ML model integration. See P4_EXTERNAL_SERVICE_REQUIREMENTS.md item #4.",
+        "insights": []
+    }
 
 
 @app.get('/api/v1/games/{game_id}/narrative', response_model=List[GameNarrative])
@@ -1061,40 +1022,12 @@ async def get_game_narrative(game_id: str):
     # - Weather conditions
     # - Historical matchups
 
-    narratives = []
-
-    # Placeholder narratives
-    narratives.append(GameNarrative(
-        narrative_type="preview",
-        content=(
-            "This AFC showdown features two high-powered offenses. "
-            "The away team's passing attack ranks 2nd in the league, "
-            "while the home team's defense has struggled against elite QBs."
-        ),
-        generated_at=datetime.now().isoformat()
-    ))
-
-    narratives.append(GameNarrative(
-        narrative_type="key_matchups",
-        content=(
-            "Watch for the battle in the trenches. The away team's offensive line "
-            "has allowed just 12 sacks this season, while the home team's pass rush "
-            "leads the league with 42 sacks. This matchup will dictate the game flow."
-        ),
-        generated_at=datetime.now().isoformat()
-    ))
-
-    narratives.append(GameNarrative(
-        narrative_type="betting_angle",
-        content=(
-            "Value opportunity on the away team's RB receiving props. "
-            "He's averaged 6.2 receptions in games where the team is favored, "
-            "and books have his line at 4.5. Weather forecast shows clear conditions."
-        ),
-        generated_at=datetime.now().isoformat()
-    ))
-
-    return narratives
+    # Not yet implemented - requires LLM API integration
+    return {
+        "error": "Feature not implemented",
+        "message": "Game narratives require LLM API integration (OpenAI/Anthropic). See P4_EXTERNAL_SERVICE_REQUIREMENTS.md item #6.",
+        "narratives": []
+    }
 
 
 # ============================================================================
@@ -1123,34 +1056,12 @@ async def get_game_content(
     # - Podcast APIs (Apple Podcasts, Spotify)
     # - Twitter for embedded video content
 
-    content_items = []
-
-    # Placeholder content
-    content_items.append(ContentItem(
-        content_type="article",
-        title="Week 12 Preview: Key Matchups to Watch",
-        source="ESPN",
-        url="https://espn.com/nfl/preview",
-        published_at=datetime.now().isoformat(),
-        thumbnail_url="https://placeholder.com/thumbnail.jpg"
-    ))
-
-    content_items.append(ContentItem(
-        content_type="video",
-        title="Film Breakdown: Offensive Schemes",
-        source="YouTube",
-        url="https://youtube.com/watch?v=example",
-        published_at=datetime.now().isoformat(),
-        thumbnail_url="https://placeholder.com/video-thumb.jpg"
-    ))
-
-    if content_type:
-        content_items = [
-            item for item in content_items
-            if item.content_type == content_type
-        ]
-
-    return content_items[:limit]
+    # Not yet implemented - requires content API integration
+    return {
+        "error": "Feature not implemented",
+        "message": "Content aggregation requires YouTube/RSS/Podcast API integration. See P4_EXTERNAL_SERVICE_REQUIREMENTS.md item #7.",
+        "content_items": []
+    }
 
 
 # ============================================================================
@@ -1187,7 +1098,8 @@ async def find_prop_value(
     player_id: Optional[str] = None,
     min_edge: float = 5.0,
     min_grade: str = "B",
-    limit: int = 10
+    limit: int = 10,
+    bankroll: float = 1000.0
 ):
     """Find high-value prop bets.
 
@@ -1228,33 +1140,20 @@ async def find_prop_value(
         for gid in available_games[:10]:  # Limit to 10 most recent games
             projections.extend(model_loader.load_projections_for_game(gid))
 
-    # If no real data available, use sample data for demo
-    if not prop_lines or not projections:
-        print("No real odds or projections found, using sample data")
-        prop_lines = [
-            PropLine(
-                player_id="player_001",
-                player_name="Patrick Mahomes",
-                prop_type="passing_yards",
-                line=275.5,
-                over_odds=-110,
-                under_odds=-110,
-                book="DraftKings",
-                timestamp=datetime.now().isoformat()
-            )
-        ]
-        projections = [
-            PropProjection(
-                player_id="player_001",
-                player_name="Patrick Mahomes",
-                prop_type="passing_yards",
-                projection=295.3,
-                std_dev=42.5,
-                confidence_interval=(252.8, 337.8),
-                hit_probability_over=0.68,
-                hit_probability_under=0.32
-            )
-        ]
+    # Check if we have real data
+    if not prop_lines:
+        return {
+            "error": "No prop lines available",
+            "message": "Odds API returned no data. Check ODDS_API_KEY or wait for games to be available.",
+            "props": []
+        }
+
+    if not projections:
+        return {
+            "error": "No projections available",
+            "message": "No model projections found. Ensure models have been trained and projection files exist in outputs/predictions/",
+            "props": []
+        }
 
     # Find value props using real data
     value_props = prop_analyzer.find_best_props(
@@ -1270,7 +1169,7 @@ async def find_prop_value(
         stake = prop_analyzer.calculate_kelly_stake(
             max(value.edge_over, value.edge_under),
             value.confidence,
-            bankroll=1000  # Placeholder bankroll
+            bankroll=bankroll
         )
 
         results.append({
@@ -1374,28 +1273,15 @@ async def compare_props(
     Returns:
         Comparative analysis of players for the specified prop
     """
-    player_id_list = player_ids.split(',')
-
-    # TODO: Load actual player projections
-    # Placeholder data
-    comparisons = []
-    for pid in player_id_list[:5]:  # Limit to 5 players
-        comparisons.append({
-            "player_id": pid,
-            "player_name": f"Player {pid}",
-            "projection": 275.5,
-            "std_dev": 35.2,
-            "recent_avg": 282.3,
-            "trend": "increasing",
-            "matchup_grade": "B+",
-            "recommendation": "Consider OVER"
-        })
+    # TODO: Load actual player projections from model outputs
+    # Not yet implemented - requires model loading integration
 
     return {
+        "error": "Feature not implemented",
+        "message": "Player comparison requires model projection loading. See P4_EXTERNAL_SERVICE_REQUIREMENTS.md item #8.",
         "prop_type": prop_type,
-        "players_compared": len(comparisons),
-        "comparisons": comparisons,
-        "best_value": comparisons[0] if comparisons else None
+        "players_compared": 0,
+        "comparisons": []
     }
 
 

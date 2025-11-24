@@ -56,7 +56,10 @@ class WeatherAPI:
             }
         """
         if not self.api_key:
-            return self._get_placeholder_weather()
+            raise ValueError(
+                "OPENWEATHER_API_KEY not set - cannot fetch weather data. "
+                "Set environment variable: export OPENWEATHER_API_KEY=your_key_here"
+            )
 
         try:
             url = f"{self.base_url}/forecast"
@@ -86,8 +89,7 @@ class WeatherAPI:
             }
 
         except Exception as e:
-            print(f"Weather API error: {e}")
-            return self._get_placeholder_weather()
+            raise RuntimeError(f"Weather API error: {e}. Check API key and network connection.")
 
     def get_weather_for_game(self, game_id: str, game_time: Optional[str] = None) -> Dict:
         """Get weather for a game using stadium database.
@@ -103,7 +105,7 @@ class WeatherAPI:
         stadium = get_stadium_for_game(game_id)
 
         if not stadium:
-            return self._get_placeholder_weather()
+            raise ValueError(f"Stadium not found for game_id: {game_id}")
 
         # If it's a dome, return dome weather
         if stadium['is_dome']:
@@ -167,20 +169,6 @@ class WeatherAPI:
         except (ValueError, TypeError):
             # If parsing fails, return first forecast
             return forecasts[0] if forecasts else {}
-
-    def _get_placeholder_weather(self) -> Dict:
-        """Return placeholder weather when API is unavailable."""
-        return {
-            'temperature': 70,
-            'temp_unit': 'F',
-            'condition': 'Clear',
-            'wind_speed': 5,
-            'wind_unit': 'mph',
-            'humidity': 50,
-            'precipitation_chance': 0,
-            'is_dome': False
-        }
-
 
 class SleeperAPI:
     """Integration with Sleeper API for NFL player data and injuries."""
