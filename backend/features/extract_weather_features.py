@@ -42,12 +42,26 @@ def fetch_weather_from_api(
     }
 
     if weather_api_key:
-        # TODO: Implement actual API call
-        # Example: OpenWeather API
-        # url = f"https://api.openweathermap.org/data/2.5/forecast"
-        # params = {'q': game_location, 'appid': weather_api_key}
-        # response = requests.get(url, params=params)
-        pass
+        try:
+            # OpenWeather API integration
+            url = "https://api.openweathermap.org/data/2.5/weather"
+            params = {
+                'q': game_location,
+                'appid': weather_api_key,
+                'units': 'imperial'  # Get Fahrenheit
+            }
+            response = requests.get(url, params=params, timeout=10)
+
+            if response.status_code == 200:
+                data = response.json()
+                weather = {
+                    'temp_f': data['main']['temp'],
+                    'wind_mph': data['wind']['speed'],
+                    'precipitation': data['weather'][0]['main'].lower() in ['rain', 'snow', 'drizzle'],
+                    'conditions': data['weather'][0]['description']
+                }
+        except (requests.RequestException, KeyError, ValueError) as e:
+            print(f"Weather API error: {e}, using defaults")
 
     return weather
 

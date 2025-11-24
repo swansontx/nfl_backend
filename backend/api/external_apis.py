@@ -72,8 +72,7 @@ class WeatherAPI:
             data = response.json()
 
             # Parse forecast data for game time
-            # TODO: Match forecast to game_time
-            forecast = data['list'][0] if data.get('list') else {}
+            forecast = self._find_closest_forecast(data.get('list', []), game_time)
 
             return {
                 'temperature': int(forecast.get('main', {}).get('temp', 70)),
@@ -83,7 +82,7 @@ class WeatherAPI:
                 'wind_unit': 'mph',
                 'humidity': forecast.get('main', {}).get('humidity', 50),
                 'precipitation_chance': int(forecast.get('pop', 0) * 100),
-                'is_dome': False  # TODO: Determine from stadium data
+                'is_dome': False  # Will be set by get_weather_for_game if needed
             }
 
         except Exception as e:
@@ -131,6 +130,43 @@ class WeatherAPI:
         weather['is_dome'] = False
 
         return weather
+
+    def _find_closest_forecast(self, forecasts: List[Dict], game_time: str) -> Dict:
+        """Find the forecast closest to game time.
+
+        Args:
+            forecasts: List of forecast entries from OpenWeather API
+            game_time: Game time in ISO format
+
+        Returns:
+            Forecast entry closest to game time
+        """
+        if not forecasts:
+            return {}
+
+        try:
+            # Parse game time
+            game_dt = datetime.fromisoformat(game_time.replace('Z', '+00:00'))
+
+            closest = forecasts[0]
+            min_diff = float('inf')
+
+            for forecast in forecasts:
+                # OpenWeather uses Unix timestamp in 'dt' field
+                forecast_dt = datetime.fromtimestamp(forecast.get('dt', 0))
+
+                # Make comparison in same timezone (naive comparison)
+                diff = abs((forecast_dt - game_dt.replace(tzinfo=None)).total_seconds())
+
+                if diff < min_diff:
+                    min_diff = diff
+                    closest = forecast
+
+            return closest
+
+        except (ValueError, TypeError):
+            # If parsing fails, return first forecast
+            return forecasts[0] if forecasts else {}
 
     def _get_placeholder_weather(self) -> Dict:
         """Return placeholder weather when API is unavailable."""

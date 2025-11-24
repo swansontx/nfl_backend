@@ -15,6 +15,7 @@ from typing import Dict, List, Optional
 from pathlib import Path
 import csv
 from dataclasses import dataclass
+import pandas as pd
 
 from backend.features.home_field_advantage import hfa_calculator
 
@@ -233,6 +234,89 @@ class HFAImpactAnalyzer:
             'total_hfa_swing': round(total_swing, 2),
             'swing_pct': round((total_swing / base_projection * 100) if base_projection else 0, 2)
         }
+
+    def calculate_hfa_impacts_from_data(
+        self,
+        player_stats_path: Path,
+        min_games: int = 5
+    ) -> Dict[str, Dict[str, float]]:
+        """Calculate actual HFA impacts from historical player stats.
+
+        Args:
+            player_stats_path: Path to player stats CSV with home/away indicator
+            min_games: Minimum games required for analysis
+
+        Returns:
+            Dictionary of position -> prop_type -> HFA impact
+        """
+        print(f"\n{'='*80}")
+        print("CALCULATING HFA IMPACTS FROM ACTUAL DATA")
+        print(f"{'='*80}\n")
+
+        if not player_stats_path.exists():
+            print(f"Stats file not found: {player_stats_path}")
+            return self.EXPECTED_IMPACTS
+
+        df = pd.read_csv(player_stats_path, low_memory=False)
+
+        # Determine home/away if not present
+        if 'is_home' not in df.columns:
+            # Try to infer from recent_team vs opponent columns
+            if 'recent_team' in df.columns and 'opponent_team' in df.columns:
+                # This is a simplification - would need game context
+                print("Warning: is_home column not found, using position-only analysis")
+                return self.EXPECTED_IMPACTS
+
+        calculated_impacts = {}
+
+        # Position mapping
+        prop_mappings = {
+            'QB': ['passing_yards', 'passing_tds', 'completions', 'interceptions'],
+            'RB': ['rushing_yards', 'rushing_tds', 'receptions', 'receiving_yards'],
+            'WR': ['receptions', 'receiving_yards', 'receiving_tds', 'targets'],
+            'TE': ['receptions', 'receiving_yards', 'receiving_tds', 'targets']
+        }
+
+        for position, props in prop_mappings.items():
+            pos_df = df[df['position'] == position] if 'position' in df.columns else df
+
+            if len(pos_df) < min_games * 2:
+                print(f"  {position}: Insufficient data, using defaults")
+                calculated_impacts[position] = self.EXPECTED_IMPACTS.get(position, {})
+                continue
+
+            calculated_impacts[position] = {}
+
+            for prop in props:
+                if prop not in pos_df.columns:
+                    calculated_impacts[position][prop] = self.EXPECTED_IMPACTS.get(position, {}).get(prop, 0)
+                    continue
+
+                # Calculate home vs away averages
+                home_avg = pos_df[pos_df['is_home'] == 1][prop].mean() if 'is_home' in pos_df.columns else pos_df[prop].mean()
+                away_avg = pos_df[pos_df['is_home'] == 0][prop].mean() if 'is_home' in pos_df.columns else pos_df[prop].mean()
+
+                hfa_impact = home_avg - away_avg
+
+                # Use calculated if we have enough data, else use expected
+                if not pd.isna(hfa_impact):
+                    calculated_impacts[position][prop] = round(hfa_impact, 2)
+                    print(f"  {position} {prop}: Home={home_avg:.1f}, Away={away_avg:.1f}, HFA={hfa_impact:+.2f}")
+                else:
+                    calculated_impacts[position][prop] = self.EXPECTED_IMPACTS.get(position, {}).get(prop, 0)
+
+        print(f"\n✓ Calculated HFA impacts for {len(calculated_impacts)} positions")
+        return calculated_impacts
+
+    def update_impacts_from_data(self, player_stats_path: Path) -> None:
+        """Update EXPECTED_IMPACTS with calculated values from data.
+
+        Args:
+            player_stats_path: Path to player stats CSV
+        """
+        calculated = self.calculate_hfa_impacts_from_data(player_stats_path)
+        self.EXPECTED_IMPACTS.update(calculated)
+        print("✓ Updated HFA impacts with data-driven values")
 
     def export_hfa_tables(self, output_dir: Path) -> None:
         """Export HFA impact tables for documentation.

@@ -16,15 +16,18 @@ from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifi
 from sklearn.metrics import mean_absolute_error, accuracy_score
 import joblib
 
+from backend.nfl_calendar import get_current_nfl_season
 
-def load_games_with_quarters():
+
+def load_games_with_quarters(season: int = None):
     """Load games data with quarter/half scores."""
+    season = season or get_current_nfl_season()
 
     print(f"\n{'='*80}")
     print(f"LOADING GAMES WITH QUARTER SCORES")
     print(f"{'='*80}\n")
 
-    games_file = Path('/home/user/nfl_backend/inputs/games_2025_with_quarters.csv')
+    games_file = Path(f'/home/user/nfl_backend/inputs/games_{season}_with_quarters.csv')
 
     if not games_file.exists():
         print(f"❌ Games file not found: {games_file}")
@@ -33,17 +36,17 @@ def load_games_with_quarters():
 
     games = pd.read_csv(games_file)
 
-    # Filter to 2025 regular season completed games
-    games_2025 = games[
-        (games['season'] == 2025) &
+    # Filter to regular season completed games
+    games_filtered = games[
+        (games['season'] == season) &
         (games['game_type'] == 'REG') &
         (games['home_score'].notna())
     ].copy()
 
-    print(f"✅ Loaded {len(games_2025)} completed 2025 games")
+    print(f"✅ Loaded {len(games_filtered)} completed {season} games")
     print()
 
-    return games_2025
+    return games_filtered
 
 
 def create_game_features(games_df):

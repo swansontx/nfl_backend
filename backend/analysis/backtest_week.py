@@ -14,6 +14,8 @@ from typing import Dict, List, Tuple
 import argparse
 from collections import defaultdict
 
+from backend.nfl_calendar import get_current_nfl_season
+
 
 def load_player_stats(inputs_dir: Path) -> pd.DataFrame:
     """Load player stats."""
@@ -75,16 +77,17 @@ def get_player_projection(
     return projection, std_dev
 
 
-def backtest_week(week: int, season: int = 2025) -> Dict:
+def backtest_week(week: int, season: int = None) -> Dict:
     """Run backtest for a specific week.
 
     Args:
         week: Week to backtest
-        season: Season year
+        season: Season year (defaults to current season)
 
     Returns:
         Dict with backtest results
     """
+    season = season or get_current_nfl_season()
     inputs_dir = Path("inputs")
 
     print(f"\n{'='*60}")

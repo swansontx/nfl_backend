@@ -31,8 +31,24 @@ from backend.database.local_db import (
 from backend.ingestion.fetch_prop_lines import PropLineFetcher
 from backend.ingestion.fetch_injuries import InjuryFetcher
 
+# Import config and calendar
+from backend.config import settings
+from backend.nfl_calendar import get_current_season_and_week
+
+# Import analysis modules
+from backend.api.situational_analyzer import (
+    SituationalAnalyzer, analyze_game_situation, get_top_situations
+)
+from backend.api.evaluation_pipeline import (
+    EvaluationPipeline, evaluate_game, evaluate_week
+)
+from backend.api.defense_analyzer import defense_analyzer
+
 # Project root
 PROJECT_ROOT = Path(__file__).parent
+
+# Get current season/week
+CURRENT_SEASON, CURRENT_WEEK = get_current_season_and_week()
 
 
 @asynccontextmanager
@@ -88,11 +104,13 @@ async def health():
 
 @app.post("/fetch/odds", response_model=FetchResponse)
 async def fetch_odds(
-    week: int = Query(12, description="NFL week number"),
-    season: int = Query(2024, description="NFL season"),
+    week: int = Query(None, description="NFL week number"),
+    season: int = Query(None, description="NFL season"),
     background_tasks: BackgroundTasks = None
 ):
     """Fetch odds from The Odds API and store in database."""
+    week = week or CURRENT_WEEK
+    season = season or CURRENT_SEASON
     api_key = os.getenv("ODDS_API_KEY")
     if not api_key:
         raise HTTPException(status_code=400, detail="ODDS_API_KEY not set")
@@ -151,9 +169,11 @@ async def fetch_odds(
 @app.post("/fetch/injuries", response_model=FetchResponse)
 async def fetch_injuries(
     week: Optional[int] = Query(None, description="NFL week number"),
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(None, description="NFL season")
 ):
     """Fetch injury reports from ESPN and store in database."""
+    week = week or CURRENT_WEEK
+    season = season or CURRENT_SEASON
     try:
         output_dir = PROJECT_ROOT / "inputs" / "injuries"
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -193,10 +213,11 @@ async def fetch_injuries(
 
 @app.post("/fetch/nflverse")
 async def fetch_nflverse(
-    year: int = Query(2024, description="NFL season year"),
+    year: int = Query(None, description="NFL season year"),
     include_all: bool = Query(True, description="Include all datasets")
 ):
     """Fetch nflverse data (play-by-play, stats, rosters)."""
+    year = year or CURRENT_SEASON
     try:
         from backend.ingestion.fetch_nflverse import fetch_nflverse
 
@@ -226,11 +247,13 @@ async def fetch_nflverse(
 
 @app.post("/fetch/all")
 async def fetch_all(
-    week: int = Query(12, description="NFL week"),
-    year: int = Query(2024, description="NFL season"),
+    week: int = Query(None, description="NFL week"),
+    year: int = Query(None, description="NFL season"),
     background_tasks: BackgroundTasks = None
 ):
     """Fetch all data sources."""
+    week = week or CURRENT_WEEK
+    year = year or CURRENT_SEASON
     results = {
         "odds": None,
         "injuries": None,
@@ -362,13 +385,15 @@ async def check_data_freshness(
 
 @app.post("/refresh/auto")
 async def auto_refresh(
-    week: int = Query(12, description="NFL week"),
-    year: int = Query(2024, description="NFL season"),
+    week: int = Query(None, description="NFL week"),
+    year: int = Query(None, description="NFL season"),
     odds_max_age_hours: int = Query(4, description="Max age for odds before refresh"),
     injuries_max_age_hours: int = Query(12, description="Max age for injuries before refresh"),
     force: bool = Query(False, description="Force refresh even if data is fresh")
 ):
     """Automatically refresh stale data sources."""
+    week = week or CURRENT_WEEK
+    year = year or CURRENT_SEASON
     # Check freshness
     freshness_check = await check_data_freshness(
         odds_max_age_hours, injuries_max_age_hours
@@ -534,9 +559,10 @@ async def get_projection_history(
 async def store_projections(
     projections: List[dict],
     week: int = Query(..., description="NFL week"),
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(None, description="NFL season")
 ):
     """Store generated projections in database."""
+    season = season or CURRENT_SEASON
     inserted = ProjectionsRepository.insert_projections(projections, week, season)
     return {
         "success": True,
@@ -578,9 +604,10 @@ async def get_injury_history(
 @app.get("/games")
 async def get_games(
     week: Optional[int] = None,
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(None, description="NFL season")
 ):
     """Get games/schedule."""
+    season = season or CURRENT_SEASON
     games = GamesRepository.get_games(week, season)
     return {
         "source": "LOCAL_DB",
@@ -646,9 +673,10 @@ async def get_value_props_history(
 async def store_value_props(
     props: List[dict],
     week: int = Query(..., description="NFL week"),
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(None, description="NFL season")
 ):
     """Store value props found."""
+    season = season or CURRENT_SEASON
     count = ValuePropsRepository.insert_value_props(props, week, season)
     return {
         "success": True,
@@ -965,7 +993,7 @@ async def full_matchup_analysis(game_id: str):
 
 @app.get("/intelligence/daily-brief")
 async def get_daily_betting_brief(
-    week: int = Query(12, description="NFL week"),
+    week: int = Query(None, description="NFL week"),
     min_edge: float = Query(3.0, description="Minimum edge for top props"),
     auto_refresh: bool = Query(True, description="Auto-refresh stale data first")
 ):
@@ -977,13 +1005,14 @@ async def get_daily_betting_brief(
     - Sharp line movements
     - Best parlay candidates
     """
+    week = week or CURRENT_WEEK
     results = {"data_refreshed": False}
 
     # Auto-refresh if requested
     if auto_refresh:
         freshness = await check_data_freshness()
         if freshness["needs_refresh"]:
-            refresh_result = await auto_refresh_endpoint(week=week, year=2024)
+            refresh_result = await auto_refresh_endpoint(week=week, year=CURRENT_SEASON)
             results["data_refreshed"] = True
             results["refresh_details"] = refresh_result
 
@@ -1169,7 +1198,7 @@ async def player_full_outlook(
 @app.get("/stats/player/{player_name}")
 async def get_player_stats(
     player_name: str,
-    season: int = Query(2025, description="NFL season")
+    season: int = Query(None, description="NFL season")
 ):
     """
     FULL PLAYER STATS - Like ESPN player page:
@@ -1178,6 +1207,7 @@ async def get_player_stats(
     - Bio information
     - All relevant stats
     """
+    season = season or CURRENT_SEASON
     # Get season totals
     totals = PlayerStatsRepository.get_player_season_totals(player_name, season)
 
@@ -1221,7 +1251,7 @@ async def get_player_stats(
 @app.get("/stats/team/{team}")
 async def get_team_stats(
     team: str,
-    season: int = Query(2025, description="NFL season")
+    season: int = Query(None, description="NFL season")
 ):
     """
     FULL TEAM STATS - Team profile and stats:
@@ -1229,6 +1259,7 @@ async def get_team_stats(
     - Key players by position
     - Roster information
     """
+    season = season or CURRENT_SEASON
     # Get team stats
     stats = TeamStatsRepository.get_team_stats(team, season)
 
@@ -1285,7 +1316,7 @@ def _group_roster_by_position(roster):
 @app.get("/stats/leaders/{stat_type}")
 async def get_league_leaders(
     stat_type: str,
-    season: int = Query(2025, description="NFL season"),
+    season: int = Query(None, description="NFL season"),
     limit: int = Query(20, description="Number of leaders")
 ):
     """
@@ -1305,6 +1336,7 @@ async def get_league_leaders(
             "error": f"Invalid stat_type. Use one of: {', '.join(valid_stats)}"
         }
 
+    season = season or CURRENT_SEASON
     leaders = PlayerStatsRepository.get_league_leaders(stat_type, season, limit)
 
     return {
@@ -1327,10 +1359,11 @@ async def get_league_leaders(
 
 @app.get("/stats/schedule")
 async def get_schedule(
-    season: int = Query(2025, description="NFL season"),
+    season: int = Query(None, description="NFL season"),
     week: Optional[int] = Query(None, description="Specific week")
 ):
     """Get full season schedule."""
+    season = season or CURRENT_SEASON
     schedule = SchedulesRepository.get_schedule(season, week)
 
     return {
@@ -1344,8 +1377,9 @@ async def get_schedule(
 
 
 @app.get("/stats/rankings")
-async def get_team_rankings(season: int = Query(2025, description="NFL season")):
+async def get_team_rankings(season: int = Query(None, description="NFL season")):
     """Get all teams ranked by record."""
+    season = season or CURRENT_SEASON
     teams = TeamStatsRepository.get_all_teams(season)
 
     return {
@@ -1371,7 +1405,7 @@ async def get_team_rankings(season: int = Query(2025, description="NFL season"))
 
 @app.post("/populate/stats")
 async def populate_player_stats(
-    season: int = Query(2025, description="NFL season"),
+    season: int = Query(None, description="NFL season"),
     week: Optional[int] = Query(None, description="Specific week to load")
 ):
     """
@@ -1379,11 +1413,12 @@ async def populate_player_stats(
     Loads weekly stats for all players.
     """
     import pandas as pd
+    season = season or CURRENT_SEASON
 
     stats_file = PROJECT_ROOT / "inputs" / f"player_stats_{season}.csv"
     if not stats_file.exists():
-        # Try combined file
-        stats_file = PROJECT_ROOT / "inputs" / f"player_stats_2024_{season}.csv"
+        # Try combined file (e.g., player_stats_2024_2025.csv)
+        stats_file = PROJECT_ROOT / "inputs" / "player_stats_2024_2025.csv"
 
     if not stats_file.exists():
         return {
@@ -1451,9 +1486,10 @@ async def populate_player_stats(
 
 
 @app.post("/populate/schedule")
-async def populate_schedule(season: int = Query(2025, description="NFL season")):
+async def populate_schedule(season: int = Query(None, description="NFL season")):
     """Populate full season schedule from nflverse."""
     import pandas as pd
+    season = season or CURRENT_SEASON
 
     # Look for schedule file
     schedule_file = None
@@ -1500,11 +1536,13 @@ async def populate_schedule(season: int = Query(2025, description="NFL season"))
 
 @app.post("/populate/rosters")
 async def populate_rosters(
-    season: int = Query(2025, description="NFL season"),
-    week: int = Query(12, description="Week for roster snapshot")
+    season: int = Query(None, description="NFL season"),
+    week: int = Query(None, description="Week for roster snapshot")
 ):
     """Populate rosters from nflverse."""
     import pandas as pd
+    season = season or CURRENT_SEASON
+    week = week or CURRENT_WEEK
 
     roster_file = PROJECT_ROOT / "inputs" / f"weekly_rosters_{season}.csv"
     if not roster_file.exists():
@@ -1561,8 +1599,8 @@ async def populate_rosters(
 
 @app.post("/populate/all")
 async def populate_all_data(
-    season: int = Query(2025, description="NFL season"),
-    week: int = Query(12, description="Current week"),
+    season: int = Query(None, description="NFL season"),
+    week: int = Query(None, description="Current week"),
     fetch_first: bool = Query(False, description="Fetch from nflverse first"),
     include_odds: bool = Query(True, description="Fetch DraftKings odds from OddsAPI")
 ):
@@ -1576,6 +1614,8 @@ async def populate_all_data(
 
     This is the recommended way to initialize the database.
     """
+    season = season or CURRENT_SEASON
+    week = week or CURRENT_WEEK
     results = {}
 
     # Optionally fetch data first
@@ -1636,6 +1676,308 @@ async def populate_all_data(
             "Check /odds/movers for line movement signals"
         ]
     }
+
+
+# ========== EVALUATION & SITUATIONAL ENDPOINTS ==========
+
+@app.get("/game/{game_id}/evaluate")
+async def evaluate_game_endpoint(
+    game_id: str,
+    home_team: str = Query(..., description="Home team abbreviation"),
+    away_team: str = Query(..., description="Away team abbreviation"),
+    season: int = Query(None, description="NFL season"),
+    week: int = Query(None, description="NFL week")
+):
+    """
+    COMPLETE GAME EVALUATION - Run full evaluation pipeline for a game.
+    Returns scored grades (A+ to F) for matchup quality, situational edge,
+    injury impact, and prop value.
+    """
+    season = season or CURRENT_SEASON
+    week = week or CURRENT_WEEK
+
+    try:
+        result = evaluate_game(game_id, home_team, away_team, season, week)
+        return {
+            "game_id": result.game_id,
+            "home_team": result.home_team,
+            "away_team": result.away_team,
+            "overall_score": result.overall_score,
+            "overall_grade": result.overall_grade,
+            "categories": [
+                {
+                    "category": cat.category,
+                    "score": cat.score,
+                    "grade": cat.grade,
+                    "confidence": cat.confidence,
+                    "factors": cat.factors,
+                    "narrative": cat.narrative
+                }
+                for cat in result.category_scores
+            ],
+            "top_props": [
+                {
+                    "player": prop.player,
+                    "team": prop.team,
+                    "prop_type": prop.prop_type,
+                    "direction": prop.direction,
+                    "edge_score": prop.edge_score,
+                    "confidence": prop.confidence,
+                    "reasoning": prop.reasoning
+                }
+                for prop in result.top_props
+            ],
+            "key_factors": result.key_factors,
+            "betting_angles": result.betting_angles,
+            "season": season,
+            "week": week
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/week/{week}/evaluate")
+async def evaluate_week_endpoint(
+    week: int,
+    season: int = Query(None, description="NFL season")
+):
+    """
+    EVALUATE ALL GAMES IN WEEK - Run complete evaluation pipeline for every game.
+    Returns scored analysis for each game with rankings by betting opportunity.
+    """
+    season = season or CURRENT_SEASON
+
+    try:
+        results = evaluate_week(season, week)
+        return {
+            "season": season,
+            "week": week,
+            "games_evaluated": len(results),
+            "evaluations": [
+                {
+                    "game_id": r.game_id,
+                    "matchup": f"{r.away_team} @ {r.home_team}",
+                    "overall_score": r.overall_score,
+                    "overall_grade": r.overall_grade,
+                    "top_props_count": len(r.top_props),
+                    "key_factors": r.key_factors[:3] if r.key_factors else []
+                }
+                for r in results
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/game/{game_id}/situation")
+async def get_game_situation(
+    game_id: str,
+    home_team: str = Query(..., description="Home team abbreviation"),
+    away_team: str = Query(..., description="Away team abbreviation"),
+    season: int = Query(None, description="NFL season"),
+    week: int = Query(None, description="NFL week")
+):
+    """
+    SITUATIONAL ANALYSIS - Analyze situational factors for a game:
+    trending form, weather impact, rest/schedule advantages, positional matchup grades.
+    """
+    season = season or CURRENT_SEASON
+    week = week or CURRENT_WEEK
+
+    try:
+        result = analyze_game_situation(game_id, home_team, away_team, season, week)
+        return {
+            "game_id": result.game_id,
+            "home_team": result.home_team,
+            "away_team": result.away_team,
+            "home_form": {
+                "team": result.home_form.team if result.home_form else None,
+                "form_grade": result.home_form.form_grade if result.home_form else "C",
+                "momentum": result.home_form.momentum if result.home_form else "neutral",
+                "scoring_trend": result.home_form.scoring_trend if result.home_form else "neutral"
+            } if result.home_form else None,
+            "away_form": {
+                "team": result.away_form.team if result.away_form else None,
+                "form_grade": result.away_form.form_grade if result.away_form else "C",
+                "momentum": result.away_form.momentum if result.away_form else "neutral",
+                "scoring_trend": result.away_form.scoring_trend if result.away_form else "neutral"
+            } if result.away_form else None,
+            "positional_edges": [
+                {
+                    "position": edge.position,
+                    "team": edge.team,
+                    "grade": edge.grade,
+                    "edge_score": edge.edge_score,
+                    "insight": edge.insight,
+                    "target_props": edge.target_props
+                }
+                for edge in result.positional_edges
+            ],
+            "key_situations": result.key_situations,
+            "prop_targets": result.prop_targets,
+            "season": season,
+            "week": week
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/team/{team}/form")
+async def get_team_form(
+    team: str,
+    season: int = Query(None, description="NFL season"),
+    week: int = Query(None, description="NFL week")
+):
+    """
+    TRENDING FORM - Get recent form analysis for a team.
+    Compares last 3 games vs season averages for scoring, defense, passing, and rushing.
+    """
+    season = season or CURRENT_SEASON
+    week = week or CURRENT_WEEK
+
+    try:
+        analyzer = SituationalAnalyzer(season)
+        form = analyzer.get_trending_form(team, season, week)
+        return {
+            "team": form.team,
+            "form_grade": form.form_grade,
+            "momentum": form.momentum,
+            "passing": {
+                "recent_avg": form.recent_pass_yards_avg,
+                "season_avg": form.season_pass_yards_avg,
+                "trend": form.pass_trend,
+                "trend_pct": form.pass_trend_pct
+            },
+            "rushing": {
+                "recent_avg": form.recent_rush_yards_avg,
+                "season_avg": form.season_rush_yards_avg,
+                "trend": form.rush_trend,
+                "trend_pct": form.rush_trend_pct
+            },
+            "scoring": {
+                "recent_avg": form.recent_points_avg,
+                "season_avg": form.season_points_avg,
+                "trend": form.scoring_trend,
+                "trend_pct": form.scoring_trend_pct
+            },
+            "defense": {
+                "recent_allowed": form.recent_points_allowed_avg,
+                "season_allowed": form.season_points_allowed_avg,
+                "trend": form.defense_trend
+            },
+            "narrative": form.form_narrative,
+            "season": season,
+            "week": week
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/team/{team}/defense/rush")
+async def get_team_rush_defense(
+    team: str,
+    season: int = Query(None, description="NFL season"),
+    last_n_games: int = Query(5, description="Number of recent games")
+):
+    """
+    RUSH DEFENSE ANALYSIS - How has a team done against the run?
+    Shows each RB's performance vs their average.
+    """
+    season = season or CURRENT_SEASON
+
+    try:
+        result = defense_analyzer.get_rush_defense_performance(team, season, last_n_games)
+        return {
+            "team": result.team,
+            "season": result.season,
+            "defense_type": result.defense_type,
+            "weeks_analyzed": result.weeks_analyzed,
+            "total_yards_allowed": result.total_yards_allowed,
+            "avg_yards_allowed": result.avg_yards_allowed,
+            "total_tds_allowed": result.total_tds_allowed,
+            "held_under_pct": result.held_under_pct,
+            "trending": result.trending,
+            "insight": result.insight,
+            "matchups": [
+                {
+                    "player": m.player_name,
+                    "team": m.team,
+                    "week": m.week,
+                    "yards": m.yards,
+                    "attempts": m.attempts,
+                    "tds": m.touchdowns,
+                    "ypc": m.ypc,
+                    "season_avg": m.season_avg_yards,
+                    "yards_diff": m.yards_diff,
+                    "held_under": m.held_under,
+                    "breakout": m.breakout
+                }
+                for m in result.player_matchups
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/team/{team}/defense/pass")
+async def get_team_pass_defense(
+    team: str,
+    season: int = Query(None, description="NFL season"),
+    last_n_games: int = Query(5, description="Number of recent games")
+):
+    """
+    PASS DEFENSE ANALYSIS - How has a team done against the pass?
+    Shows each QB's performance vs their average.
+    """
+    season = season or CURRENT_SEASON
+
+    try:
+        result = defense_analyzer.get_pass_defense_performance(team, season, last_n_games)
+        return {
+            "team": result.team,
+            "season": result.season,
+            "defense_type": result.defense_type,
+            "weeks_analyzed": result.weeks_analyzed,
+            "total_yards_allowed": result.total_yards_allowed,
+            "avg_yards_allowed": result.avg_yards_allowed,
+            "total_tds_allowed": result.total_tds_allowed,
+            "held_under_pct": result.held_under_pct,
+            "insight": result.insight,
+            "matchups": [
+                {
+                    "player": m.player_name,
+                    "team": m.team,
+                    "week": m.week,
+                    "yards": m.yards,
+                    "attempts": m.attempts,
+                    "tds": m.touchdowns,
+                    "ypa": m.ypc,
+                    "season_avg": m.season_avg_yards,
+                    "yards_diff": m.yards_diff,
+                    "held_under": m.held_under,
+                    "breakout": m.breakout
+                }
+                for m in result.player_matchups
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/team/{team}/defense")
+async def get_team_defense_summary(
+    team: str,
+    season: int = Query(None, description="NFL season")
+):
+    """
+    COMPLETE DEFENSE ANALYSIS - Get full defense summary with both rush and pass analysis.
+    """
+    season = season or CURRENT_SEASON
+
+    try:
+        return defense_analyzer.get_defense_summary(team, season)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

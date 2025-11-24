@@ -10,6 +10,8 @@ from pydantic import Field, field_validator
 import os
 from pathlib import Path
 
+from backend.nfl_calendar import get_current_nfl_season, get_current_nfl_week
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
@@ -37,6 +39,16 @@ class Settings(BaseSettings):
 
     # Database
     database_url: Optional[str] = Field(default=None, env="DATABASE_URL")
+
+    # NFL Season Configuration (auto-calculated if not set)
+    current_season: int = Field(
+        default_factory=get_current_nfl_season,
+        description="Current NFL season year"
+    )
+    current_week: int = Field(
+        default_factory=get_current_nfl_week,
+        description="Current NFL week number"
+    )
 
     # Prop Evaluation Thresholds
     min_edge_threshold: float = Field(

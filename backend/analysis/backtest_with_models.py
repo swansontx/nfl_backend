@@ -10,6 +10,8 @@ import joblib
 from typing import Dict, Tuple
 import argparse
 
+from backend.nfl_calendar import get_current_nfl_season
+
 
 def load_models(models_dir: Path) -> Dict:
     """Load all trained models."""
@@ -95,8 +97,9 @@ def predict_with_model(
         return season_avg, season_avg * 0.2
 
 
-def backtest_with_models(week: int, season: int = 2025) -> Dict:
+def backtest_with_models(week: int, season: int = None) -> Dict:
     """Backtest using trained models."""
+    season = season or get_current_nfl_season()
 
     print(f"\n{'='*60}")
     print(f"BACKTESTING WEEK {week} WITH TRAINED MODELS")

@@ -1,11 +1,12 @@
-"""Generate synthetic kicker stats from game scores.
+"""Estimate kicker stats from game scores.
 
+Derives kicker performance from final game scores.
 Kicker stats depend on team scoring patterns:
 - XP Made = Team TDs (roughly)
 - FG Made = Team drives that stalled in field goal range
 - Total Kicker Points = (3 * FG Made) + XP Made
 
-Realistic patterns:
+Patterns:
 - High scoring teams: More XPs, fewer FGs
 - Low scoring teams: Fewer XPs, more FGs
 - Team TDs ≈ Total Points / 7 (on average)
@@ -177,7 +178,7 @@ def generate_kicker_stats_from_games():
     print()
 
     # Save
-    output_file = Path('inputs/kicker_stats_2025_synthetic.csv')
+    output_file = Path('inputs/kicker_stats_2025_estimated.csv')
     kicker_df.to_csv(output_file, index=False)
 
     print(f"💾 Saved to: {output_file}")

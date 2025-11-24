@@ -74,7 +74,7 @@ def extract_player_stats_from_pbp():
 
     if player_stats:
         stats_df = pd.DataFrame(player_stats)
-        output_file = Path('/home/user/nfl_backend/inputs/player_stats_2025_synthetic.csv')
+        output_file = Path('/home/user/nfl_backend/inputs/player_stats_2025_from_pbp.csv')
         stats_df.to_csv(output_file, index=False)
         print(f"✅ Saved {len(stats_df)} player-game records to {output_file}")
         return stats_df

@@ -15,6 +15,8 @@ TODOs:
 from pathlib import Path
 import argparse
 import json
+import os
+import requests
 from typing import List, Dict
 
 
@@ -38,34 +40,57 @@ def fetch_odds_api(sport: str = 'americanfootball_nfl',
     """
     cache_dir.mkdir(parents=True, exist_ok=True)
 
-    # TODO: Replace with actual API call
-    # import requests
-    # response = requests.get(
-    #     f'https://api.the-odds-api.com/v4/sports/{sport}/odds',
-    #     params={
-    #         'apiKey': os.environ.get('ODDS_API_KEY'),
-    #         'regions': 'us',
-    #         'markets': markets
-    #     }
-    # )
-    # events = response.json()
+    api_key = os.environ.get('ODDS_API_KEY')
 
-    # Placeholder: create sample event
-    sample_event = {
-        'id': 'sample_event_001',
-        'sport_key': sport,
-        'commence_time': '2025-11-24T18:00:00Z',
-        'home_team': 'Buffalo Bills',
-        'away_team': 'Kansas City Chiefs',
-        'bookmakers': []
-    }
+    if not api_key:
+        print("Warning: ODDS_API_KEY not set, using placeholder data")
+        # Placeholder: create sample event
+        sample_event = {
+            'id': 'sample_event_001',
+            'sport_key': sport,
+            'commence_time': '2025-11-24T18:00:00Z',
+            'home_team': 'Buffalo Bills',
+            'away_team': 'Kansas City Chiefs',
+            'bookmakers': []
+        }
+        event_file = cache_dir / f"web_event_{sample_event['id']}.json"
+        event_file.write_text(json.dumps(sample_event, indent=2))
+        return [sample_event]
 
-    # Cache the event
-    event_file = cache_dir / f"web_event_{sample_event['id']}.json"
-    event_file.write_text(json.dumps(sample_event, indent=2))
-    print(f"Cached event to {event_file}")
+    try:
+        # Fetch odds from The Odds API
+        url = f'https://api.the-odds-api.com/v4/sports/{sport}/odds'
+        params = {
+            'apiKey': api_key,
+            'regions': 'us',
+            'markets': markets,
+            'oddsFormat': 'american'
+        }
 
-    return [sample_event]
+        response = requests.get(url, params=params, timeout=30)
+        response.raise_for_status()
+        events = response.json()
+
+        # Show API quota usage
+        requests_remaining = response.headers.get('x-requests-remaining', 'unknown')
+        requests_used = response.headers.get('x-requests-used', 'unknown')
+        print(f"API quota: {requests_used} used, {requests_remaining} remaining")
+
+        # Cache each event
+        for event in events:
+            event_id = event.get('id', 'unknown')
+            event_file = cache_dir / f"web_event_{event_id}.json"
+            event_file.write_text(json.dumps(event, indent=2))
+
+        print(f"Cached {len(events)} events to {cache_dir}")
+        return events
+
+    except requests.exceptions.RequestException as e:
+        print(f"OddsAPI error: {e}")
+        return []
+    except (json.JSONDecodeError, ValueError) as e:
+        print(f"Failed to parse API response: {e}")
+        return []
 
 
 if __name__ == '__main__':

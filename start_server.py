@@ -16,12 +16,19 @@ import requests
 import time
 from pathlib import Path
 
+from backend.nfl_calendar import get_current_season_and_week
+
 # Project root
 PROJECT_ROOT = Path(__file__).parent
 
 
-def auto_update_database(season: int = 2025, week: int = 12):
+def auto_update_database(season: int = None, week: int = None):
     """Auto-update database with fresh data after server starts."""
+    if season is None or week is None:
+        current_season, current_week = get_current_season_and_week()
+        season = season or current_season
+        week = week or current_week
+
     print("\nAuto-updating database...")
     print("=" * 50)
 

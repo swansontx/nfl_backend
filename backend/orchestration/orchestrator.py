@@ -29,6 +29,8 @@ from typing import List, Optional
 import subprocess
 import sys
 
+from backend.nfl_calendar import get_current_season_and_week
+
 
 class PipelineStage:
     """Represents a single stage in the pipeline."""
@@ -69,7 +71,11 @@ class PipelineStage:
 class NFLPropsPipeline:
     """Orchestrator for the full NFL props pipeline."""
 
-    def __init__(self, season: int = 2025, week: Optional[int] = None):
+    def __init__(self, season: int = None, week: Optional[int] = None):
+        if season is None or week is None:
+            current_season, current_week = get_current_season_and_week()
+            season = season if season is not None else current_season
+            week = week if week is not None else current_week
         self.season = season
         self.week = week
         self.stages = []

@@ -20,6 +20,10 @@ import argparse
 import json
 from typing import Dict, List, Tuple
 import warnings
+import numpy as np
+import joblib
+from sklearn.linear_model import LogisticRegression
+from sklearn.isotonic import IsotonicRegression
 
 
 class Calibrator:
@@ -54,15 +58,20 @@ class Calibrator:
 
         print(f"Fitting {self.method} calibration on {len(predictions)} samples")
 
-        # TODO: Implement calibration fitting
-        # if self.method == 'platt':
-        #     from sklearn.linear_model import LogisticRegression
-        #     self.calibrator = LogisticRegression()
-        #     self.calibrator.fit(predictions, actuals)
-        # elif self.method == 'isotonic':
-        #     from sklearn.isotonic import IsotonicRegression
-        #     self.calibrator = IsotonicRegression(out_of_bounds='clip')
-        #     self.calibrator.fit(predictions, actuals)
+        # Convert to numpy arrays
+        X = np.array(predictions).reshape(-1, 1)
+        y = np.array(actuals)
+
+        if self.method == 'platt':
+            # Platt scaling uses logistic regression
+            self.calibrator = LogisticRegression(solver='lbfgs', max_iter=1000)
+            self.calibrator.fit(X, y)
+        elif self.method == 'isotonic':
+            # Isotonic regression for non-parametric calibration
+            self.calibrator = IsotonicRegression(out_of_bounds='clip')
+            self.calibrator.fit(predictions, actuals)
+
+        print(f"Calibration fitted successfully")
 
     def transform(self, predictions: List[float]) -> List[float]:
         """Apply calibration to new predictions.
@@ -77,8 +86,16 @@ class Calibrator:
             warnings.warn("Calibrator not fitted, returning raw predictions")
             return predictions
 
-        # TODO: Apply calibration
-        # return self.calibrator.predict(predictions)
+        # Apply calibration
+        if self.method == 'platt':
+            X = np.array(predictions).reshape(-1, 1)
+            # Use predict_proba for probability output
+            calibrated = self.calibrator.predict_proba(X)[:, 1]
+            return calibrated.tolist()
+        elif self.method == 'isotonic':
+            calibrated = self.calibrator.predict(predictions)
+            return calibrated.tolist()
+
         return predictions
 
     def save(self, output_path: Path) -> None:
@@ -87,8 +104,12 @@ class Calibrator:
         Args:
             output_path: Path to save calibrator
         """
-        # TODO: Implement saving (pickle or joblib)
-        print(f"TODO: Save calibrator to {output_path}")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump({
+            'method': self.method,
+            'calibrator': self.calibrator
+        }, output_path)
+        print(f"Saved calibrator to {output_path}")
 
     def load(self, input_path: Path) -> None:
         """Load calibrator from disk.
@@ -96,8 +117,13 @@ class Calibrator:
         Args:
             input_path: Path to load calibrator from
         """
-        # TODO: Implement loading
-        print(f"TODO: Load calibrator from {input_path}")
+        if not input_path.exists():
+            raise FileNotFoundError(f"Calibrator not found: {input_path}")
+
+        data = joblib.load(input_path)
+        self.method = data['method']
+        self.calibrator = data['calibrator']
+        print(f"Loaded {self.method} calibrator from {input_path}")
 
 
 def run_calibration(historical_preds_path: Path,
@@ -118,15 +144,18 @@ def run_calibration(historical_preds_path: Path,
     """
     print(f"Running {method} calibration")
 
-    # TODO: Load historical data
-    # with open(historical_preds_path) as f:
-    #     predictions = json.load(f)
-    # with open(historical_actuals_path) as f:
-    #     actuals = json.load(f)
-
-    # Placeholder data
-    predictions = [0.1, 0.3, 0.5, 0.7, 0.9]
-    actuals = [0.0, 0.0, 0.5, 1.0, 1.0]
+    # Load historical data
+    if historical_preds_path.exists() and historical_actuals_path.exists():
+        with open(historical_preds_path) as f:
+            predictions = json.load(f)
+        with open(historical_actuals_path) as f:
+            actuals = json.load(f)
+        print(f"Loaded {len(predictions)} predictions and {len(actuals)} actuals")
+    else:
+        # Use placeholder data for testing
+        print("Warning: Using placeholder data (files not found)")
+        predictions = [0.1, 0.3, 0.5, 0.7, 0.9]
+        actuals = [0, 0, 1, 1, 1]
 
     # Fit calibrator
     calibrator = Calibrator(method=method)
