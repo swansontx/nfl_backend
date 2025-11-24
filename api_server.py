@@ -16,6 +16,7 @@ from typing import Optional, List
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
+from fastapi.params import Param
 from pydantic import BaseModel
 
 # Import database
@@ -30,9 +31,24 @@ from backend.database.local_db import (
 # Import ingestion modules
 from backend.ingestion.fetch_prop_lines import PropLineFetcher
 from backend.ingestion.fetch_injuries import InjuryFetcher
+# Advanced analysis modules
+from backend.api.situational_analyzer import (
+    analyze_game_situation,
+    get_top_situations,
+    situational_analyzer,
+)
+from backend.api.defense_analyzer import defense_analyzer
+from backend.api.evaluation_pipeline import evaluate_game, evaluate_week
 
 # Project root
 PROJECT_ROOT = Path(__file__).parent
+
+
+def _normalize_param(value, fallback=None):
+    """Convert FastAPI Param defaults to plain values for internal calls."""
+    if isinstance(value, Param):
+        return value.default if value.default is not ... else fallback
+    return fallback if value is None else value
 
 
 @asynccontextmanager
@@ -829,6 +845,307 @@ async def game_deep_dive(game_id: str):
     }
 
 
+# ============ ADVANCED ANALYSIS + EVALUATION ENDPOINTS ============
+
+
+@app.get("/analysis/situational")
+async def get_situational_analysis(
+    game_id: str,
+    home_team: str,
+    away_team: str,
+    season: int = 2024,
+    week: int = 12
+):
+    """Full situational analysis for a matchup (weather, rest, momentum, positional edges)."""
+
+    analysis = analyze_game_situation(game_id, home_team, away_team, season, week)
+
+    return {
+        "game_id": game_id,
+        "matchup": f"{away_team} @ {home_team}",
+        "season": season,
+        "week": week,
+        "home_form": {
+            "team": analysis.home_form.team,
+            "momentum": analysis.home_form.momentum,
+            "form_grade": analysis.home_form.form_grade,
+            "narrative": analysis.home_form.form_narrative,
+            "recent_points": analysis.home_form.recent_points_avg,
+            "season_points": analysis.home_form.season_points_avg
+        },
+        "away_form": {
+            "team": analysis.away_form.team,
+            "momentum": analysis.away_form.momentum,
+            "form_grade": analysis.away_form.form_grade,
+            "narrative": analysis.away_form.form_narrative,
+            "recent_points": analysis.away_form.recent_points_avg,
+            "season_points": analysis.away_form.season_points_avg
+        },
+        "weather": {
+            "temperature": analysis.weather.temperature,
+            "wind": analysis.weather.wind_speed,
+            "is_dome": analysis.weather.is_dome,
+            "narrative": analysis.weather.weather_narrative,
+            "props": analysis.weather.weather_props
+        },
+        "schedule": {
+            "home": {
+                "days_rest": analysis.home_schedule.days_rest,
+                "rest_advantage": analysis.home_schedule.rest_advantage,
+                "narrative": analysis.home_schedule.schedule_narrative
+            },
+            "away": {
+                "days_rest": analysis.away_schedule.days_rest,
+                "rest_advantage": analysis.away_schedule.rest_advantage,
+                "narrative": analysis.away_schedule.schedule_narrative
+            }
+        },
+        "positional_edges": [
+            {
+                "team": edge.team,
+                "position": edge.position,
+                "grade": edge.grade,
+                "edge_score": edge.edge_score,
+                "insight": edge.insight,
+                "props": edge.target_props
+            }
+            for edge in analysis.positional_edges
+        ],
+        "key_situations": analysis.key_situations,
+        "prop_targets": analysis.prop_targets
+    }
+
+
+@app.get("/analysis/team/form")
+async def get_team_trending_form(
+    team: str,
+    season: int = 2024,
+    week: int = 12
+):
+    """Momentum + form check for a team (last 3 vs season)."""
+
+    form = situational_analyzer.get_trending_form(team.upper(), season, week)
+
+    return {
+        "team": team.upper(),
+        "season": season,
+        "week": week,
+        "momentum": form.momentum,
+        "form_grade": form.form_grade,
+        "narrative": form.form_narrative,
+        "scoring": {
+            "recent_avg": form.recent_points_avg,
+            "season_avg": form.season_points_avg,
+            "trend": form.scoring_trend,
+            "trend_pct": form.scoring_trend_pct
+        },
+        "passing": {
+            "recent_avg": form.recent_pass_yards_avg,
+            "season_avg": form.season_pass_yards_avg,
+            "trend": form.pass_trend
+        },
+        "rushing": {
+            "recent_avg": form.recent_rush_yards_avg,
+            "season_avg": form.season_rush_yards_avg,
+            "trend": form.rush_trend
+        },
+        "defense": {
+            "recent_allowed": form.recent_points_allowed_avg,
+            "season_allowed": form.season_points_allowed_avg,
+            "trend": form.defense_trend
+        }
+    }
+
+
+@app.get("/analysis/game/{game_id}/positional")
+async def get_positional_matchups(
+    game_id: str,
+    home_team: str,
+    away_team: str,
+    season: int = 2024,
+    week: int = 12
+):
+    """Positional matchup grades for both teams in a game."""
+
+    analysis = analyze_game_situation(game_id, home_team, away_team, season, week)
+
+    return {
+        "game_id": game_id,
+        "matchup": f"{away_team} @ {home_team}",
+        "season": season,
+        "week": week,
+        "positional_edges": [
+            {
+                "team": edge.team,
+                "position": edge.position,
+                "grade": edge.grade,
+                "edge_score": edge.edge_score,
+                "insight": edge.insight,
+                "props": edge.target_props
+            }
+            for edge in analysis.positional_edges
+        ],
+        "prop_targets": analysis.prop_targets
+    }
+
+
+@app.get("/analysis/defense/{team}/rush")
+async def get_team_rush_defense(team: str, season: int = 2024, last_n_games: int = 5):
+    """Rush defense performance with RB matchups."""
+
+    result = defense_analyzer.get_rush_defense_performance(team, season, last_n_games)
+
+    return {
+        "team": team.upper(),
+        "defense_type": "rush",
+        "insight": result.insight,
+        "yards_allowed_per_game": round(result.avg_yards_allowed, 1),
+        "tds_allowed": result.total_tds_allowed,
+        "ypc_allowed": round(result.avg_ypc, 2),
+        "held_under_pct": result.held_under_pct,
+        "matchups": [
+            {
+                "player": m.player_name,
+                "team": m.team,
+                "week": m.week,
+                "yards": m.yards,
+                "attempts": m.attempts,
+                "ypc": m.ypc,
+                "season_avg": m.season_avg_yards,
+                "vs_avg": f"{'+' if m.yards_diff >= 0 else ''}{m.yards_diff}",
+                "held_under": m.held_under
+            }
+            for m in result.player_matchups
+        ]
+    }
+
+
+@app.get("/analysis/defense/{team}/pass")
+async def get_team_pass_defense(team: str, season: int = 2024, last_n_games: int = 5):
+    """Pass defense performance with QB matchups."""
+
+    result = defense_analyzer.get_pass_defense_performance(team, season, last_n_games)
+
+    return {
+        "team": team.upper(),
+        "defense_type": "pass",
+        "insight": result.insight,
+        "yards_allowed_per_game": round(result.avg_yards_allowed, 1),
+        "tds_allowed": result.total_tds_allowed,
+        "held_under_pct": result.held_under_pct,
+        "matchups": [
+            {
+                "player": m.player_name,
+                "team": m.team,
+                "week": m.week,
+                "yards": m.yards,
+                "attempts": m.attempts,
+                "ypa": m.ypc,
+                "season_avg": m.season_avg_yards,
+                "vs_avg": f"{'+' if m.yards_diff >= 0 else ''}{m.yards_diff}",
+                "held_under": m.held_under
+            }
+            for m in result.player_matchups
+        ]
+    }
+
+
+@app.get("/analysis/defense/{team}")
+async def get_team_defense_summary(team: str, season: int = 2024):
+    """Overall defense summary combining rush + pass analysis."""
+
+    return defense_analyzer.get_defense_summary(team, season)
+
+
+@app.get("/analysis/evaluate/game")
+async def evaluate_game_full(
+    game_id: str,
+    home_team: str,
+    away_team: str,
+    season: int = 2024,
+    week: int = 12
+):
+    """Run the full evaluation pipeline for a single game."""
+
+    result = evaluate_game(game_id, home_team, away_team, season, week)
+
+    return {
+        "game_id": game_id,
+        "matchup": f"{away_team} @ {home_team}",
+        "overall_score": result.overall_score,
+        "overall_grade": result.overall_grade,
+        "game_narrative": result.game_narrative,
+        "categories": {
+            "situational_edge": {
+                "score": result.situational_edge.score if result.situational_edge else 0,
+                "grade": result.situational_edge.grade if result.situational_edge else "C",
+                "factors": result.situational_edge.factors if result.situational_edge else [],
+                "narrative": result.situational_edge.narrative if result.situational_edge else ""
+            },
+            "matchup_quality": {
+                "score": result.matchup_quality.score if result.matchup_quality else 0,
+                "grade": result.matchup_quality.grade if result.matchup_quality else "C",
+                "factors": result.matchup_quality.factors if result.matchup_quality else [],
+                "narrative": result.matchup_quality.narrative if result.matchup_quality else ""
+            },
+            "injury_impact": {
+                "score": result.injury_impact.score if result.injury_impact else 0,
+                "grade": result.injury_impact.grade if result.injury_impact else "C",
+                "factors": result.injury_impact.factors if result.injury_impact else [],
+                "narrative": result.injury_impact.narrative if result.injury_impact else ""
+            },
+            "prop_value": {
+                "score": result.prop_value.score if result.prop_value else 0,
+                "grade": result.prop_value.grade if result.prop_value else "C",
+                "factors": result.prop_value.factors if result.prop_value else [],
+                "narrative": result.prop_value.narrative if result.prop_value else ""
+            }
+        },
+        "key_takeaways": result.key_takeaways,
+        "prop_targets": [
+            {
+                "player": t.player,
+                "team": t.team,
+                "prop_type": t.prop_type,
+                "direction": t.direction,
+                "edge_score": t.edge_score,
+                "rationale": t.rationale,
+                "confidence": t.confidence
+            }
+            for t in result.prop_targets
+        ],
+        "analyzer_outputs": result.analyzer_outputs,
+        "evaluated_at": result.evaluated_at
+    }
+
+
+@app.get("/analysis/evaluate/week")
+async def evaluate_week_full(week: int, season: int = 2024):
+    """Evaluate all games in a week and return ranked opportunities."""
+
+    results = evaluate_week(season, week)
+
+    return {
+        "season": season,
+        "week": week,
+        "total_games": len(results),
+        "games": [
+            {
+                "game_id": r.game_id,
+                "matchup": f"{r.away_team} @ {r.home_team}",
+                "overall_score": r.overall_score,
+                "overall_grade": r.overall_grade,
+                "key_takeaways": r.key_takeaways[:3],
+                "top_props": [
+                    {"team": t.team, "prop": f"{t.prop_type} {t.direction}", "edge": t.edge_score}
+                    for t in r.prop_targets[:3]
+                ]
+            }
+            for r in results
+        ]
+    }
+
+
 # ============ COMPREHENSIVE INTELLIGENCE ENDPOINTS ============
 
 @app.get("/intelligence/matchup/{game_id}")
@@ -1333,12 +1650,40 @@ async def get_schedule(
     """Get full season schedule."""
     schedule = SchedulesRepository.get_schedule(season, week)
 
+    # Auto-populate schedule if missing so the MCP can work out-of-the-box
+    if len(schedule) == 0:
+        # Attempt to load schedule for the requested season
+        populate_result = await populate_schedule(season)
+
+        # Re-query after population attempt
+        schedule = SchedulesRepository.get_schedule(season, week)
+
+        if len(schedule) == 0:
+            # Surface the population error to the caller
+            return {
+                "source": "LOCAL_DB",
+                "season": season,
+                "week": week,
+                "games": [],
+                "count": 0,
+                "error": populate_result if isinstance(populate_result, dict) else {
+                    "message": "Unable to load schedule"
+                },
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        # Otherwise include a hint that we populated data for them
+        populate_note = populate_result if isinstance(populate_result, dict) else {}
+    else:
+        populate_note = {}
+
     return {
         "source": "LOCAL_DB",
         "season": season,
         "week": week,
         "games": schedule,
         "count": len(schedule),
+        "populated": populate_note,
         "timestamp": datetime.now().isoformat()
     }
 
@@ -1379,6 +1724,9 @@ async def populate_player_stats(
     Loads weekly stats for all players.
     """
     import pandas as pd
+
+    season = _normalize_param(season, 2025)
+    week = _normalize_param(week)
 
     stats_file = PROJECT_ROOT / "inputs" / f"player_stats_{season}.csv"
     if not stats_file.exists():
@@ -1455,6 +1803,8 @@ async def populate_schedule(season: int = Query(2025, description="NFL season"))
     """Populate full season schedule from nflverse."""
     import pandas as pd
 
+    season = _normalize_param(season, 2025)
+
     # Look for schedule file
     schedule_file = None
     for pattern in [f"schedules.csv", f"schedule_{season}.csv", "schedules_*.csv"]:
@@ -1506,11 +1856,23 @@ async def populate_rosters(
     """Populate rosters from nflverse."""
     import pandas as pd
 
-    roster_file = PROJECT_ROOT / "inputs" / f"weekly_rosters_{season}.csv"
-    if not roster_file.exists():
-        roster_file = PROJECT_ROOT / "inputs" / "weekly_rosters.csv"
+    season = _normalize_param(season, 2025)
+    week = _normalize_param(week, 12)
 
-    if not roster_file.exists():
+    roster_file = None
+    roster_dir = PROJECT_ROOT / "inputs"
+    for pattern in [
+        f"weekly_rosters_{season}.csv",
+        f"rosters_weekly_{season}.csv",
+        "weekly_rosters.csv",
+        "rosters_weekly_*.csv",
+    ]:
+        matches = list(roster_dir.glob(pattern))
+        if matches:
+            roster_file = matches[0]
+            break
+
+    if not roster_file or not roster_file.exists():
         return {
             "error": "Roster file not found",
             "message": "Run /fetch/nflverse first"
@@ -1576,6 +1938,11 @@ async def populate_all_data(
 
     This is the recommended way to initialize the database.
     """
+    season = _normalize_param(season, 2025)
+    week = _normalize_param(week, 12)
+    fetch_first = _normalize_param(fetch_first, False)
+    include_odds = _normalize_param(include_odds, True)
+
     results = {}
 
     # Optionally fetch data first
@@ -1595,7 +1962,7 @@ async def populate_all_data(
 
     # Populate player stats
     try:
-        stats_result = await populate_player_stats(season)
+        stats_result = await populate_player_stats(season, None)
         results["player_stats"] = f"loaded {stats_result.get('records_loaded', 0)} records"
     except Exception as e:
         results["player_stats"] = f"error: {str(e)}"

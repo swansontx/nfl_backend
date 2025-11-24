@@ -48,6 +48,16 @@ All endpoints required by frontend are now implemented!
 - ✅ `GET /api/v1/standings` - NFL standings by division
 - ✅ `GET /api/v1/news` - Latest NFL news and injuries
 
+### Advanced Analysis Endpoints (NEW)
+- ✅ `GET /analysis/situational` - Weather, rest, momentum, and positional edge breakdown for a matchup
+- ✅ `GET /analysis/team/form` - Team momentum + efficiency trend snapshot
+- ✅ `GET /analysis/game/{game_id}/positional` - Position-by-position matchup grades and prop targets
+- ✅ `GET /analysis/defense/{team}` - Combined rush/pass defense summary with player-level matchups
+- ✅ `GET /analysis/defense/{team}/pass` - Pass defense performance vs recent quarterbacks
+- ✅ `GET /analysis/defense/{team}/rush` - Rush defense performance vs recent running backs
+- ✅ `GET /analysis/evaluate/game` - Full game evaluation combining situational, matchup, injury, and prop analyzers
+- ✅ `GET /analysis/evaluate/week` - Weekly ranking of games with top prop targets
+
 ---
 
 ## Quick Examples
@@ -90,6 +100,26 @@ curl http://localhost:8000/api/v1/props/trending?week=12&limit=20
 ### Get NFL Standings
 ```bash
 curl http://localhost:8000/api/v1/standings?season=2024
+```
+
+### Get Situational Analysis for a Game
+```bash
+curl "http://localhost:8000/analysis/situational?game_id=2024_12_KC_BUF&home_team=KC&away_team=BUF&season=2024&week=12"
+```
+
+### Get Defense Summary for a Team
+```bash
+curl http://localhost:8000/analysis/defense/KC?season=2024
+```
+
+### Run Full Game Evaluation
+```bash
+curl "http://localhost:8000/analysis/evaluate/game?game_id=2024_12_KC_BUF&home_team=KC&away_team=BUF&season=2024&week=12"
+```
+
+### Rank All Games in a Week
+```bash
+curl "http://localhost:8000/analysis/evaluate/week?season=2024&week=12"
 ```
 
 ---
