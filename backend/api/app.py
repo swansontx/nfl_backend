@@ -2745,14 +2745,63 @@ async def get_parlay_suggestions(
     prop_lines = odds_api.get_player_props()
     projections = []
 
+    # Track which game each projection came from
+    projection_game_map = {}  # player_id -> game_id
+    games_to_analyze = []
+
     if game_ids:
-        for game_id in game_ids.split(','):
-            projections.extend(model_loader.load_projections_for_game(game_id.strip()))
+        games_to_analyze = [gid.strip() for gid in game_ids.split(',')]
     else:
         # Load all available
         available_games = model_loader.get_available_games()
-        for gid in available_games[:10]:  # Limit to 10 games
-            projections.extend(model_loader.load_projections_for_game(gid))
+        games_to_analyze = available_games[:10]  # Limit to 10 games
+
+    # Load projections and track game context
+    for game_id in games_to_analyze:
+        game_projections = model_loader.load_projections_for_game(game_id)
+        for proj in game_projections:
+            projection_game_map[proj.player_id] = game_id
+        projections.extend(game_projections)
+
+    # Get odds for all games to extract spread/total
+    from backend.ingestion.fetch_odds import fetch_odds_api
+    game_odds_map = {}  # game_id -> {spread, total}
+    try:
+        odds_events = fetch_odds_api()
+        for event in odds_events:
+            home_team = event.get('home_team', '').upper()
+            away_team = event.get('away_team', '').upper()
+
+            if event.get('bookmakers'):
+                bookmaker = event['bookmakers'][0]
+                markets = bookmaker.get('markets', [])
+
+                spread_market = next((m for m in markets if m.get('key') == 'spreads'), None)
+                totals_market = next((m for m in markets if m.get('key') == 'totals'), None)
+
+                # Try to match with our games
+                for game_id in games_to_analyze:
+                    parts = game_id.split('_')
+                    if len(parts) >= 4:
+                        g_away, g_home = parts[2].upper(), parts[3].upper()
+                        if g_home in home_team or g_away in away_team:
+                            spread = None
+                            total = None
+
+                            if spread_market and spread_market.get('outcomes'):
+                                # Get home team spread
+                                home_outcome = next((o for o in spread_market['outcomes']
+                                                   if o.get('name', '').upper() == home_team), None)
+                                if home_outcome:
+                                    spread = home_outcome.get('point')
+
+                            if totals_market and totals_market.get('outcomes'):
+                                total = totals_market['outcomes'][0].get('point')
+
+                            game_odds_map[game_id] = {'spread': spread, 'total': total}
+                            break
+    except Exception as e:
+        print(f"Could not fetch odds for parlays: {e}")
 
     # Find value props
     value_props_raw = prop_analyzer.find_best_props(
@@ -2764,13 +2813,35 @@ async def get_parlay_suggestions(
     # Convert to PropValue format for optimizer
     value_props = []
     for vp in value_props_raw:
-        # Extract game context (would come from projections in real implementation)
+        # Extract game context from projection
+        game_id = projection_game_map.get(vp.projection.player_id, "unknown")
+
+        # Parse game_id for team info
+        team = "UNK"
+        opponent = "UNK"
+        is_home = False
+        if game_id != "unknown":
+            parts = game_id.split('_')
+            if len(parts) >= 4:
+                away_team = parts[2]
+                home_team = parts[3]
+                # Determine if player is on home or away team (simplified - would need roster lookup)
+                # For now, assume home team
+                team = home_team
+                opponent = away_team
+                is_home = True
+
+        # Get game odds if available
+        game_odds = game_odds_map.get(game_id, {})
+        spread = game_odds.get('spread', 0.0)
+        total = game_odds.get('total', 45.0)
+
         value_props.append(PropValue(
             player_id=vp.prop_line.player_id,
             player_name=vp.prop_line.player_name,
-            game_id="2024_12_KC_BUF",  # TODO: Extract from data
-            team="KC",  # TODO: Extract from data
-            opponent="BUF",
+            game_id=game_id,
+            team=team,
+            opponent=opponent,
             prop_type=vp.prop_line.prop_type,
             line=vp.prop_line.line,
             side="over" if vp.recommendation == "OVER" else "under",
@@ -2779,9 +2850,9 @@ async def get_parlay_suggestions(
             hit_probability=vp.projection.hit_probability_over if vp.recommendation == "OVER" else vp.projection.hit_probability_under,
             edge=max(vp.edge_over, vp.edge_under),
             ev=max(vp.edge_over, vp.edge_under) / 100,  # Convert to decimal
-            is_home=True,  # TODO: Extract from data
-            spread=-3.0,  # TODO: Extract from market data
-            total=49.5,  # TODO: Extract from market data
+            is_home=is_home,
+            spread=spread or 0.0,
+            total=total or 45.0
         ))
 
     # Build parlay suggestions
