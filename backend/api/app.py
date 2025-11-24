@@ -2745,14 +2745,63 @@ async def get_parlay_suggestions(
     prop_lines = odds_api.get_player_props()
     projections = []
 
+    # Track which game each projection came from
+    projection_game_map = {}  # player_id -> game_id
+    games_to_analyze = []
+
     if game_ids:
-        for game_id in game_ids.split(','):
-            projections.extend(model_loader.load_projections_for_game(game_id.strip()))
+        games_to_analyze = [gid.strip() for gid in game_ids.split(',')]
     else:
         # Load all available
         available_games = model_loader.get_available_games()
-        for gid in available_games[:10]:  # Limit to 10 games
-            projections.extend(model_loader.load_projections_for_game(gid))
+        games_to_analyze = available_games[:10]  # Limit to 10 games
+
+    # Load projections and track game context
+    for game_id in games_to_analyze:
+        game_projections = model_loader.load_projections_for_game(game_id)
+        for proj in game_projections:
+            projection_game_map[proj.player_id] = game_id
+        projections.extend(game_projections)
+
+    # Get odds for all games to extract spread/total
+    from backend.ingestion.fetch_odds import fetch_odds_api
+    game_odds_map = {}  # game_id -> {spread, total}
+    try:
+        odds_events = fetch_odds_api()
+        for event in odds_events:
+            home_team = event.get('home_team', '').upper()
+            away_team = event.get('away_team', '').upper()
+
+            if event.get('bookmakers'):
+                bookmaker = event['bookmakers'][0]
+                markets = bookmaker.get('markets', [])
+
+                spread_market = next((m for m in markets if m.get('key') == 'spreads'), None)
+                totals_market = next((m for m in markets if m.get('key') == 'totals'), None)
+
+                # Try to match with our games
+                for game_id in games_to_analyze:
+                    parts = game_id.split('_')
+                    if len(parts) >= 4:
+                        g_away, g_home = parts[2].upper(), parts[3].upper()
+                        if g_home in home_team or g_away in away_team:
+                            spread = None
+                            total = None
+
+                            if spread_market and spread_market.get('outcomes'):
+                                # Get home team spread
+                                home_outcome = next((o for o in spread_market['outcomes']
+                                                   if o.get('name', '').upper() == home_team), None)
+                                if home_outcome:
+                                    spread = home_outcome.get('point')
+
+                            if totals_market and totals_market.get('outcomes'):
+                                total = totals_market['outcomes'][0].get('point')
+
+                            game_odds_map[game_id] = {'spread': spread, 'total': total}
+                            break
+    except Exception as e:
+        print(f"Could not fetch odds for parlays: {e}")
 
     # Find value props
     value_props_raw = prop_analyzer.find_best_props(
@@ -2764,13 +2813,35 @@ async def get_parlay_suggestions(
     # Convert to PropValue format for optimizer
     value_props = []
     for vp in value_props_raw:
-        # Extract game context (would come from projections in real implementation)
+        # Extract game context from projection
+        game_id = projection_game_map.get(vp.projection.player_id, "unknown")
+
+        # Parse game_id for team info
+        team = "UNK"
+        opponent = "UNK"
+        is_home = False
+        if game_id != "unknown":
+            parts = game_id.split('_')
+            if len(parts) >= 4:
+                away_team = parts[2]
+                home_team = parts[3]
+                # Determine if player is on home or away team (simplified - would need roster lookup)
+                # For now, assume home team
+                team = home_team
+                opponent = away_team
+                is_home = True
+
+        # Get game odds if available
+        game_odds = game_odds_map.get(game_id, {})
+        spread = game_odds.get('spread', 0.0)
+        total = game_odds.get('total', 45.0)
+
         value_props.append(PropValue(
             player_id=vp.prop_line.player_id,
             player_name=vp.prop_line.player_name,
-            game_id="2024_12_KC_BUF",  # TODO: Extract from data
-            team="KC",  # TODO: Extract from data
-            opponent="BUF",
+            game_id=game_id,
+            team=team,
+            opponent=opponent,
             prop_type=vp.prop_line.prop_type,
             line=vp.prop_line.line,
             side="over" if vp.recommendation == "OVER" else "under",
@@ -2779,9 +2850,9 @@ async def get_parlay_suggestions(
             hit_probability=vp.projection.hit_probability_over if vp.recommendation == "OVER" else vp.projection.hit_probability_under,
             edge=max(vp.edge_over, vp.edge_under),
             ev=max(vp.edge_over, vp.edge_under) / 100,  # Convert to decimal
-            is_home=True,  # TODO: Extract from data
-            spread=-3.0,  # TODO: Extract from market data
-            total=49.5,  # TODO: Extract from market data
+            is_home=is_home,
+            spread=spread or 0.0,
+            total=total or 45.0
         ))
 
     # Build parlay suggestions
@@ -2974,6 +3045,349 @@ async def log_recommendation(recommendation: Dict):
         "status": "logged",
         "bet_id": bet_id,
         "message": "Recommendation logged for CLV tracking" if recommendation.get('actually_bet') else "Recommendation logged (not bet)"
+    }
+
+
+# ============================================================================
+# Game-Level Betting Markets
+# ============================================================================
+
+@app.get('/api/v1/betting/game-markets/{game_id}', tags=['Betting', 'Game Markets'])
+async def analyze_game_markets(
+    game_id: str,
+    home_team: Optional[str] = None,
+    away_team: Optional[str] = None,
+    week: Optional[int] = None
+):
+    """COMPLETE game-level betting market analysis.
+
+    Analyzes spreads, moneylines, and over/unders with:
+    - Game outcome predictions (score, win probabilities)
+    - Spread analysis with edge calculations
+    - Total (O/U) analysis with edge calculations
+    - Moneyline value assessment
+    - Best bet recommendation
+
+    Args:
+        game_id: Game ID (e.g., '2025_12_BUF_KC')
+        home_team: Home team (optional, extracted from game_id if not provided)
+        away_team: Away team (optional, extracted from game_id if not provided)
+        week: Week number (optional, extracted from game_id if not provided)
+
+    Returns:
+        Complete game market analysis with predictions and recommendations
+    """
+    from backend.analysis.game_markets import GameMarketAnalyzer
+    from backend.ingestion.fetch_odds import fetch_odds_api
+
+    # Parse game_id if teams not provided
+    try:
+        parts = game_id.split('_')
+        if len(parts) >= 4:
+            season = int(parts[0])
+            week = week or int(parts[1])
+            away_team = away_team or parts[2]
+            home_team = home_team or parts[3]
+        else:
+            raise ValueError("Invalid game_id format")
+    except Exception as e:
+        return {
+            "error": "Invalid game_id",
+            "message": f"Expected format: {{season}}_{{week}}_{{away}}_{{home}}. Error: {e}"
+        }
+
+    # Initialize analyzer
+    analyzer = GameMarketAnalyzer(season=season)
+
+    # Fetch current market odds
+    market_data = None
+    try:
+        odds_events = fetch_odds_api()
+
+        # Find matching game
+        for event in odds_events:
+            event_home = event.get('home_team', '').upper()
+            event_away = event.get('away_team', '').upper()
+
+            if (home_team.upper() in event_home and away_team.upper() in event_away):
+                # Extract market data
+                if event.get('bookmakers'):
+                    bookmaker = event['bookmakers'][0]  # First bookmaker (usually consensus)
+                    markets = bookmaker.get('markets', [])
+
+                    market_data = {}
+
+                    # Spread market
+                    spread_market = next((m for m in markets if m.get('key') == 'spreads'), None)
+                    if spread_market and spread_market.get('outcomes'):
+                        home_spread = next((o for o in spread_market['outcomes']
+                                          if home_team.upper() in o.get('name', '').upper()), None)
+                        if home_spread:
+                            market_data['spread'] = home_spread.get('point')
+                            market_data['spread_odds'] = home_spread.get('price', -110)
+
+                    # Totals market
+                    totals_market = next((m for m in markets if m.get('key') == 'totals'), None)
+                    if totals_market and totals_market.get('outcomes'):
+                        market_data['total'] = totals_market['outcomes'][0].get('point')
+                        market_data['total_odds'] = totals_market['outcomes'][0].get('price', -110)
+
+                    # Moneyline market
+                    h2h_market = next((m for m in markets if m.get('key') == 'h2h'), None)
+                    if h2h_market and h2h_market.get('outcomes'):
+                        home_ml = next((o for o in h2h_market['outcomes']
+                                      if home_team.upper() in o.get('name', '').upper()), None)
+                        away_ml = next((o for o in h2h_market['outcomes']
+                                      if away_team.upper() in o.get('name', '').upper()), None)
+                        if home_ml and away_ml:
+                            market_data['home_ml'] = home_ml.get('price')
+                            market_data['away_ml'] = away_ml.get('price')
+
+                break
+
+    except Exception as e:
+        print(f"Could not fetch market odds: {e}")
+
+    # Analyze game
+    analysis = analyzer.analyze_game(
+        game_id=game_id,
+        home_team=home_team,
+        away_team=away_team,
+        week=week,
+        market_data=market_data
+    )
+
+    # Format response
+    response = {
+        "game_id": game_id,
+        "home_team": home_team,
+        "away_team": away_team,
+        "week": week,
+
+        "prediction": {
+            "home_score": analysis.prediction.home_score,
+            "away_score": analysis.prediction.away_score,
+            "home_win_prob": analysis.prediction.home_win_prob,
+            "away_win_prob": analysis.prediction.away_win_prob,
+            "predicted_spread": analysis.prediction.predicted_spread,
+            "predicted_total": analysis.prediction.predicted_total,
+            "confidence": analysis.prediction.confidence
+        },
+
+        "markets": {},
+        "best_bet": None
+    }
+
+    # Add market analyses
+    if analysis.spread_analysis:
+        response["markets"]["spread"] = {
+            "market_line": analysis.spread_analysis.market_line,
+            "market_odds": analysis.spread_analysis.market_odds,
+            "predicted_spread": analysis.spread_analysis.predicted_value,
+            "edge": analysis.spread_analysis.edge,
+            "ev": analysis.spread_analysis.ev,
+            "recommendation": analysis.spread_analysis.recommendation,
+            "confidence": analysis.spread_analysis.confidence,
+            "reasoning": analysis.spread_analysis.reasoning
+        }
+
+    if analysis.total_analysis:
+        response["markets"]["total"] = {
+            "market_line": analysis.total_analysis.market_line,
+            "market_odds": analysis.total_analysis.market_odds,
+            "predicted_total": analysis.total_analysis.predicted_value,
+            "edge": analysis.total_analysis.edge,
+            "ev": analysis.total_analysis.ev,
+            "recommendation": analysis.total_analysis.recommendation,
+            "confidence": analysis.total_analysis.confidence,
+            "reasoning": analysis.total_analysis.reasoning
+        }
+
+    if analysis.moneyline_home_analysis:
+        response["markets"]["moneyline_home"] = {
+            "market_odds": analysis.moneyline_home_analysis.market_odds,
+            "predicted_win_prob": analysis.moneyline_home_analysis.predicted_value,
+            "edge": analysis.moneyline_home_analysis.edge,
+            "ev": analysis.moneyline_home_analysis.ev,
+            "recommendation": analysis.moneyline_home_analysis.recommendation,
+            "reasoning": analysis.moneyline_home_analysis.reasoning
+        }
+
+    if analysis.moneyline_away_analysis:
+        response["markets"]["moneyline_away"] = {
+            "market_odds": analysis.moneyline_away_analysis.market_odds,
+            "predicted_win_prob": analysis.moneyline_away_analysis.predicted_value,
+            "edge": analysis.moneyline_away_analysis.edge,
+            "ev": analysis.moneyline_away_analysis.ev,
+            "recommendation": analysis.moneyline_away_analysis.recommendation,
+            "reasoning": analysis.moneyline_away_analysis.reasoning
+        }
+
+    # Best bet
+    if analysis.best_bet:
+        response["best_bet"] = {
+            "market": analysis.best_bet,
+            "ev": analysis.best_bet_ev
+        }
+
+    return response
+
+
+@app.get('/api/v1/betting/game-markets/week/{week}', tags=['Betting', 'Game Markets'])
+async def analyze_week_game_markets(
+    week: int,
+    season: Optional[int] = None,
+    min_ev: float = 0.02
+):
+    """Find best game-level bets across all games in a week.
+
+    Scans all games for spreads, totals, and moneylines with positive EV.
+
+    Args:
+        week: Week number
+        season: Season year (default: current season)
+        min_ev: Minimum expected value to include (default 2%)
+
+    Returns:
+        List of best game bets sorted by EV
+    """
+    from backend.analysis.game_markets import GameMarketAnalyzer
+    from backend.ingestion.fetch_odds import fetch_odds_api
+    from pathlib import Path
+    import pandas as pd
+
+    season = season or CURRENT_SEASON
+
+    # Load schedule
+    schedule_file = Path(f'inputs/{season}_schedule.parquet')
+    if not schedule_file.exists():
+        return {
+            "error": "Schedule not available",
+            "message": f"No schedule found for season {season}"
+        }
+
+    schedule = pd.read_parquet(schedule_file)
+    week_games = schedule[schedule['week'] == week]
+
+    # Fetch market odds
+    market_odds_map = {}
+    try:
+        odds_events = fetch_odds_api()
+        for event in odds_events:
+            game_key = f"{event.get('home_team', '')}_{event.get('away_team', '')}"
+
+            if event.get('bookmakers'):
+                bookmaker = event['bookmakers'][0]
+                markets = bookmaker.get('markets', [])
+
+                market_data = {}
+
+                # Extract spread, total, moneyline
+                spread_market = next((m for m in markets if m.get('key') == 'spreads'), None)
+                if spread_market and spread_market.get('outcomes'):
+                    home_spread = spread_market['outcomes'][0]
+                    market_data['spread'] = home_spread.get('point')
+                    market_data['spread_odds'] = home_spread.get('price', -110)
+
+                totals_market = next((m for m in markets if m.get('key') == 'totals'), None)
+                if totals_market and totals_market.get('outcomes'):
+                    market_data['total'] = totals_market['outcomes'][0].get('point')
+                    market_data['total_odds'] = totals_market['outcomes'][0].get('price', -110)
+
+                h2h_market = next((m for m in markets if m.get('key') == 'h2h'), None)
+                if h2h_market and h2h_market.get('outcomes'):
+                    if len(h2h_market['outcomes']) >= 2:
+                        market_data['home_ml'] = h2h_market['outcomes'][0].get('price')
+                        market_data['away_ml'] = h2h_market['outcomes'][1].get('price')
+
+                market_odds_map[game_key] = market_data
+
+    except Exception as e:
+        print(f"Could not fetch odds: {e}")
+
+    # Analyze each game
+    analyzer = GameMarketAnalyzer(season=season)
+    value_bets = []
+
+    for _, game in week_games.iterrows():
+        home_team = game['home_team']
+        away_team = game['away_team']
+        game_id = f"{season}_{week}_{away_team}_{home_team}"
+
+        # Find market data
+        game_key = f"{home_team}_{away_team}"
+        market_data = market_odds_map.get(game_key)
+
+        # Analyze
+        analysis = analyzer.analyze_game(
+            game_id=game_id,
+            home_team=home_team,
+            away_team=away_team,
+            week=week,
+            market_data=market_data
+        )
+
+        # Collect value bets
+        if analysis.spread_analysis and analysis.spread_analysis.ev >= min_ev:
+            value_bets.append({
+                "game_id": game_id,
+                "game": f"{away_team} @ {home_team}",
+                "market": "spread",
+                "recommendation": analysis.spread_analysis.recommendation,
+                "line": analysis.spread_analysis.market_line,
+                "edge": analysis.spread_analysis.edge,
+                "ev": analysis.spread_analysis.ev,
+                "reasoning": analysis.spread_analysis.reasoning
+            })
+
+        if analysis.total_analysis and analysis.total_analysis.ev >= min_ev:
+            value_bets.append({
+                "game_id": game_id,
+                "game": f"{away_team} @ {home_team}",
+                "market": "total",
+                "recommendation": analysis.total_analysis.recommendation,
+                "line": analysis.total_analysis.market_line,
+                "edge": analysis.total_analysis.edge,
+                "ev": analysis.total_analysis.ev,
+                "reasoning": analysis.total_analysis.reasoning
+            })
+
+        if analysis.moneyline_home_analysis and analysis.moneyline_home_analysis.ev >= min_ev:
+            value_bets.append({
+                "game_id": game_id,
+                "game": f"{away_team} @ {home_team}",
+                "market": "moneyline",
+                "team": home_team,
+                "recommendation": "BET",
+                "odds": analysis.moneyline_home_analysis.market_odds,
+                "edge": analysis.moneyline_home_analysis.edge,
+                "ev": analysis.moneyline_home_analysis.ev,
+                "reasoning": analysis.moneyline_home_analysis.reasoning
+            })
+
+        if analysis.moneyline_away_analysis and analysis.moneyline_away_analysis.ev >= min_ev:
+            value_bets.append({
+                "game_id": game_id,
+                "game": f"{away_team} @ {home_team}",
+                "market": "moneyline",
+                "team": away_team,
+                "recommendation": "BET",
+                "odds": analysis.moneyline_away_analysis.market_odds,
+                "edge": analysis.moneyline_away_analysis.edge,
+                "ev": analysis.moneyline_away_analysis.ev,
+                "reasoning": analysis.moneyline_away_analysis.reasoning
+            })
+
+    # Sort by EV
+    value_bets.sort(key=lambda x: x['ev'], reverse=True)
+
+    return {
+        "week": week,
+        "season": season,
+        "total_games": len(week_games),
+        "value_bets_found": len(value_bets),
+        "min_ev_threshold": min_ev,
+        "bets": value_bets
     }
 
 

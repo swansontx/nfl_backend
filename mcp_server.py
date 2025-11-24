@@ -763,6 +763,132 @@ async def list_tools():
                     }
                 }
             }
+        ),
+
+        # ========== ADVANCED ANALYSIS TOOLS ==========
+        Tool(
+            name="build_parlay",
+            description="BUILD SMART PARLAY - Create correlation-aware parlays with optimal legs across multiple games. Accounts for same-game correlation, game script scenarios, and risk-adjusted sizing. Returns parlay suggestions with combined odds, EV, and recommended stake.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "game_ids": {
+                        "type": "string",
+                        "description": "Comma-separated game IDs to include (optional - uses all available if not specified)"
+                    },
+                    "max_legs": {
+                        "type": "integer",
+                        "description": "Maximum legs per parlay (default 4)",
+                        "default": 4
+                    },
+                    "min_parlay_ev": {
+                        "type": "number",
+                        "description": "Minimum expected value for parlay (default 10%)",
+                        "default": 0.10
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Number of parlay suggestions to return (default 10)",
+                        "default": 10
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="get_prop_sheet",
+            description="COMPLETE PROP SHEET - Get comprehensive prop sheet for a game with all available props, model projections, value grades (A+ to C), and top recommended plays. Includes odds from sportsbooks when available.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "game_id": {
+                        "type": "string",
+                        "description": "Game ID (e.g., '2025_12_BUF_KC')"
+                    }
+                },
+                "required": ["game_id"]
+            }
+        ),
+        Tool(
+            name="compare_players",
+            description="PLAYER COMPARISON - Compare props and projections for multiple players head-to-head. Shows projections, confidence intervals, hit probabilities, trends, and matchup grades for each player.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "player_ids": {
+                        "type": "string",
+                        "description": "Comma-separated player IDs (e.g., 'MAH0, ALL0')"
+                    },
+                    "prop_type": {
+                        "type": "string",
+                        "description": "Prop type to compare (e.g., 'passing_yards', 'rushing_yards', 'receiving_yards')",
+                        "default": "passing_yards"
+                    }
+                },
+                "required": ["player_ids"]
+            }
+        ),
+        Tool(
+            name="get_nfl_news",
+            description="NFL NEWS FEED - Latest NFL news from NFL.com and ESPN RSS feeds plus current injury reports all in one place. Filter by category (injury, news, analysis) or team.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Number of news items to return (default 20)",
+                        "default": 20
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Filter by category: injury, news, analysis",
+                        "enum": ["injury", "news", "analysis"]
+                    },
+                    "team": {
+                        "type": "string",
+                        "description": "Filter by team abbreviation (e.g., 'BUF', 'KC')"
+                    }
+                }
+            }
+        ),
+
+        # ========== GAME-LEVEL BETTING MARKETS ==========
+        Tool(
+            name="analyze_game_markets",
+            description="COMPLETE GAME MARKET ANALYSIS - Analyze spreads, moneylines, and over/unders for a specific game. Returns game outcome predictions (scores, win probabilities), spread analysis with edge, total (O/U) analysis with edge, moneyline value, and best bet recommendation. USE THIS when asked about game outcomes, spreads, totals, or 'who wins?'",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "game_id": {
+                        "type": "string",
+                        "description": "Game ID (e.g., '2025_12_BUF_KC')"
+                    }
+                },
+                "required": ["game_id"]
+            }
+        ),
+        Tool(
+            name="best_game_bets_week",
+            description="BEST GAME BETS FOR WEEK - Find the best game-level bets (spreads, totals, moneylines) across all games in a week. Returns value bets sorted by expected value. USE THIS when asked for 'best game bets', 'game picks', or 'who should I bet on?'",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number",
+                        "default": 12
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2025
+                    },
+                    "min_ev": {
+                        "type": "number",
+                        "description": "Minimum expected value threshold (default 2%)",
+                        "default": 0.02
+                    }
+                }
+            }
         )
     ]
 
@@ -1113,6 +1239,71 @@ async def call_tool(name: str, arguments: dict):
                 response = await client.get(
                     f"{API_BASE}/analysis/quick-props",
                     params=params
+                )
+
+            # ========== ADVANCED ANALYSIS TOOLS ==========
+            elif name == "build_parlay":
+                game_ids = arguments.get("game_ids")
+                max_legs = arguments.get("max_legs", 4)
+                min_parlay_ev = arguments.get("min_parlay_ev", 0.10)
+                limit = arguments.get("limit", 10)
+                params = {
+                    "max_legs": max_legs,
+                    "min_parlay_ev": min_parlay_ev,
+                    "limit": limit
+                }
+                if game_ids:
+                    params["game_ids"] = game_ids
+                response = await client.get(
+                    f"{API_BASE}/api/v1/betting/parlays/suggestions",
+                    params=params
+                )
+
+            elif name == "get_prop_sheet":
+                game_id = arguments.get("game_id", "")
+                response = await client.get(
+                    f"{API_BASE}/api/v1/games/{game_id}/prop-sheet"
+                )
+
+            elif name == "compare_players":
+                player_ids = arguments.get("player_ids", "")
+                prop_type = arguments.get("prop_type", "passing_yards")
+                response = await client.get(
+                    f"{API_BASE}/api/v1/props/compare",
+                    params={
+                        "player_ids": player_ids,
+                        "prop_type": prop_type
+                    }
+                )
+
+            elif name == "get_nfl_news":
+                limit = arguments.get("limit", 20)
+                category = arguments.get("category")
+                team = arguments.get("team")
+                params = {"limit": limit}
+                if category:
+                    params["category"] = category
+                if team:
+                    params["team"] = team
+                response = await client.get(
+                    f"{API_BASE}/api/v1/news",
+                    params=params
+                )
+
+            # ========== GAME-LEVEL BETTING MARKETS ==========
+            elif name == "analyze_game_markets":
+                game_id = arguments.get("game_id", "")
+                response = await client.get(
+                    f"{API_BASE}/api/v1/betting/game-markets/{game_id}"
+                )
+
+            elif name == "best_game_bets_week":
+                week = arguments.get("week", CURRENT_WEEK)
+                season = arguments.get("season", CURRENT_SEASON)
+                min_ev = arguments.get("min_ev", 0.02)
+                response = await client.get(
+                    f"{API_BASE}/api/v1/betting/game-markets/week/{week}",
+                    params={"season": season, "min_ev": min_ev}
                 )
 
             else:
