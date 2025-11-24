@@ -849,6 +849,46 @@ async def list_tools():
                     }
                 }
             }
+        ),
+
+        # ========== GAME-LEVEL BETTING MARKETS ==========
+        Tool(
+            name="analyze_game_markets",
+            description="COMPLETE GAME MARKET ANALYSIS - Analyze spreads, moneylines, and over/unders for a specific game. Returns game outcome predictions (scores, win probabilities), spread analysis with edge, total (O/U) analysis with edge, moneyline value, and best bet recommendation. USE THIS when asked about game outcomes, spreads, totals, or 'who wins?'",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "game_id": {
+                        "type": "string",
+                        "description": "Game ID (e.g., '2025_12_BUF_KC')"
+                    }
+                },
+                "required": ["game_id"]
+            }
+        ),
+        Tool(
+            name="best_game_bets_week",
+            description="BEST GAME BETS FOR WEEK - Find the best game-level bets (spreads, totals, moneylines) across all games in a week. Returns value bets sorted by expected value. USE THIS when asked for 'best game bets', 'game picks', or 'who should I bet on?'",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "week": {
+                        "type": "integer",
+                        "description": "NFL week number",
+                        "default": 12
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "NFL season year",
+                        "default": 2025
+                    },
+                    "min_ev": {
+                        "type": "number",
+                        "description": "Minimum expected value threshold (default 2%)",
+                        "default": 0.02
+                    }
+                }
+            }
         )
     ]
 
@@ -1248,6 +1288,22 @@ async def call_tool(name: str, arguments: dict):
                 response = await client.get(
                     f"{API_BASE}/api/v1/news",
                     params=params
+                )
+
+            # ========== GAME-LEVEL BETTING MARKETS ==========
+            elif name == "analyze_game_markets":
+                game_id = arguments.get("game_id", "")
+                response = await client.get(
+                    f"{API_BASE}/api/v1/betting/game-markets/{game_id}"
+                )
+
+            elif name == "best_game_bets_week":
+                week = arguments.get("week", CURRENT_WEEK)
+                season = arguments.get("season", CURRENT_SEASON)
+                min_ev = arguments.get("min_ev", 0.02)
+                response = await client.get(
+                    f"{API_BASE}/api/v1/betting/game-markets/week/{week}",
+                    params={"season": season, "min_ev": min_ev}
                 )
 
             else:
