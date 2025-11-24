@@ -230,38 +230,27 @@ def save_training_datasets(prop_datasets):
 def main():
     """Main pipeline."""
 
-    # Try to use synthetic data first
-    synthetic_file = Path('inputs/player_stats_2025_synthetic.csv')
+    # Download 2025 player stats
+    stats_2025 = download_player_stats(2025)
 
-    if synthetic_file.exists():
-        print(f"✅ Using synthetic player stats from {synthetic_file}\n")
-        stats_df = pd.read_csv(synthetic_file)
-        year = 2025
+    if len(stats_2025) == 0:
+        print("❌ No player stats available for 2025")
+        print("   Trying 2024 instead...")
+
+        stats_2024 = download_player_stats(2024)
+
+        if len(stats_2024) == 0:
+            print("❌ No player stats available")
+            return
+
+        stats_df = stats_2024
+        year = 2024
         training_weeks = list(range(1, 10))
 
     else:
-        # Download 2025 player stats
-        stats_2025 = download_player_stats(2025)
-
-        if len(stats_2025) == 0:
-            print("❌ No player stats available for 2025")
-            print("   Trying 2024 instead...")
-
-            stats_2024 = download_player_stats(2024)
-
-            if len(stats_2024) == 0:
-                print("❌ No player stats available")
-                print("   Run: python -m backend.analysis.generate_synthetic_player_stats")
-                return
-
-            stats_df = stats_2024
-            year = 2024
-            training_weeks = list(range(1, 10))
-
-        else:
-            stats_df = stats_2025
-            year = 2025
-            training_weeks = list(range(1, 10))
+        stats_df = stats_2025
+        year = 2025
+        training_weeks = list(range(1, 10))
 
     # Analyze stats
     stats_df = analyze_player_stats(stats_df)
