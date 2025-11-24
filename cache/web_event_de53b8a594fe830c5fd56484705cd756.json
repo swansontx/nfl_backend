@@ -1,0 +1,593 @@
+{
+  "id": "de53b8a594fe830c5fd56484705cd756",
+  "sport_key": "americanfootball_nfl",
+  "sport_title": "NFL",
+  "commence_time": "2025-11-27T21:30:00Z",
+  "home_team": "Dallas Cowboys",
+  "away_team": "Kansas City Chiefs",
+  "bookmakers": [
+    {
+      "key": "draftkings",
+      "title": "DraftKings",
+      "last_update": "2025-11-24T20:43:35Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:35Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": 140
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -166
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:35Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": -115,
+              "point": 3.5
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -105,
+              "point": -3.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:35Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 52.5
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 52.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "fanduel",
+      "title": "FanDuel",
+      "last_update": "2025-11-24T20:44:20Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": 152
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -180
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": -105,
+              "point": 3.0
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -115,
+              "point": -3.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -120,
+              "point": 51.5
+            },
+            {
+              "name": "Under",
+              "price": -102,
+              "point": 51.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "mybookieag",
+      "title": "MyBookie.ag",
+      "last_update": "2025-11-24T20:43:51Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": 135
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -173
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": 100,
+              "point": 3.0
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -120,
+              "point": -3.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 52.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 52.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "williamhill_us",
+      "title": "Caesars",
+      "last_update": "2025-11-24T20:42:53Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:42:53Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": 150
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -182
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:42:53Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": -106,
+              "point": 3.0
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -114,
+              "point": -3.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:42:53Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -113,
+              "point": 52.0
+            },
+            {
+              "name": "Under",
+              "price": -108,
+              "point": 52.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "bovada",
+      "title": "Bovada",
+      "last_update": "2025-11-24T20:43:11Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:11Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": 140
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -165
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:11Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": -105,
+              "point": 3.0
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -115,
+              "point": -3.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:11Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 52.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 52.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betmgm",
+      "title": "BetMGM",
+      "last_update": "2025-11-24T20:43:51Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": 155
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -190
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": -115,
+              "point": 3.5
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -105,
+              "point": -3.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 52.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 52.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betus",
+      "title": "BetUS",
+      "last_update": "2025-11-24T20:43:36Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:36Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": 146
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -170
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:36Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": -120,
+              "point": 3.5
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": 100,
+              "point": -3.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:36Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -115,
+              "point": 52.0
+            },
+            {
+              "name": "Under",
+              "price": -105,
+              "point": 52.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betonlineag",
+      "title": "BetOnline.ag",
+      "last_update": "2025-11-24T20:44:22Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": 150
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -171
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": -125,
+              "point": 3.5
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": 105,
+              "point": -3.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -115,
+              "point": 52.0
+            },
+            {
+              "name": "Under",
+              "price": -105,
+              "point": 52.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "lowvig",
+      "title": "LowVig.ag",
+      "last_update": "2025-11-24T20:44:05Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:05Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": 150
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -171
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:05Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": -121,
+              "point": 3.5
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": 110,
+              "point": -3.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:05Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -113,
+              "point": 52.0
+            },
+            {
+              "name": "Under",
+              "price": -102,
+              "point": 52.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betrivers",
+      "title": "BetRivers",
+      "last_update": "2025-11-24T20:44:21Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": 155
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -195
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": -118,
+              "point": 3.5
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -107,
+              "point": -3.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -112,
+              "point": 51.5
+            },
+            {
+              "name": "Under",
+              "price": -114,
+              "point": 51.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "fanatics",
+      "title": "Fanatics",
+      "last_update": "2025-11-24T20:44:21Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": 145
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": -175
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Dallas Cowboys",
+              "price": -120,
+              "point": 3.5
+            },
+            {
+              "name": "Kansas City Chiefs",
+              "price": 100,
+              "point": -3.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 52.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 52.0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

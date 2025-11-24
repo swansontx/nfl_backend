@@ -1,0 +1,593 @@
+{
+  "id": "9da608f5bdae527b280abd61e47a110b",
+  "sport_key": "americanfootball_nfl",
+  "sport_title": "NFL",
+  "commence_time": "2025-11-30T18:00:00Z",
+  "home_team": "New York Jets",
+  "away_team": "Atlanta Falcons",
+  "bookmakers": [
+    {
+      "key": "draftkings",
+      "title": "DraftKings",
+      "last_update": "2025-11-24T20:43:35Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:35Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -142
+            },
+            {
+              "name": "New York Jets",
+              "price": 120
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:35Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -115,
+              "point": -2.5
+            },
+            {
+              "name": "New York Jets",
+              "price": -105,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:35Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -115,
+              "point": 39.5
+            },
+            {
+              "name": "Under",
+              "price": -105,
+              "point": 39.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "williamhill_us",
+      "title": "Caesars",
+      "last_update": "2025-11-24T20:42:53Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:42:53Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -143
+            },
+            {
+              "name": "New York Jets",
+              "price": 119
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:42:53Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -113,
+              "point": -2.5
+            },
+            {
+              "name": "New York Jets",
+              "price": -107,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:42:53Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -112,
+              "point": 39.5
+            },
+            {
+              "name": "Under",
+              "price": -108,
+              "point": 39.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "fanduel",
+      "title": "FanDuel",
+      "last_update": "2025-11-24T20:44:20Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -146
+            },
+            {
+              "name": "New York Jets",
+              "price": 124
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -115,
+              "point": -2.5
+            },
+            {
+              "name": "New York Jets",
+              "price": -105,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 39.5
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 39.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "mybookieag",
+      "title": "MyBookie.ag",
+      "last_update": "2025-11-24T20:43:51Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -149
+            },
+            {
+              "name": "New York Jets",
+              "price": 117
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -110,
+              "point": -2.5
+            },
+            {
+              "name": "New York Jets",
+              "price": -110,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 39.5
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 39.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betus",
+      "title": "BetUS",
+      "last_update": "2025-11-24T20:43:36Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:36Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -145
+            },
+            {
+              "name": "New York Jets",
+              "price": 125
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:36Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -115,
+              "point": -2.0
+            },
+            {
+              "name": "New York Jets",
+              "price": -105,
+              "point": 2.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:36Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 39.5
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 39.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "lowvig",
+      "title": "LowVig.ag",
+      "last_update": "2025-11-24T20:44:05Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:05Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -145
+            },
+            {
+              "name": "New York Jets",
+              "price": 125
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:05Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -110,
+              "point": -2.5
+            },
+            {
+              "name": "New York Jets",
+              "price": 100,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:05Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -107,
+              "point": 39.5
+            },
+            {
+              "name": "Under",
+              "price": -107,
+              "point": 39.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betonlineag",
+      "title": "BetOnline.ag",
+      "last_update": "2025-11-24T20:44:22Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:22Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -145
+            },
+            {
+              "name": "New York Jets",
+              "price": 125
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:22Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -115,
+              "point": -2.5
+            },
+            {
+              "name": "New York Jets",
+              "price": -105,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:22Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 39.5
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 39.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betrivers",
+      "title": "BetRivers",
+      "last_update": "2025-11-24T20:44:21Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -141
+            },
+            {
+              "name": "New York Jets",
+              "price": 112
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -112,
+              "point": -2.5
+            },
+            {
+              "name": "New York Jets",
+              "price": -114,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -114,
+              "point": 39.5
+            },
+            {
+              "name": "Under",
+              "price": -112,
+              "point": 39.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betmgm",
+      "title": "BetMGM",
+      "last_update": "2025-11-24T20:43:51Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -140
+            },
+            {
+              "name": "New York Jets",
+              "price": 118
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -115,
+              "point": -2.5
+            },
+            {
+              "name": "New York Jets",
+              "price": -105,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 40.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 40.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "fanatics",
+      "title": "Fanatics",
+      "last_update": "2025-11-24T20:44:21Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -145
+            },
+            {
+              "name": "New York Jets",
+              "price": 120
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -115,
+              "point": -2.5
+            },
+            {
+              "name": "New York Jets",
+              "price": -105,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 39.5
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 39.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "bovada",
+      "title": "Bovada",
+      "last_update": "2025-11-24T20:43:11Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:11Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -145
+            },
+            {
+              "name": "New York Jets",
+              "price": 125
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:11Z",
+          "outcomes": [
+            {
+              "name": "Atlanta Falcons",
+              "price": -115,
+              "point": -2.5
+            },
+            {
+              "name": "New York Jets",
+              "price": -105,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:11Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 39.5
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 39.5
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

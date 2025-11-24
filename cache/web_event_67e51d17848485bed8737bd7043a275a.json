@@ -1,0 +1,540 @@
+{
+  "id": "67e51d17848485bed8737bd7043a275a",
+  "sport_key": "americanfootball_nfl",
+  "sport_title": "NFL",
+  "commence_time": "2025-11-30T18:00:00Z",
+  "home_team": "Carolina Panthers",
+  "away_team": "Los Angeles Rams",
+  "bookmakers": [
+    {
+      "key": "draftkings",
+      "title": "DraftKings",
+      "last_update": "2025-11-24T20:43:35Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:35Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": 440
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -600
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:35Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": -115,
+              "point": 10.0
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -105,
+              "point": -10.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:35Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -115,
+              "point": 45.5
+            },
+            {
+              "name": "Under",
+              "price": -105,
+              "point": 45.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betus",
+      "title": "BetUS",
+      "last_update": "2025-11-24T20:43:36Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:36Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": 450
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -600
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:36Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": -110,
+              "point": 10.0
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -110,
+              "point": -10.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:36Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 46.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 46.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "williamhill_us",
+      "title": "Caesars",
+      "last_update": "2025-11-24T20:42:53Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:42:53Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": 475
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -675
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:42:53Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": -112,
+              "point": 10.0
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -108,
+              "point": -10.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:42:53Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -105,
+              "point": 46.5
+            },
+            {
+              "name": "Under",
+              "price": -115,
+              "point": 46.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "fanduel",
+      "title": "FanDuel",
+      "last_update": "2025-11-24T20:44:20Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": 540
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -770
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": -120,
+              "point": 10.5
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -102,
+              "point": -10.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -105,
+              "point": 46.5
+            },
+            {
+              "name": "Under",
+              "price": -115,
+              "point": 46.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "mybookieag",
+      "title": "MyBookie.ag",
+      "last_update": "2025-11-24T20:43:51Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": 370
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -549
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": -110,
+              "point": 10.0
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -110,
+              "point": -10.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 45.5
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 45.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "lowvig",
+      "title": "LowVig.ag",
+      "last_update": "2025-11-24T20:44:05Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:05Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": 446
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -600
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:05Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": -108,
+              "point": 10.0
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -102,
+              "point": -10.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:05Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -107,
+              "point": 46.0
+            },
+            {
+              "name": "Under",
+              "price": -107,
+              "point": 46.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betonlineag",
+      "title": "BetOnline.ag",
+      "last_update": "2025-11-24T20:44:22Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:22Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": 446
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -600
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:22Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": -113,
+              "point": 10.0
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -107,
+              "point": -10.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:22Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 46.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 46.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betrivers",
+      "title": "BetRivers",
+      "last_update": "2025-11-24T20:44:21Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": 400
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -590
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": -117,
+              "point": 10.0
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -109,
+              "point": -10.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 46.5
+            },
+            {
+              "name": "Under",
+              "price": -115,
+              "point": 46.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betmgm",
+      "title": "BetMGM",
+      "last_update": "2025-11-24T20:43:51Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": 500
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -700
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": -110,
+              "point": 10.0
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -110,
+              "point": -10.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 46.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 46.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "fanatics",
+      "title": "Fanatics",
+      "last_update": "2025-11-24T20:44:21Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": 425
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -575
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Carolina Panthers",
+              "price": -110,
+              "point": 10.0
+            },
+            {
+              "name": "Los Angeles Rams",
+              "price": -110,
+              "point": -10.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 46.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 46.0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

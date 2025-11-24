@@ -1,0 +1,593 @@
+{
+  "id": "76ac5a8d2c8679ae6ea8861114791bd8",
+  "sport_key": "americanfootball_nfl",
+  "sport_title": "NFL",
+  "commence_time": "2025-11-30T21:25:00Z",
+  "home_team": "Los Angeles Chargers",
+  "away_team": "Las Vegas Raiders",
+  "bookmakers": [
+    {
+      "key": "draftkings",
+      "title": "DraftKings",
+      "last_update": "2025-11-24T20:43:35Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:35Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": 455
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -625
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:35Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": -112,
+              "point": 10.0
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -108,
+              "point": -10.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:35Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -108,
+              "point": 41.5
+            },
+            {
+              "name": "Under",
+              "price": -112,
+              "point": 41.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betus",
+      "title": "BetUS",
+      "last_update": "2025-11-24T20:43:36Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:36Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": 395
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -510
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:36Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": -120,
+              "point": 10.0
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": 100,
+              "point": -10.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:36Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 41.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 41.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "williamhill_us",
+      "title": "Caesars",
+      "last_update": "2025-11-24T20:42:53Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:42:53Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": 425
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -590
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:42:53Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": -108,
+              "point": 9.5
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -112,
+              "point": -9.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:42:53Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -112,
+              "point": 41.0
+            },
+            {
+              "name": "Under",
+              "price": -108,
+              "point": 41.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "fanduel",
+      "title": "FanDuel",
+      "last_update": "2025-11-24T20:44:20Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": 430
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -590
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": -110,
+              "point": 9.5
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -110,
+              "point": -9.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -108,
+              "point": 41.5
+            },
+            {
+              "name": "Under",
+              "price": -112,
+              "point": 41.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "mybookieag",
+      "title": "MyBookie.ag",
+      "last_update": "2025-11-24T20:43:51Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": 360
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -526
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": -110,
+              "point": 9.5
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -110,
+              "point": -9.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 41.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 41.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "lowvig",
+      "title": "LowVig.ag",
+      "last_update": "2025-11-24T20:44:05Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:05Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": 390
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -510
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:05Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": -105,
+              "point": 9.5
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -105,
+              "point": -9.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:05Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -107,
+              "point": 41.0
+            },
+            {
+              "name": "Under",
+              "price": -107,
+              "point": 41.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betonlineag",
+      "title": "BetOnline.ag",
+      "last_update": "2025-11-24T20:44:22Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:22Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": 390
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -510
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:22Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": -110,
+              "point": 9.5
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -110,
+              "point": -9.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:22Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 41.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 41.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betrivers",
+      "title": "BetRivers",
+      "last_update": "2025-11-24T20:44:21Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": 420
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -670
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": -109,
+              "point": 9.5
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -117,
+              "point": -9.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -113,
+              "point": 41.0
+            },
+            {
+              "name": "Under",
+              "price": -113,
+              "point": 41.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betmgm",
+      "title": "BetMGM",
+      "last_update": "2025-11-24T20:43:51Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": 425
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -600
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": -105,
+              "point": 9.5
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -115,
+              "point": -9.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 41.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 41.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "fanatics",
+      "title": "Fanatics",
+      "last_update": "2025-11-24T20:44:21Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": 375
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -500
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": -110,
+              "point": 9.5
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -110,
+              "point": -9.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 41.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 41.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "bovada",
+      "title": "Bovada",
+      "last_update": "2025-11-24T20:43:11Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:11Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": 360
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -500
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:11Z",
+          "outcomes": [
+            {
+              "name": "Las Vegas Raiders",
+              "price": -105,
+              "point": 9.0
+            },
+            {
+              "name": "Los Angeles Chargers",
+              "price": -115,
+              "point": -9.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:11Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -115,
+              "point": 40.5
+            },
+            {
+              "name": "Under",
+              "price": -105,
+              "point": 40.5
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

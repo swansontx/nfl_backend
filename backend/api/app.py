@@ -1823,15 +1823,70 @@ async def get_standings(
 
         # Group by division
         divisions = {}
+
+        # Try to get current odds for upcoming games
+        try:
+            from backend.ingestion.fetch_odds import fetch_odds_api
+            odds_events = fetch_odds_api()
+            # Create a map of team -> odds
+            team_odds_map = {}
+            for event in odds_events:
+                home_team = event.get('home_team', '')
+                away_team = event.get('away_team', '')
+                # Extract odds if available
+                if event.get('bookmakers'):
+                    bookmaker = event['bookmakers'][0]  # First bookmaker
+                    markets = bookmaker.get('markets', [])
+
+                    # Find spread and totals
+                    spread_market = next((m for m in markets if m.get('key') == 'spreads'), None)
+                    totals_market = next((m for m in markets if m.get('key') == 'totals'), None)
+
+                    if spread_market and spread_market.get('outcomes'):
+                        for outcome in spread_market['outcomes']:
+                            team_name = outcome.get('name', '')
+                            team_odds_map[team_name] = {
+                                'spread': outcome.get('point'),
+                                'spread_odds': outcome.get('price'),
+                                'opponent': away_team if team_name == home_team else home_team,
+                                'is_home': team_name == home_team
+                            }
+
+                    if totals_market and totals_market.get('outcomes'):
+                        total = totals_market['outcomes'][0].get('point')
+                        for team_name in [home_team, away_team]:
+                            if team_name in team_odds_map:
+                                team_odds_map[team_name]['total'] = total
+        except Exception as e:
+            print(f"Could not fetch odds for standings: {e}")
+            team_odds_map = {}
+
         for division in ['AFC East', 'AFC North', 'AFC South', 'AFC West',
                         'NFC East', 'NFC North', 'NFC South', 'NFC West']:
             div_teams = standings_df[standings_df['division'] == division].to_dict('records')
+
+            # Enrich with betting lines
+            for team in div_teams:
+                team_name = team.get('team', '')
+                # Try to match with odds data (fuzzy matching)
+                matching_odds = None
+                for odds_team_name, odds_data in team_odds_map.items():
+                    if team_name.upper() in odds_team_name.upper() or odds_team_name.upper() in team_name.upper():
+                        matching_odds = odds_data
+                        break
+
+                if matching_odds:
+                    team['next_game'] = matching_odds
+                else:
+                    team['next_game'] = None
+
             divisions[division.lower().replace(' ', '_')] = div_teams
 
         return {
             "season": season,
             "week": week,
-            "standings": divisions
+            "standings": divisions,
+            "odds_included": len(team_odds_map) > 0
         }
 
     # Fallback: Calculate from schedule/games data
@@ -1929,34 +1984,107 @@ async def get_game_prop_sheet(game_id: str):
         - Value assessments
         - Recommended plays
     """
-    # TODO: Aggregate all props for the game
-    # TODO: Generate projections for all players
-    # TODO: Calculate value for each prop
+    # Load projections for this game
+    projections = model_loader.load_projections_for_game(game_id)
+
+    if not projections:
+        return {
+            "error": "No projections available",
+            "message": f"No model projections found for {game_id}. Run models or create sample data.",
+            "game_id": game_id,
+            "command": f"POST /admin/create-sample-projections/{game_id}"
+        }
+
+    # Get odds from Odds API (now have the key!)
+    from backend.ingestion.fetch_odds import fetch_odds_api
+
+    try:
+        odds_events = fetch_odds_api()
+
+        # Parse game_id to match with odds
+        parts = game_id.split('_')
+        if len(parts) >= 4:
+            away_team = parts[2]
+            home_team = parts[3]
+
+            # Find matching event in odds (simple team name matching)
+            game_odds = None
+            for event in odds_events:
+                event_home = event.get('home_team', '').upper()
+                event_away = event.get('away_team', '').upper()
+                if (home_team.upper() in event_home or away_team.upper() in event_away):
+                    game_odds = event
+                    break
+
+    except Exception as e:
+        print(f"Could not fetch odds: {e}")
+        game_odds = None
+
+    # Aggregate props by category
+    categories = {
+        "passing": [],
+        "rushing": [],
+        "receiving": [],
+        "scoring": []
+    }
+
+    for proj in projections:
+        category = None
+        if 'passing' in proj.prop_type:
+            category = "passing"
+        elif 'rushing' in proj.prop_type or 'carries' in proj.prop_type:
+            category = "rushing"
+        elif 'receiving' in proj.prop_type or 'receptions' in proj.prop_type or 'targets' in proj.prop_type:
+            category = "receiving"
+        elif 'td' in proj.prop_type or 'touchdown' in proj.prop_type:
+            category = "scoring"
+
+        if category:
+            categories[category].append(proj)
+
+    # Calculate value for top projections
+    top_plays = []
+    for proj in sorted(projections, key=lambda x: x.hit_probability_over, reverse=True)[:20]:
+        # Grade based on confidence
+        if proj.hit_probability_over >= 0.70:
+            grade = "A+"
+        elif proj.hit_probability_over >= 0.65:
+            grade = "A"
+        elif proj.hit_probability_over >= 0.60:
+            grade = "B+"
+        elif proj.hit_probability_over >= 0.55:
+            grade = "B"
+        else:
+            grade = "C+"
+
+        # Calculate edge (simplified - would use actual line if available)
+        edge = (proj.hit_probability_over - 0.5) * 100  # Percentage edge over 50%
+
+        top_plays.append({
+            "player": proj.player_name,
+            "prop": f"{proj.prop_type} {'OVER' if proj.hit_probability_over > 0.5 else 'UNDER'} {proj.projection:.1f}",
+            "projection": round(proj.projection, 1),
+            "confidence": round(proj.hit_probability_over, 3),
+            "edge": round(edge, 1),
+            "grade": grade
+        })
 
     return {
         "game_id": game_id,
-        "total_props": 150,
-        "high_value_props": 12,
+        "total_props": len(projections),
+        "high_value_props": len([p for p in projections if p.hit_probability_over >= 0.60]),
         "categories": {
-            "passing": 50,
-            "rushing": 35,
-            "receiving": 45,
-            "scoring": 20
+            "passing": len(categories["passing"]),
+            "rushing": len(categories["rushing"]),
+            "receiving": len(categories["receiving"]),
+            "scoring": len(categories["scoring"])
         },
-        "top_plays": [
-            {
-                "player": "Player A",
-                "prop": "passing_yards OVER 285.5",
-                "edge": 8.5,
-                "grade": "A"
-            },
-            {
-                "player": "Player B",
-                "prop": "receiving_yards UNDER 72.5",
-                "edge": 6.2,
-                "grade": "B+"
-            }
-        ]
+        "odds_available": game_odds is not None,
+        "top_plays": top_plays[:15],  # Top 15 plays
+        "game_odds": {
+            "spread": game_odds.get('bookmakers', [{}])[0].get('markets', [{}])[0].get('outcomes', [{}])[0].get('point', 'N/A') if game_odds else None,
+            "total": game_odds.get('bookmakers', [{}])[0].get('markets', [{}])[1].get('outcomes', [{}])[0].get('point', 'N/A') if game_odds else None
+        } if game_odds else None
     }
 
 

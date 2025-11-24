@@ -1,0 +1,593 @@
+{
+  "id": "fe2eb07797580740af78037ab498198e",
+  "sport_key": "americanfootball_nfl",
+  "sport_title": "NFL",
+  "commence_time": "2025-11-27T18:00:00Z",
+  "home_team": "Detroit Lions",
+  "away_team": "Green Bay Packers",
+  "bookmakers": [
+    {
+      "key": "draftkings",
+      "title": "DraftKings",
+      "last_update": "2025-11-24T20:43:35Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:35Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -142
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": 120
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:35Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -112,
+              "point": -2.5
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": -108,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:35Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -115,
+              "point": 48.5
+            },
+            {
+              "name": "Under",
+              "price": -105,
+              "point": 48.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "williamhill_us",
+      "title": "Caesars",
+      "last_update": "2025-11-24T20:42:53Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:42:53Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -138
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": 118
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:42:53Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -114,
+              "point": -2.5
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": -106,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:42:53Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -113,
+              "point": 49.0
+            },
+            {
+              "name": "Under",
+              "price": -108,
+              "point": 49.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betmgm",
+      "title": "BetMGM",
+      "last_update": "2025-11-24T20:43:51Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -150
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": 125
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -118,
+              "point": -2.5
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": -102,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -115,
+              "point": 48.5
+            },
+            {
+              "name": "Under",
+              "price": -105,
+              "point": 48.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "fanduel",
+      "title": "FanDuel",
+      "last_update": "2025-11-24T20:44:20Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -144
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": 122
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -115,
+              "point": -2.5
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": -105,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 49.5
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 49.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "mybookieag",
+      "title": "MyBookie.ag",
+      "last_update": "2025-11-24T20:43:51Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -147
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": 120
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -110,
+              "point": -2.5
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": -110,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:51Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 49.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 49.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betus",
+      "title": "BetUS",
+      "last_update": "2025-11-24T20:43:36Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:36Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -145
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": 125
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:36Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -120,
+              "point": -2.0
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": 100,
+              "point": 2.0
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:36Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 49.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 49.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betonlineag",
+      "title": "BetOnline.ag",
+      "last_update": "2025-11-24T20:44:22Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -145
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": 125
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -110,
+              "point": -2.5
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": -110,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 49.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 49.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "lowvig",
+      "title": "LowVig.ag",
+      "last_update": "2025-11-24T20:44:05Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:05Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -145
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": 125
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:05Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -105,
+              "point": -2.5
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": -105,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:05Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -107,
+              "point": 49.0
+            },
+            {
+              "name": "Under",
+              "price": -107,
+              "point": 49.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betrivers",
+      "title": "BetRivers",
+      "last_update": "2025-11-24T20:44:21Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -159
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": 123
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -121,
+              "point": -2.5
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": -108,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:20Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -113,
+              "point": 49.0
+            },
+            {
+              "name": "Under",
+              "price": -113,
+              "point": 49.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "fanatics",
+      "title": "Fanatics",
+      "last_update": "2025-11-24T20:44:21Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -145
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": 120
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -115,
+              "point": -2.5
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": -105,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:44:21Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 49.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 49.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "bovada",
+      "title": "Bovada",
+      "last_update": "2025-11-24T20:43:11Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2025-11-24T20:43:11Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -140
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": 120
+            }
+          ]
+        },
+        {
+          "key": "spreads",
+          "last_update": "2025-11-24T20:43:11Z",
+          "outcomes": [
+            {
+              "name": "Detroit Lions",
+              "price": -110,
+              "point": -2.5
+            },
+            {
+              "name": "Green Bay Packers",
+              "price": -110,
+              "point": 2.5
+            }
+          ]
+        },
+        {
+          "key": "totals",
+          "last_update": "2025-11-24T20:43:11Z",
+          "outcomes": [
+            {
+              "name": "Over",
+              "price": -110,
+              "point": 49.0
+            },
+            {
+              "name": "Under",
+              "price": -110,
+              "point": 49.0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
