@@ -115,22 +115,28 @@ Track progress by marking items as:
   - **FIXED:** Implemented JSON file loading
 
 ### backend/features/extract_weather_features.py
-- [ ] Line 45: `TODO: Implement actual API call` - Weather API not connected
+- [x] Line 45: `TODO: Implement actual API call` - Weather API not connected
+  - **FIXED:** Implemented OpenWeather API integration with error handling
 
 ### backend/features/hfa_impact_analysis.py
-- [ ] Line 39: `TODO: Replace with actual analysis from your data`
+- [x] Line 39: `TODO: Replace with actual analysis from your data`
+  - **FIXED:** Added calculate_hfa_impacts_from_data() method using pandas
 
 ### backend/api/external_apis.py
-- [ ] Line 75: `TODO: Match forecast to game_time`
-- [ ] Line 86: `TODO: Determine from stadium data` - is_dome always False
+- [x] Line 75: `TODO: Match forecast to game_time`
+  - **FIXED:** Added _find_closest_forecast() method
+- [x] Line 86: `TODO: Determine from stadium data` - is_dome always False
+  - **FIXED:** Now set by get_weather_for_game() from stadium database
 
 ### backend/ingestion/fetch_odds.py
-- [ ] Line 34-41: `TODO: Implement actual API call using requests`
-  - Odds fetching may be using placeholder
+- [x] Line 34-41: `TODO: Implement actual API call using requests`
+  - **FIXED:** Implemented OddsAPI integration with quota tracking
 
 ### backend/betting/meta_trust_model.py
-- [ ] Line 114: `TODO: infer from bet history` - Player role
-- [ ] Line 348: `TODO: add if available` - Spread
+- [x] Line 114: `TODO: infer from bet history` - Player role
+  - **FIXED:** Updated comment, inferred from prop type
+- [x] Line 348: `TODO: add if available` - Spread
+  - **FIXED:** Now extracts spread, total, dome, weather from bet record
 
 ### backend/modeling/train_usage_efficiency_models.py
 - [ ] Line 413: `TODO: Need team totals to calculate actual shares`
@@ -216,10 +222,10 @@ def my_function(season: int = None, week: int = None):
 |----------|-------|-------|-----------|
 | P1 Critical | 5 | 5 | 0 |
 | P2 Analysis | 12 | 6 | 0 (6 intentionally skipped) |
-| P3 Features | 15 | 9 | 6 |
+| P3 Features | 15 | 14 | 1 |
 | P4 API | 17 | 0 | 17 |
 
-**Overall: 20/49 items fixed (P1 & P2 Complete, P3 In Progress)**
+**Overall: 25/49 items fixed (P1 & P2 Complete, P3 Nearly Complete)**
 
 Note: Synthetic data generators deleted, fallbacks removed.
 
@@ -227,3 +233,8 @@ Note: Synthetic data generators deleted, fallbacks removed.
 - calibrate.py: Platt scaling, isotonic regression, save/load
 - backtest.py: Classification and regression metrics with sklearn
 - player_map.py: JSON loading, fuzzy matching with fuzzywuzzy
+- extract_weather_features.py: OpenWeather API integration
+- hfa_impact_analysis.py: Data-driven HFA calculation method
+- external_apis.py: Forecast time matching, stadium dome detection
+- fetch_odds.py: OddsAPI integration with quota tracking
+- meta_trust_model.py: Bet context extraction for game features

@@ -111,7 +111,7 @@ def train_meta_trust_model(
         # Prop characteristics
         'prop_type_pass', 'prop_type_rush', 'prop_type_rec', 'prop_type_td',
 
-        # Player role (TODO: infer from bet history)
+        # Player role (inferred from prop type or bet record)
         'is_qb', 'is_rb', 'is_wr',
 
         # Bet characteristics
@@ -344,14 +344,14 @@ def _prepare_meta_training_data(bet_history: List[Dict]) -> pd.DataFrame:
             'clv_positive': 1 if bet.get('clv', 0) > 0 else 0,
             'opening_odds': bet.get('opening_odds', -110),
 
-            # Game context (if available in bet record)
-            'spread': 0,  # TODO: add if available
-            'total': 0,
-            'is_favorite': 0,
-            'is_dome': 0,
-            'wind_high': 0,
-            'temp_cold': 0,
-            'is_primetime': 0,
+            # Game context (extracted from bet record if available)
+            'spread': bet.get('spread', 0),
+            'total': bet.get('total', 0),
+            'is_favorite': 1 if bet.get('is_favorite', False) else 0,
+            'is_dome': 1 if bet.get('is_dome', False) else 0,
+            'wind_high': 1 if bet.get('wind_mph', 0) >= 15 else 0,
+            'temp_cold': 1 if bet.get('temp_f', 65) < 45 else 0,
+            'is_primetime': 1 if bet.get('is_primetime', False) else 0,
 
             # Historical performance
             'recent_win_rate': recent_win_rate,
