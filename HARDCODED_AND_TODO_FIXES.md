@@ -139,7 +139,8 @@ Track progress by marking items as:
   - **FIXED:** Now extracts spread, total, dome, weather from bet record
 
 ### backend/modeling/train_usage_efficiency_models.py
-- [ ] Line 413: `TODO: Need team totals to calculate actual shares`
+- [x] Line 413: `TODO: Need team totals to calculate actual shares`
+  - **FIXED:** Calculate actual team totals from game data with fallback
 
 ---
 
@@ -220,21 +221,22 @@ def my_function(season: int = None, week: int = None):
 
 | Priority | Total | Fixed | Remaining |
 |----------|-------|-------|-----------|
-| P1 Critical | 5 | 5 | 0 |
-| P2 Analysis | 12 | 6 | 0 (6 intentionally skipped) |
-| P3 Features | 15 | 14 | 1 |
+| P1 Critical | 5 | 5 | 0 ✅ |
+| P2 Analysis | 12 | 6 | 0 (6 intentionally skipped) ✅ |
+| P3 Features | 15 | 15 | 0 ✅ |
 | P4 API | 17 | 0 | 17 |
 
-**Overall: 25/49 items fixed (P1 & P2 Complete, P3 Nearly Complete)**
+**Overall: 26/49 items fixed (P1, P2, & P3 COMPLETE!)**
 
 Note: Synthetic data generators deleted, fallbacks removed.
 
 ### P3 Completed Items:
-- calibrate.py: Platt scaling, isotonic regression, save/load
+- calibrate.py: Platt scaling, isotonic regression, save/load with joblib
 - backtest.py: Classification and regression metrics with sklearn
-- player_map.py: JSON loading, fuzzy matching with fuzzywuzzy
-- extract_weather_features.py: OpenWeather API integration
-- hfa_impact_analysis.py: Data-driven HFA calculation method
+- player_map.py: JSON loading, fuzzy matching with fuzzywuzzy, name variations
+- extract_weather_features.py: OpenWeather API integration with error handling
+- hfa_impact_analysis.py: Data-driven HFA calculation method using pandas
 - external_apis.py: Forecast time matching, stadium dome detection
-- fetch_odds.py: OddsAPI integration with quota tracking
+- fetch_odds.py: OddsAPI integration with quota tracking and caching
 - meta_trust_model.py: Bet context extraction for game features
+- train_usage_efficiency_models.py: Actual team totals for share calculations
