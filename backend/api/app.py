@@ -218,9 +218,62 @@ def _get_setup_recommendations(env_status: dict) -> list[str]:
 
 @app.post('/admin/recompute')
 async def recompute(req: RecomputeRequest):
-    """Trigger model recomputation for a specific game."""
-    # TODO: Integrate with orchestration pipeline
-    return {'status': 'started', 'game_id': req.game_id}
+    """Trigger model recomputation for a specific game.
+
+    This runs the orchestration pipeline to regenerate predictions.
+    Note: This is a long-running operation that runs synchronously.
+    For production, consider using a job queue (Celery, Redis, etc.)
+    """
+    from backend.orchestration.orchestrator import NFLPropsPipeline
+
+    # Parse game_id to extract season and week
+    try:
+        parts = req.game_id.split('_')
+        if len(parts) < 2:
+            return {
+                'status': 'error',
+                'message': 'Invalid game_id format. Expected: {season}_{week}_{away}_{home}',
+                'game_id': req.game_id
+            }
+
+        season = int(parts[0])
+        week = int(parts[1])
+
+        # Run orchestration pipeline for this season/week
+        print(f"Starting recomputation for {req.game_id} (Season {season}, Week {week})")
+
+        pipeline = NFLPropsPipeline(season=season, week=week)
+        success = pipeline.run_full_pipeline()
+
+        if success:
+            return {
+                'status': 'completed',
+                'game_id': req.game_id,
+                'season': season,
+                'week': week,
+                'message': 'Pipeline completed successfully. New projections available in outputs/predictions/'
+            }
+        else:
+            return {
+                'status': 'failed',
+                'game_id': req.game_id,
+                'season': season,
+                'week': week,
+                'message': 'Pipeline failed. Check logs for details.'
+            }
+
+    except ValueError as e:
+        return {
+            'status': 'error',
+            'message': f'Invalid game_id format: {e}',
+            'game_id': req.game_id
+        }
+    except Exception as e:
+        return {
+            'status': 'error',
+            'message': f'Pipeline error: {str(e)}',
+            'game_id': req.game_id
+        }
 
 
 @app.get('/admin/odds-api-usage')
@@ -797,8 +850,64 @@ async def get_news(
             related_teams=[injury['team']]
         ))
 
-    # TODO: Add non-injury news items from external news APIs (ESPN, NFL.com RSS)
-    # Currently only returns injury news from Sleeper API
+    # Add news from RSS feeds (no API keys needed)
+    if not category or category in ["news", "analysis"]:
+        try:
+            import feedparser
+            from datetime import datetime
+
+            # NFL.com RSS feed
+            nfl_feed = feedparser.parse('https://www.nfl.com/feeds/rss/news')
+            for entry in nfl_feed.entries[:5]:  # Top 5 articles
+                # Extract teams mentioned in title/summary
+                related_teams = []
+                if team:
+                    # Simple team name matching
+                    if team.upper() in entry.title.upper() or team.upper() in entry.get('summary', '').upper():
+                        related_teams = [team.upper()]
+                    else:
+                        continue  # Skip if filtering by team and not mentioned
+
+                news_items.append(NewsItem(
+                    id=f"nfl_{entry.get('id', entry.link)}",
+                    title=entry.title[:200],  # Limit title length
+                    summary=entry.get('summary', '')[:500],  # Limit summary length
+                    source="NFL.com",
+                    published_at=entry.get('published', datetime.now().isoformat()),
+                    category="news",
+                    related_players=[],
+                    related_teams=related_teams,
+                    url=entry.link
+                ))
+
+            # ESPN NFL RSS feed
+            espn_feed = feedparser.parse('https://www.espn.com/espn/rss/nfl/news')
+            for entry in espn_feed.entries[:5]:  # Top 5 articles
+                related_teams = []
+                if team:
+                    if team.upper() in entry.title.upper() or team.upper() in entry.get('summary', '').upper():
+                        related_teams = [team.upper()]
+                    else:
+                        continue
+
+                news_items.append(NewsItem(
+                    id=f"espn_{entry.get('id', entry.link)}",
+                    title=entry.title[:200],
+                    summary=entry.get('summary', '')[:500],
+                    source="ESPN",
+                    published_at=entry.get('published', datetime.now().isoformat()),
+                    category="news",
+                    related_players=[],
+                    related_teams=related_teams,
+                    url=entry.link
+                ))
+
+        except ImportError:
+            print("Warning: feedparser not installed. Install with: pip install feedparser")
+            print("Only showing injury news")
+        except Exception as e:
+            print(f"Error fetching RSS feeds: {e}")
+            print("Continuing with injury news only")
 
     return news_items[:limit]
 

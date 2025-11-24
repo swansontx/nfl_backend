@@ -24,6 +24,9 @@ pyarrow>=14.0.0
 # Web scraping (for injury data)
 beautifulsoup4>=4.12.0
 
+# RSS Feed Parsing (for news feeds)
+feedparser>=6.0.0
+
 # Database
 sqlalchemy>=2.0.0
 
