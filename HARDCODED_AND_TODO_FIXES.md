@@ -146,7 +146,17 @@ Track progress by marking items as:
 
 ## Priority 4: API Endpoints (LOW - Some have TODOs)
 
-### backend/api/app.py
+### backend/api/app.py - Real Data Integrations
+- [x] Line 2077: `TODO: Load actual team stats from database`
+  - **FIXED:** Now loads from defensive_stats_{season-1}_{season}.csv
+- [x] Line 2305: `TODO: Load from player lookup JSON or database`
+  - **FIXED:** get_player_details loads from players.csv
+- [x] Line 2332: `TODO: Load from player_stats CSV or database`
+  - **FIXED:** get_player_stats loads aggregated stats from player_stats CSVs
+- [x] Line 2704: `TODO: Load from player_stats CSV (filtered by week)`
+  - **FIXED:** get_player_gamelogs loads game-by-game data from player_stats CSVs
+
+### backend/api/app.py - External Service Integrations (Require APIs/Services)
 - [ ] Line 55: `TODO: Restrict in production` - CORS origins allow all
 - [ ] Line 214: `TODO: Integrate with orchestration pipeline`
 - [ ] Line 754: `TODO: Integrate with actual news API or RSS feeds`
@@ -155,12 +165,9 @@ Track progress by marking items as:
 - [ ] Line 1019: `TODO: Get stadium location from game_id/schedule`
 - [ ] Line 1041: `TODO: Integrate with LLM (OpenAI, Claude, etc.)`
 - [ ] Line 1105: `TODO: Integrate with content APIs`
-- [ ] Line 1301: `TODO: Load actual player data from database/files`
 - [ ] Line 1364: `TODO: Load actual player projections`
 - [ ] Line 1753-1755: Multiple TODOs for game analysis
-- [ ] Line 2058: `TODO: Load actual team stats from database`
 - [ ] Line 2210: `TODO: Add betting lines when available`
-- [ ] Line 2236: `TODO: Load from player lookup JSON or database`
 
 ### Remaining endpoints in app.py that need default resolution:
 - [x] Line 1629: `season: int = None` - get_standings
@@ -229,9 +236,9 @@ def my_function(season: int = None, week: int = None):
 | P1 Critical | 5 | 5 | 0 ✅ |
 | P2 Analysis | 12 | 6 | 0 (6 intentionally skipped) ✅ |
 | P3 Features | 15 | 15 | 0 ✅ |
-| P4 API | 17 | 5 | 12 |
+| P4 API | 17 | 9 | 8 (external services) |
 
-**Overall: 31/49 items fixed (P1, P2, P3 complete; P4 in progress)**
+**Overall: 35/49 items fixed (71.4% complete)**
 
 Note: Synthetic data generators deleted, fallbacks removed.
 

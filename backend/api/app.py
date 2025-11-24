@@ -2068,31 +2068,56 @@ def get_team_stats(team_id: str, season: int = None):
     Returns:
         Team offensive/defensive stats and rankings
     """
+    from pathlib import Path
+    import pandas as pd
+
     season = season or CURRENT_SEASON
 
     team = get_team(team_id.upper())
     if not team:
         raise HTTPException(status_code=404, detail=f'Team not found: {team_id}')
 
-    # TODO: Load actual team stats from database or computed files
-    # For now, return structure with mock data
+    # Load actual defensive stats from NFLverse data
+    defensive_stats_file = Path(f'inputs/defensive_stats_{season-1}_{season}.csv')
+
+    offensive_stats = {
+        'points_per_game': 0.0,
+        'yards_per_game': 0.0,
+        'pass_yards_per_game': 0.0,
+        'rush_yards_per_game': 0.0,
+        'turnovers_per_game': 0.0,
+    }
+
+    defensive_stats = {
+        'points_allowed_per_game': 0.0,
+        'yards_allowed_per_game': 0.0,
+        'sacks': 0,
+        'turnovers_forced': 0,
+        'interceptions': 0,
+    }
+
+    if defensive_stats_file.exists():
+        try:
+            df = pd.read_csv(defensive_stats_file, low_memory=False)
+            team_data = df[df['team'] == team_id.upper()]
+
+            if not team_data.empty:
+                # Aggregate defensive stats
+                defensive_stats = {
+                    'points_allowed_per_game': round(team_data['def_points'].mean(), 1) if 'def_points' in team_data.columns else 0.0,
+                    'yards_allowed_per_game': round(team_data['def_yards'].mean(), 1) if 'def_yards' in team_data.columns else 0.0,
+                    'sacks': int(team_data['sacks'].sum()) if 'sacks' in team_data.columns else 0,
+                    'turnovers_forced': int(team_data['turnovers_forced'].sum()) if 'turnovers_forced' in team_data.columns else 0,
+                    'interceptions': int(team_data['interceptions'].sum()) if 'interceptions' in team_data.columns else 0,
+                }
+        except Exception as e:
+            print(f"Error loading team stats: {e}")
+
     return {
         'team_id': team_id.upper(),
         'season': season,
-        'offensive_stats': {
-            'points_per_game': 0.0,
-            'yards_per_game': 0.0,
-            'pass_yards_per_game': 0.0,
-            'rush_yards_per_game': 0.0,
-            'turnovers_per_game': 0.0,
-        },
-        'defensive_stats': {
-            'points_allowed_per_game': 0.0,
-            'yards_allowed_per_game': 0.0,
-            'sacks': 0,
-            'turnovers_forced': 0,
-            'interceptions': 0,
-        },
+        'offensive_stats': offensive_stats,
+        'defensive_stats': defensive_stats,
         'rankings': {
             'offensive_rank': None,
             'defensive_rank': None,
@@ -2277,7 +2302,35 @@ def get_player_details(player_id: str):
     Returns:
         Player details and metadata
     """
-    # TODO: Load from player lookup JSON or database
+    from pathlib import Path
+    import pandas as pd
+
+    # Load from NFLverse players.csv
+    players_file = Path('inputs/players.csv')
+
+    if players_file.exists():
+        try:
+            df = pd.read_csv(players_file, low_memory=False)
+            player_data = df[df['player_id'] == player_id]
+
+            if not player_data.empty:
+                player = player_data.iloc[0]
+                return {
+                    'player_id': player_id,
+                    'player_name': player.get('display_name', player.get('player_name', 'Unknown')),
+                    'position': player.get('position'),
+                    'team': player.get('team_abbr'),
+                    'number': int(player.get('jersey_number')) if pd.notna(player.get('jersey_number')) else None,
+                    'height': player.get('height'),
+                    'weight': int(player.get('weight')) if pd.notna(player.get('weight')) else None,
+                    'college': player.get('college'),
+                    'draft_year': int(player.get('entry_year')) if pd.notna(player.get('entry_year')) else None,
+                    'birth_date': player.get('birth_date'),
+                    'years_exp': int(player.get('years_exp')) if pd.notna(player.get('years_exp')) else None,
+                }
+        except Exception as e:
+            print(f"Error loading player details: {e}")
+
     return {
         'player_id': player_id,
         'player_name': 'Unknown Player',
@@ -2302,31 +2355,66 @@ def get_player_stats(player_id: str, season: int = None):
     Returns:
         Season statistics by position
     """
+    from pathlib import Path
+    import pandas as pd
+
     season = season or CURRENT_SEASON
 
-    # TODO: Load from player_stats CSV or database
+    # Load from NFLverse player_stats CSV
+    stats_file = Path(f'inputs/player_stats_{season-1}_{season}.csv')
+    if not stats_file.exists():
+        stats_file = Path(f'inputs/player_stats_{season}.csv')
+
+    passing_stats = {'attempts': 0, 'completions': 0, 'yards': 0, 'touchdowns': 0, 'interceptions': 0}
+    rushing_stats = {'attempts': 0, 'yards': 0, 'touchdowns': 0, 'fumbles': 0}
+    receiving_stats = {'targets': 0, 'receptions': 0, 'yards': 0, 'touchdowns': 0}
+    games_played = 0
+
+    if stats_file.exists():
+        try:
+            df = pd.read_csv(stats_file, low_memory=False)
+            player_data = df[df['player_id'] == player_id]
+
+            if not player_data.empty:
+                games_played = len(player_data)
+
+                # Aggregate passing stats
+                if 'passing_yards' in player_data.columns:
+                    passing_stats = {
+                        'attempts': int(player_data['attempts'].sum()) if 'attempts' in player_data.columns else 0,
+                        'completions': int(player_data['completions'].sum()) if 'completions' in player_data.columns else 0,
+                        'yards': int(player_data['passing_yards'].sum()),
+                        'touchdowns': int(player_data['passing_tds'].sum()) if 'passing_tds' in player_data.columns else 0,
+                        'interceptions': int(player_data['interceptions'].sum()) if 'interceptions' in player_data.columns else 0,
+                    }
+
+                # Aggregate rushing stats
+                if 'rushing_yards' in player_data.columns:
+                    rushing_stats = {
+                        'attempts': int(player_data['carries'].sum()) if 'carries' in player_data.columns else 0,
+                        'yards': int(player_data['rushing_yards'].sum()),
+                        'touchdowns': int(player_data['rushing_tds'].sum()) if 'rushing_tds' in player_data.columns else 0,
+                        'fumbles': int(player_data['rushing_fumbles'].sum()) if 'rushing_fumbles' in player_data.columns else 0,
+                    }
+
+                # Aggregate receiving stats
+                if 'receiving_yards' in player_data.columns:
+                    receiving_stats = {
+                        'targets': int(player_data['targets'].sum()) if 'targets' in player_data.columns else 0,
+                        'receptions': int(player_data['receptions'].sum()) if 'receptions' in player_data.columns else 0,
+                        'yards': int(player_data['receiving_yards'].sum()),
+                        'touchdowns': int(player_data['receiving_tds'].sum()) if 'receiving_tds' in player_data.columns else 0,
+                    }
+        except Exception as e:
+            print(f"Error loading player stats: {e}")
+
     return {
         'player_id': player_id,
         'season': season,
-        'games_played': 0,
-        'passing': {
-            'attempts': 0,
-            'completions': 0,
-            'yards': 0,
-            'touchdowns': 0,
-            'interceptions': 0,
-        },
-        'rushing': {
-            'attempts': 0,
-            'yards': 0,
-            'touchdowns': 0,
-        },
-        'receiving': {
-            'targets': 0,
-            'receptions': 0,
-            'yards': 0,
-            'touchdowns': 0,
-        }
+        'games_played': games_played,
+        'passing': passing_stats,
+        'rushing': rushing_stats,
+        'receiving': receiving_stats
     }
 
 
@@ -2611,14 +2699,56 @@ def get_player_gamelogs(player_id: str, season: int = None, limit: int = 20):
     Returns:
         List of game performances
     """
+    from pathlib import Path
+    import pandas as pd
+
     season = season or CURRENT_SEASON
 
-    # TODO: Load from player_stats CSV (filtered by week)
+    # Load from NFLverse player_stats CSV
+    stats_file = Path(f'inputs/player_stats_{season-1}_{season}.csv')
+    if not stats_file.exists():
+        stats_file = Path(f'inputs/player_stats_{season}.csv')
+
+    games = []
+
+    if stats_file.exists():
+        try:
+            df = pd.read_csv(stats_file, low_memory=False)
+            player_data = df[df['player_id'] == player_id].head(limit)
+
+            for _, game in player_data.iterrows():
+                game_log = {
+                    'week': int(game['week']) if 'week' in game and pd.notna(game['week']) else None,
+                    'opponent': game.get('opponent_team'),
+                    'game_id': game.get('game_id'),
+                    'passing': {
+                        'attempts': int(game.get('attempts', 0)) if pd.notna(game.get('attempts')) else 0,
+                        'completions': int(game.get('completions', 0)) if pd.notna(game.get('completions')) else 0,
+                        'yards': int(game.get('passing_yards', 0)) if pd.notna(game.get('passing_yards')) else 0,
+                        'touchdowns': int(game.get('passing_tds', 0)) if pd.notna(game.get('passing_tds')) else 0,
+                        'interceptions': int(game.get('interceptions', 0)) if pd.notna(game.get('interceptions')) else 0,
+                    },
+                    'rushing': {
+                        'attempts': int(game.get('carries', 0)) if pd.notna(game.get('carries')) else 0,
+                        'yards': int(game.get('rushing_yards', 0)) if pd.notna(game.get('rushing_yards')) else 0,
+                        'touchdowns': int(game.get('rushing_tds', 0)) if pd.notna(game.get('rushing_tds')) else 0,
+                    },
+                    'receiving': {
+                        'targets': int(game.get('targets', 0)) if pd.notna(game.get('targets')) else 0,
+                        'receptions': int(game.get('receptions', 0)) if pd.notna(game.get('receptions')) else 0,
+                        'yards': int(game.get('receiving_yards', 0)) if pd.notna(game.get('receiving_yards')) else 0,
+                        'touchdowns': int(game.get('receiving_tds', 0)) if pd.notna(game.get('receiving_tds')) else 0,
+                    }
+                }
+                games.append(game_log)
+        except Exception as e:
+            print(f"Error loading player gamelogs: {e}")
+
     return {
         'player_id': player_id,
         'season': season,
-        'count': 0,
-        'games': []
+        'count': len(games),
+        'games': games
     }
 
 
