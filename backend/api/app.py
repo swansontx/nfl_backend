@@ -41,6 +41,10 @@ from backend.api.situational_analyzer import situational_analyzer, analyze_game_
 from backend.api.evaluation_pipeline import evaluation_pipeline, evaluate_game, evaluate_week
 from backend.api.defense_analyzer import defense_analyzer
 from backend.config import settings, check_environment
+from backend.nfl_calendar import get_current_season_and_week
+
+# Get current season and week at startup
+CURRENT_SEASON, CURRENT_WEEK = get_current_season_and_week()
 
 app = FastAPI(
     title='NFL Props Backend API',
@@ -381,7 +385,7 @@ async def get_database_status():
 
 @app.get('/game/{game_id}/situation', tags=['Analysis'])
 async def get_game_situation(game_id: str, home_team: str, away_team: str,
-                             season: int = 2024, week: int = 12):
+                             season: int = None, week: int = None):
     """Get complete situational analysis for a game.
 
     Compounds all data to identify betting edges:
@@ -392,6 +396,8 @@ async def get_game_situation(game_id: str, home_team: str, away_team: str,
 
     Returns detailed analysis with specific prop targets.
     """
+    season = season or CURRENT_SEASON
+    week = week or CURRENT_WEEK
     analysis = analyze_game_situation(game_id, home_team, away_team, season, week)
 
     return {
@@ -451,7 +457,7 @@ async def get_game_situation(game_id: str, home_team: str, away_team: str,
 
 
 @app.get('/week/{week}/situations', tags=['Analysis'])
-async def get_week_betting_situations(week: int, season: int = 2024, min_edge: float = 15.0):
+async def get_week_betting_situations(week: int, season: int = None, min_edge: float = 15.0):
     """Get top betting situations across all games in a week.
 
     Identifies SMASH SPOTS and favorable matchups for:
@@ -462,6 +468,7 @@ async def get_week_betting_situations(week: int, season: int = 2024, min_edge: f
 
     Returns situations sorted by edge score.
     """
+    season = season or CURRENT_SEASON
     situations = get_top_situations(season, week, min_edge)
 
     return {
@@ -474,7 +481,7 @@ async def get_week_betting_situations(week: int, season: int = 2024, min_edge: f
 
 
 @app.get('/team/{team}/form', tags=['Analysis'])
-async def get_team_trending_form(team: str, season: int = 2024, week: int = 12):
+async def get_team_trending_form(team: str, season: int = None, week: int = None):
     """Get trending form analysis for a team.
 
     Compares last 3 games vs season average for:
@@ -485,6 +492,8 @@ async def get_team_trending_form(team: str, season: int = 2024, week: int = 12):
 
     Returns momentum indicator (hot/cold/neutral) and form grade.
     """
+    season = season or CURRENT_SEASON
+    week = week or CURRENT_WEEK
     form = situational_analyzer.get_trending_form(team.upper(), season, week)
 
     return {
@@ -523,7 +532,7 @@ async def get_team_trending_form(team: str, season: int = 2024, week: int = 12):
 # ============================================================================
 
 @app.get('/team/{team}/defense/rush', tags=['Analysis'])
-async def get_team_rush_defense(team: str, season: int = 2024, last_n_games: int = 5):
+async def get_team_rush_defense(team: str, season: int = None, last_n_games: int = 5):
     """Get rush defense performance with individual RB matchups.
 
     Shows:
@@ -533,6 +542,7 @@ async def get_team_rush_defense(team: str, season: int = 2024, last_n_games: int
 
     USE THIS to answer: "How has X team done against the run?"
     """
+    season = season or CURRENT_SEASON
     result = defense_analyzer.get_rush_defense_performance(team, season, last_n_games)
 
     return {
@@ -561,7 +571,7 @@ async def get_team_rush_defense(team: str, season: int = 2024, last_n_games: int
 
 
 @app.get('/team/{team}/defense/pass', tags=['Analysis'])
-async def get_team_pass_defense(team: str, season: int = 2024, last_n_games: int = 5):
+async def get_team_pass_defense(team: str, season: int = None, last_n_games: int = 5):
     """Get pass defense performance with individual QB matchups.
 
     Shows:
@@ -571,6 +581,7 @@ async def get_team_pass_defense(team: str, season: int = 2024, last_n_games: int
 
     USE THIS to answer: "How has X team done against the pass?"
     """
+    season = season or CURRENT_SEASON
     result = defense_analyzer.get_pass_defense_performance(team, season, last_n_games)
 
     return {
@@ -598,7 +609,7 @@ async def get_team_pass_defense(team: str, season: int = 2024, last_n_games: int
 
 
 @app.get('/team/{team}/defense', tags=['Analysis'])
-async def get_team_defense_summary(team: str, season: int = 2024):
+async def get_team_defense_summary(team: str, season: int = None):
     """Get complete defense summary for a team.
 
     Combines rush and pass defense analysis with individual matchups
@@ -606,6 +617,7 @@ async def get_team_defense_summary(team: str, season: int = 2024):
 
     USE THIS for overall defense analysis questions.
     """
+    season = season or CURRENT_SEASON
     return defense_analyzer.get_defense_summary(team, season)
 
 
@@ -615,7 +627,7 @@ async def get_team_defense_summary(team: str, season: int = 2024):
 
 @app.get('/game/{game_id}/evaluate', tags=['Evaluation'])
 async def evaluate_game_complete(game_id: str, home_team: str, away_team: str,
-                                  season: int = 2024, week: int = 12):
+                                  season: int = None, week: int = None):
     """Run COMPLETE evaluation pipeline for a game.
 
     This is the main endpoint for comprehensive game analysis that uses
@@ -627,6 +639,8 @@ async def evaluate_game_complete(game_id: str, home_team: str, away_team: str,
 
     Returns scored categories, key takeaways, and actionable prop targets.
     """
+    season = season or CURRENT_SEASON
+    week = week or CURRENT_WEEK
     result = evaluate_game(game_id, home_team, away_team, season, week)
 
     return {
@@ -680,11 +694,12 @@ async def evaluate_game_complete(game_id: str, home_team: str, away_team: str,
 
 
 @app.get('/week/{week}/evaluate', tags=['Evaluation'])
-async def evaluate_week_complete(week: int, season: int = 2024):
+async def evaluate_week_complete(week: int, season: int = None):
     """Evaluate ALL games in a week using complete pipeline.
 
     Returns all games sorted by overall score (best opportunities first).
     """
+    season = season or CURRENT_SEASON
     results = evaluate_week(season, week)
 
     return {
@@ -1611,7 +1626,7 @@ async def get_current_odds(
 
 @app.get('/api/v1/standings')
 async def get_standings(
-    season: int = 2024,
+    season: int = None,
     week: Optional[int] = None
 ):
     """Get NFL standings by division and conference.
@@ -2041,7 +2056,7 @@ def get_game_boxscore(game_id: str):
 
 
 @app.get('/api/v1/teams/{team_id}/stats', tags=['Teams'])
-def get_team_stats(team_id: str, season: int = 2024):
+def get_team_stats(team_id: str, season: int = None):
     """Get team statistics for a season.
 
     Args:
@@ -2094,7 +2109,7 @@ def get_team_stats(team_id: str, season: int = 2024):
 @app.get('/api/v1/games', tags=['Games'])
 def list_games(
     week: Optional[int] = None,
-    season: int = 2024,
+    season: int = None,
     team: Optional[str] = None,
     limit: int = 100
 ):
@@ -2271,7 +2286,7 @@ def get_player_details(player_id: str):
 
 
 @app.get('/api/v1/players/{player_id}/stats', tags=['Players'])
-def get_player_stats(player_id: str, season: int = 2024):
+def get_player_stats(player_id: str, season: int = None):
     """Get player statistics for a season.
 
     Args:
@@ -2577,7 +2592,7 @@ async def log_recommendation(recommendation: Dict):
 
 
 @app.get('/api/v1/players/{player_id}/gamelogs', tags=['Players'])
-def get_player_gamelogs(player_id: str, season: int = 2024, limit: int = 20):
+def get_player_gamelogs(player_id: str, season: int = None, limit: int = 20):
     """Get game-by-game performance logs for a player.
 
     Args:

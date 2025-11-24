@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 from contextlib import contextmanager
 
-from backend.nfl_calendar import get_current_nfl_season
+from backend.nfl_calendar import get_current_nfl_season, get_current_nfl_week
 
 # Database file location
 DB_PATH = Path(__file__).parent.parent.parent / "data" / "nfl_betting.db"
@@ -1027,8 +1027,9 @@ class PlayerStatsRepository:
             return count
 
     @staticmethod
-    def get_player_stats(player_name: str, season: int = 2025) -> List[Dict]:
+    def get_player_stats(player_name: str, season: int = None) -> List[Dict]:
         """Get all weekly stats for a player (like ESPN player page)."""
+        season = season or get_current_nfl_season()
         with get_db() as conn:
             cursor = conn.cursor()
 
@@ -1042,8 +1043,9 @@ class PlayerStatsRepository:
             return [dict(row) for row in cursor.fetchall()]
 
     @staticmethod
-    def get_player_season_totals(player_name: str, season: int = 2025) -> Optional[Dict]:
+    def get_player_season_totals(player_name: str, season: int = None) -> Optional[Dict]:
         """Get season totals for a player."""
+        season = season or get_current_nfl_season()
         with get_db() as conn:
             cursor = conn.cursor()
 
@@ -1082,9 +1084,10 @@ class PlayerStatsRepository:
             return dict(row) if row else None
 
     @staticmethod
-    def get_team_players(team: str, season: int = 2025,
+    def get_team_players(team: str, season: int = None,
                          position: Optional[str] = None) -> List[Dict]:
         """Get all players on a team with their season totals."""
+        season = season or get_current_nfl_season()
         with get_db() as conn:
             cursor = conn.cursor()
 
@@ -1117,8 +1120,9 @@ class PlayerStatsRepository:
             return [dict(row) for row in cursor.fetchall()]
 
     @staticmethod
-    def get_league_leaders(stat_type: str, season: int = 2025, limit: int = 20) -> List[Dict]:
+    def get_league_leaders(stat_type: str, season: int = None, limit: int = 20) -> List[Dict]:
         """Get league leaders for a specific stat."""
+        season = season or get_current_nfl_season()
         stat_columns = {
             'passing_yards': 'SUM(pass_yards)',
             'passing_tds': 'SUM(pass_tds)',
@@ -1223,8 +1227,9 @@ class TeamStatsRepository:
             return count
 
     @staticmethod
-    def get_team_stats(team: str, season: int = 2025) -> Optional[Dict]:
+    def get_team_stats(team: str, season: int = None) -> Optional[Dict]:
         """Get latest team stats."""
+        season = season or get_current_nfl_season()
         with get_db() as conn:
             cursor = conn.cursor()
 
@@ -1240,8 +1245,9 @@ class TeamStatsRepository:
             return dict(row) if row else None
 
     @staticmethod
-    def get_all_teams(season: int = 2025) -> List[Dict]:
+    def get_all_teams(season: int = None) -> List[Dict]:
         """Get all team stats for rankings."""
+        season = season or get_current_nfl_season()
         with get_db() as conn:
             cursor = conn.cursor()
 
@@ -1309,8 +1315,9 @@ class RostersRepository:
             return count
 
     @staticmethod
-    def get_team_roster(team: str, season: int = 2025, week: Optional[int] = None) -> List[Dict]:
+    def get_team_roster(team: str, season: int = None, week: Optional[int] = None) -> List[Dict]:
         """Get team roster."""
+        season = season or get_current_nfl_season()
         with get_db() as conn:
             cursor = conn.cursor()
 
@@ -1424,8 +1431,9 @@ class SchedulesRepository:
             return count
 
     @staticmethod
-    def get_schedule(season: int = 2025, week: Optional[int] = None) -> List[Dict]:
+    def get_schedule(season: int = None, week: Optional[int] = None) -> List[Dict]:
         """Get schedule for season/week."""
+        season = season or get_current_nfl_season()
         with get_db() as conn:
             cursor = conn.cursor()
 
@@ -1445,8 +1453,9 @@ class SchedulesRepository:
             return [dict(row) for row in cursor.fetchall()]
 
     @staticmethod
-    def get_team_schedule(team: str, season: int = 2025) -> List[Dict]:
+    def get_team_schedule(team: str, season: int = None) -> List[Dict]:
         """Get schedule for a specific team."""
+        season = season or get_current_nfl_season()
         with get_db() as conn:
             cursor = conn.cursor()
 
@@ -1460,8 +1469,10 @@ class SchedulesRepository:
             return [dict(row) for row in cursor.fetchall()]
 
     @staticmethod
-    def get_upcoming_games(season: int = 2025, week: int = 12) -> List[Dict]:
+    def get_upcoming_games(season: int = None, week: int = None) -> List[Dict]:
         """Get upcoming games (not yet played)."""
+        season = season or get_current_nfl_season()
+        week = week or get_current_nfl_week()
         with get_db() as conn:
             cursor = conn.cursor()
 
