@@ -12,24 +12,24 @@ Track progress by marking items as:
 ## Priority 1: Core Infrastructure (CRITICAL)
 
 ### backend/orchestration/orchestrator.py
-- [ ] Line 72: `def __init__(self, season: int = 2025, week: Optional[int] = None)`
-  - Change to dynamic default using nfl_calendar
+- [x] Line 72: `def __init__(self, season: int = 2025, week: Optional[int] = None)`
+  - **FIXED:** Now uses get_current_season_and_week()
 
 ### backend/modeling/generate_projections.py
-- [ ] Line 184: `def generate_for_week(self, week: int, season: int = 2025)`
-  - Change to dynamic default
+- [x] Line 184: `def generate_for_week(self, week: int, season: int = 2025)`
+  - **FIXED:** Now uses get_current_nfl_season()
 
 ### backend/tools/quick_picks.py
-- [ ] Line 14: `def load_projections(week: int, season: int = 2025)`
-  - Change to dynamic default
+- [x] Line 14: `def load_projections(week: int, season: int = 2025)`
+  - **FIXED:** Now uses get_current_nfl_season()
 
 ### backend/canonical/map_event_to_game.py
-- [ ] Line 17: `def map_event_to_game(event_json: dict, season: int = 2025)`
-  - Change to dynamic default
+- [x] Line 17: `def map_event_to_game(event_json: dict, season: int = 2025)`
+  - **FIXED:** Now uses get_current_nfl_season()
 
 ### backend/canonical/player_map.py
-- [ ] Line 29: `def load_player_lookup(year: int = 2025, lookup_dir: Path = Path('inputs'))`
-  - Change to dynamic default
+- [x] Line 29: `def load_player_lookup(year: int = 2025, lookup_dir: Path = Path('inputs'))`
+  - **FIXED:** Now uses get_current_nfl_season()
 - [ ] Line 36-59: `TODO: Implement loading from inputs/player_lookup_YYYY.json`
   - Player lookup not implemented
 - [ ] Line 75-89: `TODO: Implement fuzzy matching logic`
@@ -207,9 +207,9 @@ def my_function(season: int = None, week: int = None):
 
 | Priority | Total | Fixed | Remaining |
 |----------|-------|-------|-----------|
-| P1 Critical | 4 | 0 | 4 |
+| P1 Critical | 5 | 5 | 0 |
 | P2 Analysis | 12 | 0 | 12 |
 | P3 Features | 15 | 0 | 15 |
 | P4 API | 17 | 0 | 17 |
 
-**Overall: 0/48 items fixed**
+**Overall: 5/49 items fixed (P1 Complete!)**
