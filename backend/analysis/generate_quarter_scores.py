@@ -12,6 +12,8 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
+from backend.nfl_calendar import get_current_nfl_season
+
 
 def generate_quarter_scores_for_game(final_score, is_home=True):
     """Generate realistic quarter scores that sum to final score.
@@ -223,11 +225,12 @@ def create_quarter_market_features(games_df):
     return df
 
 
-def main():
+def main(season: int = None):
     """Generate quarter scores and create market features."""
+    season = season or get_current_nfl_season()
 
     # Load games
-    games_file = Path('inputs/games_2025.csv')
+    games_file = Path(f'inputs/games_{season}.csv')
 
     if not games_file.exists():
         print(f"❌ Games file not found: {games_file}")
@@ -235,23 +238,23 @@ def main():
 
     games = pd.read_csv(games_file)
 
-    # Filter to 2025 regular season
-    games_2025 = games[
-        (games['season'] == 2025) &
+    # Filter to regular season
+    games_filtered = games[
+        (games['season'] == season) &
         (games['game_type'] == 'REG')
     ].copy()
 
-    print(f"✅ Loaded {len(games_2025)} 2025 regular season games")
+    print(f"✅ Loaded {len(games_filtered)} {season} regular season games")
     print()
 
     # Generate quarter scores
-    games_with_quarters = generate_all_quarter_scores(games_2025)
+    games_with_quarters = generate_all_quarter_scores(games_filtered)
 
     # Create market features
     games_with_markets = create_quarter_market_features(games_with_quarters)
 
     # Save
-    output_file = Path('inputs/games_2025_with_quarters.csv')
+    output_file = Path(f'inputs/games_{season}_with_quarters.csv')
     games_with_markets.to_csv(output_file, index=False)
 
     print(f"💾 Saved to: {output_file}")

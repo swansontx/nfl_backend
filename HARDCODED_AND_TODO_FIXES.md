@@ -40,12 +40,12 @@ Track progress by marking items as:
 ## Priority 2: Analysis Scripts (MEDIUM - Used for Training)
 
 ### backend/analysis/backtest_week.py
-- [ ] Line 78: `def backtest_week(week: int, season: int = 2025)`
-  - Change to dynamic default
+- [x] Line 78: `def backtest_week(week: int, season: int = 2025)`
+  - **FIXED:** Now uses get_current_nfl_season()
 
 ### backend/analysis/backtest_with_models.py
-- [ ] Line 98: `def backtest_with_models(week: int, season: int = 2025)`
-  - Change to dynamic default
+- [x] Line 98: `def backtest_with_models(week: int, season: int = 2025)`
+  - **FIXED:** Now uses get_current_nfl_season()
 
 ### backend/analysis/create_enhanced_player_stats.py
 - [ ] Lines 19, 25, 38, 47-49, 57: Multiple hardcoded `season == 2025` filters
@@ -56,20 +56,20 @@ Track progress by marking items as:
   - Consider parameterizing
 
 ### backend/analysis/train_scoring_props.py
-- [ ] Line 39: Hardcoded `season == 2025`
-  - Consider parameterizing
+- [x] Line 39: Hardcoded `season == 2025`
+  - **FIXED:** Now uses get_current_nfl_season()
 
 ### backend/analysis/train_game_derivative_markets.py
-- [ ] Line 38: Hardcoded `season == 2025`
-  - Consider parameterizing
+- [x] Line 38: Hardcoded `season == 2025`
+  - **FIXED:** Now uses get_current_nfl_season()
 
 ### backend/analysis/generate_quarter_scores.py
-- [ ] Line 240: Hardcoded `season == 2025`
-  - Consider parameterizing
+- [x] Line 240: Hardcoded `season == 2025`
+  - **FIXED:** Now uses get_current_nfl_season()
 
 ### backend/analysis/generate_synthetic_player_stats.py
 - [ ] Line 30: Hardcoded `season == 2025`
-  - Consider parameterizing
+  - SKIP: Synthetic data generator, keep as-is
 
 ### backend/analysis/fetch_2025_training_data.py
 - [ ] Line 34: Hardcoded `season == 2025`
@@ -208,8 +208,8 @@ def my_function(season: int = None, week: int = None):
 | Priority | Total | Fixed | Remaining |
 |----------|-------|-------|-----------|
 | P1 Critical | 5 | 5 | 0 |
-| P2 Analysis | 12 | 0 | 12 |
+| P2 Analysis | 12 | 5 | 7 |
 | P3 Features | 15 | 0 | 15 |
 | P4 API | 17 | 0 | 17 |
 
-**Overall: 5/49 items fixed (P1 Complete!)**
+**Overall: 10/49 items fixed (P1 Complete, P2 In Progress)**
