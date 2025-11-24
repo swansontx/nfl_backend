@@ -43,7 +43,9 @@ from backend.api.evaluation_pipeline import evaluate_game, evaluate_week
 # Project root
 PROJECT_ROOT = Path(__file__).parent
 DEFAULT_WEEK = 12
-DEFAULT_SEASON = 2025
+DEFAULT_FETCH_SEASON = 2024
+DEFAULT_STATS_SEASON = 2025
+DEFAULT_SEASON = DEFAULT_STATS_SEASON
 
 
 def _normalize_param(value, fallback=None):
@@ -106,8 +108,8 @@ async def health():
 
 @app.post("/fetch/odds", response_model=FetchResponse)
 async def fetch_odds(
-    week: int = Query(12, description="NFL week number"),
-    season: int = Query(2024, description="NFL season"),
+    week: int = Query(DEFAULT_WEEK, description="NFL week number"),
+    season: int = Query(DEFAULT_FETCH_SEASON, description="NFL season"),
     background_tasks: BackgroundTasks = None
 ):
     """Fetch odds from The Odds API and store in database."""
@@ -169,7 +171,7 @@ async def fetch_odds(
 @app.post("/fetch/injuries", response_model=FetchResponse)
 async def fetch_injuries(
     week: Optional[int] = Query(None, description="NFL week number"),
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(DEFAULT_FETCH_SEASON, description="NFL season")
 ):
     """Fetch injury reports from ESPN and store in database."""
     try:
@@ -211,7 +213,7 @@ async def fetch_injuries(
 
 @app.post("/fetch/nflverse")
 async def fetch_nflverse(
-    year: int = Query(2024, description="NFL season year"),
+    year: int = Query(DEFAULT_FETCH_SEASON, description="NFL season year"),
     include_all: bool = Query(True, description="Include all datasets")
 ):
     """Fetch nflverse data (play-by-play, stats, rosters)."""
@@ -244,8 +246,8 @@ async def fetch_nflverse(
 
 @app.post("/fetch/all")
 async def fetch_all(
-    week: int = Query(12, description="NFL week"),
-    year: int = Query(2024, description="NFL season"),
+    week: int = Query(DEFAULT_WEEK, description="NFL week"),
+    year: int = Query(DEFAULT_FETCH_SEASON, description="NFL season"),
     background_tasks: BackgroundTasks = None
 ):
     """Fetch all data sources."""
@@ -380,8 +382,8 @@ async def check_data_freshness(
 
 @app.post("/refresh/auto")
 async def auto_refresh(
-    week: int = Query(12, description="NFL week"),
-    year: int = Query(2024, description="NFL season"),
+    week: int = Query(DEFAULT_WEEK, description="NFL week"),
+    year: int = Query(DEFAULT_FETCH_SEASON, description="NFL season"),
     odds_max_age_hours: int = Query(4, description="Max age for odds before refresh"),
     injuries_max_age_hours: int = Query(12, description="Max age for injuries before refresh"),
     force: bool = Query(False, description="Force refresh even if data is fresh")
@@ -552,7 +554,7 @@ async def get_projection_history(
 async def store_projections(
     projections: List[dict],
     week: int = Query(..., description="NFL week"),
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(DEFAULT_STATS_SEASON, description="NFL season")
 ):
     """Store generated projections in database."""
     inserted = ProjectionsRepository.insert_projections(projections, week, season)
@@ -596,7 +598,7 @@ async def get_injury_history(
 @app.get("/games")
 async def get_games(
     week: Optional[int] = None,
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(DEFAULT_STATS_SEASON, description="NFL season")
 ):
     """Get games/schedule."""
     games = GamesRepository.get_games(week, season)
@@ -664,7 +666,7 @@ async def get_value_props_history(
 async def store_value_props(
     props: List[dict],
     week: int = Query(..., description="NFL week"),
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(DEFAULT_STATS_SEASON, description="NFL season")
 ):
     """Store value props found."""
     count = ValuePropsRepository.insert_value_props(props, week, season)
@@ -1284,7 +1286,7 @@ async def full_matchup_analysis(game_id: str):
 
 @app.get("/intelligence/daily-brief")
 async def get_daily_betting_brief(
-    week: int = Query(12, description="NFL week"),
+    week: int = Query(DEFAULT_WEEK, description="NFL week"),
     min_edge: float = Query(3.0, description="Minimum edge for top props"),
     auto_refresh: bool = Query(True, description="Auto-refresh stale data first")
 ):
@@ -1853,13 +1855,13 @@ async def populate_schedule(season: int = Query(DEFAULT_SEASON, description="NFL
 @app.post("/populate/rosters")
 async def populate_rosters(
     season: int = Query(DEFAULT_SEASON, description="NFL season"),
-    week: int = Query(12, description="Week for roster snapshot")
+    week: int = Query(DEFAULT_WEEK, description="Week for roster snapshot")
 ):
     """Populate rosters from nflverse."""
     import pandas as pd
 
     season = _normalize_param(season, DEFAULT_SEASON)
-    week = _normalize_param(week, 12)
+    week = _normalize_param(week, DEFAULT_WEEK)
 
     roster_file = None
     roster_dir = PROJECT_ROOT / "inputs"
@@ -1926,7 +1928,7 @@ async def populate_rosters(
 @app.post("/populate/all")
 async def populate_all_data(
     season: int = Query(DEFAULT_SEASON, description="NFL season"),
-    week: int = Query(12, description="Current week"),
+    week: int = Query(DEFAULT_WEEK, description="Current week"),
     fetch_first: bool = Query(False, description="Fetch from nflverse first"),
     include_odds: bool = Query(True, description="Fetch DraftKings odds from OddsAPI")
 ):
@@ -1941,7 +1943,7 @@ async def populate_all_data(
     This is the recommended way to initialize the database.
     """
     season = _normalize_param(season, DEFAULT_SEASON)
-    week = _normalize_param(week, 12)
+    week = _normalize_param(week, DEFAULT_WEEK)
     fetch_first = _normalize_param(fetch_first, False)
     include_odds = _normalize_param(include_odds, True)
 

@@ -27,6 +27,25 @@ DEFAULT_FETCH_SEASON = 2024
 DEFAULT_STATS_SEASON = 2025
 
 
+def _int_property(default: int, description: str | None = None) -> dict:
+    prop = {"type": "integer", "default": default}
+    if description:
+        prop["description"] = description
+    return prop
+
+
+def week_property(description: str = "NFL week number") -> dict:
+    return _int_property(DEFAULT_WEEK, description)
+
+
+def fetch_season_property(description: str = "NFL season year") -> dict:
+    return _int_property(DEFAULT_FETCH_SEASON, description)
+
+
+def stats_season_property(description: str = "NFL season year") -> dict:
+    return _int_property(DEFAULT_STATS_SEASON, description)
+
+
 def add_source_label(data: dict, source: str = "YOUR_MODEL") -> dict:
     """Add source label to output data."""
     return {
@@ -47,16 +66,8 @@ async def list_tools():
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "week": {
-                        "type": "integer",
-                        "description": "NFL week number",
-                        "default": 12
-                    },
-                    "season": {
-                        "type": "integer",
-                        "description": "NFL season year",
-                        "default": 2024
-                    }
+                    "week": week_property(),
+                    "season": fetch_season_property()
                 }
             }
         ),
@@ -66,15 +77,8 @@ async def list_tools():
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "week": {
-                        "type": "integer",
-                        "description": "NFL week number"
-                    },
-                    "season": {
-                        "type": "integer",
-                        "description": "NFL season year",
-                        "default": 2024
-                    }
+                    "week": {"type": "integer", "description": "NFL week number"},
+                    "season": fetch_season_property()
                 }
             }
         ),
@@ -84,11 +88,7 @@ async def list_tools():
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "year": {
-                        "type": "integer",
-                        "description": "NFL season year",
-                        "default": 2024
-                    }
+                    "year": fetch_season_property()
                 }
             }
         ),
@@ -98,16 +98,8 @@ async def list_tools():
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "week": {
-                        "type": "integer",
-                        "description": "NFL week number",
-                        "default": 12
-                    },
-                    "year": {
-                        "type": "integer",
-                        "description": "NFL season year",
-                        "default": 2024
-                    }
+                    "week": week_property(),
+                    "year": fetch_season_property()
                 }
             }
         ),
@@ -125,16 +117,8 @@ async def list_tools():
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "week": {
-                        "type": "integer",
-                        "description": "NFL week number",
-                        "default": 12
-                    },
-                    "year": {
-                        "type": "integer",
-                        "description": "NFL season year",
-                        "default": 2024
-                    },
+                    "week": week_property(),
+                    "year": fetch_season_property(),
                     "force": {
                         "type": "boolean",
                         "description": "Force refresh even if data is fresh",
@@ -212,11 +196,7 @@ async def list_tools():
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "week": {
-                        "type": "integer",
-                        "description": "NFL week number",
-                        "default": 12
-                    },
+                    "week": week_property(),
                     "min_edge": {
                         "type": "number",
                         "description": "Minimum edge for top props (default 3.0)",
@@ -253,8 +233,8 @@ async def list_tools():
                     "game_id": {"type": "string", "description": "Game ID (e.g., '2024_12_BUF_MIA')"},
                     "home_team": {"type": "string", "description": "Home team abbreviation"},
                     "away_team": {"type": "string", "description": "Away team abbreviation"},
-                    "season": {"type": "integer", "default": 2024},
-                    "week": {"type": "integer", "default": 12}
+                    "season": stats_season_property(),
+                    "week": week_property()
                 },
                 "required": ["game_id", "home_team", "away_team"]
             }
@@ -268,8 +248,8 @@ async def list_tools():
                     "game_id": {"type": "string", "description": "Game ID (e.g., '2024_12_BUF_MIA')"},
                     "home_team": {"type": "string", "description": "Home team abbreviation"},
                     "away_team": {"type": "string", "description": "Away team abbreviation"},
-                    "season": {"type": "integer", "default": 2024},
-                    "week": {"type": "integer", "default": 12}
+                    "season": stats_season_property(),
+                    "week": week_property()
                 },
                 "required": ["game_id", "home_team", "away_team"]
             }
@@ -283,8 +263,8 @@ async def list_tools():
                     "game_id": {"type": "string", "description": "Game ID (e.g., '2024_12_BUF_MIA')"},
                     "home_team": {"type": "string", "description": "Home team abbreviation"},
                     "away_team": {"type": "string", "description": "Away team abbreviation"},
-                    "season": {"type": "integer", "default": 2024},
-                    "week": {"type": "integer", "default": 12}
+                    "season": stats_season_property(),
+                    "week": week_property()
                 },
                 "required": ["game_id", "home_team", "away_team"]
             }
@@ -295,8 +275,8 @@ async def list_tools():
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "week": {"type": "integer", "description": "NFL week number", "default": 12},
-                    "season": {"type": "integer", "description": "NFL season year", "default": 2024}
+                    "week": week_property(),
+                    "season": stats_season_property()
                 },
                 "required": ["week"]
             }
@@ -308,8 +288,8 @@ async def list_tools():
                 "type": "object",
                 "properties": {
                     "team": {"type": "string", "description": "Team abbreviation (e.g., 'BUF')"},
-                    "season": {"type": "integer", "default": 2024},
-                    "week": {"type": "integer", "default": 12}
+                    "season": stats_season_property(),
+                    "week": week_property()
                 },
                 "required": ["team"]
             }
@@ -321,7 +301,7 @@ async def list_tools():
                 "type": "object",
                 "properties": {
                     "team": {"type": "string", "description": "Team abbreviation"},
-                    "season": {"type": "integer", "default": 2024},
+                    "season": stats_season_property(),
                     "last_n_games": {"type": "integer", "default": 5}
                 },
                 "required": ["team"]
@@ -334,7 +314,7 @@ async def list_tools():
                 "type": "object",
                 "properties": {
                     "team": {"type": "string", "description": "Team abbreviation"},
-                    "season": {"type": "integer", "default": 2024},
+                    "season": stats_season_property(),
                     "last_n_games": {"type": "integer", "default": 5}
                 },
                 "required": ["team"]
@@ -347,7 +327,7 @@ async def list_tools():
                 "type": "object",
                 "properties": {
                     "team": {"type": "string", "description": "Team abbreviation"},
-                    "season": {"type": "integer", "default": 2024}
+                    "season": stats_season_property()
                 },
                 "required": ["team"]
             }
@@ -463,11 +443,7 @@ async def list_tools():
                         "type": "integer",
                         "description": "NFL week number"
                     },
-                    "season": {
-                        "type": "integer",
-                        "description": "NFL season year",
-                        "default": 2024
-                    }
+                    "season": stats_season_property()
                 }
             }
         ),
@@ -516,11 +492,7 @@ async def list_tools():
                         "type": "string",
                         "description": "Player name (e.g., 'Patrick Mahomes')"
                     },
-                    "season": {
-                        "type": "integer",
-                        "description": "NFL season year",
-                        "default": 2025
-                    }
+                    "season": stats_season_property()
                 },
                 "required": ["player_name"]
             }
@@ -535,11 +507,7 @@ async def list_tools():
                         "type": "string",
                         "description": "Team abbreviation (e.g., 'KC', 'BUF', 'SF')"
                     },
-                    "season": {
-                        "type": "integer",
-                        "description": "NFL season year",
-                        "default": 2025
-                    }
+                    "season": stats_season_property()
                 },
                 "required": ["team"]
             }
@@ -555,11 +523,7 @@ async def list_tools():
                         "description": "Stat category: passing_yards, passing_tds, rushing_yards, rushing_tds, receiving_yards, receiving_tds, receptions, fantasy, fantasy_ppr",
                         "enum": ["passing_yards", "passing_tds", "rushing_yards", "rushing_tds", "receiving_yards", "receiving_tds", "receptions", "fantasy", "fantasy_ppr"]
                     },
-                    "season": {
-                        "type": "integer",
-                        "description": "NFL season year",
-                        "default": 2025
-                    },
+                    "season": stats_season_property(),
                     "limit": {
                         "type": "integer",
                         "description": "Number of leaders to return",
@@ -575,11 +539,7 @@ async def list_tools():
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "season": {
-                        "type": "integer",
-                        "description": "NFL season year",
-                        "default": 2025
-                    },
+                    "season": stats_season_property(),
                     "week": {
                         "type": "integer",
                         "description": "Specific week (optional - all weeks if not specified)"
@@ -593,11 +553,7 @@ async def list_tools():
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "season": {
-                        "type": "integer",
-                        "description": "NFL season year",
-                        "default": 2025
-                    }
+                    "season": stats_season_property()
                 }
             }
         ),
@@ -607,16 +563,8 @@ async def list_tools():
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "season": {
-                        "type": "integer",
-                        "description": "NFL season year",
-                        "default": 2025
-                    },
-                    "week": {
-                        "type": "integer",
-                        "description": "Current week number",
-                        "default": 12
-                    },
+                    "season": stats_season_property(),
+                    "week": week_property(),
                     "fetch_first": {
                         "type": "boolean",
                         "description": "Fetch from nflverse first (slower)",
@@ -633,11 +581,7 @@ async def list_tools():
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "week": {
-                        "type": "integer",
-                        "description": "NFL week number",
-                        "default": 12
-                    },
+                    "week": week_property(),
                     "min_edge": {
                         "type": "number",
                         "description": "Minimum edge percentage (default 3.0)",
