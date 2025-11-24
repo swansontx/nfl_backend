@@ -163,11 +163,16 @@ Track progress by marking items as:
 - [ ] Line 2236: `TODO: Load from player lookup JSON or database`
 
 ### Remaining endpoints in app.py that need default resolution:
-- [ ] Line 1618: `season: int = None` - needs resolution
-- [ ] Line 2048: `get_team_stats` - needs resolution
-- [ ] Line 2101: season parameter - needs resolution
-- [ ] Line 2278: `get_player_stats` - needs resolution
-- [ ] Line 2584: `get_player_gamelogs` - needs resolution
+- [x] Line 1629: `season: int = None` - get_standings
+  - **FIXED:** Now uses CURRENT_SEASON
+- [x] Line 2061: `get_team_stats` - needs resolution
+  - **FIXED:** Now uses CURRENT_SEASON
+- [x] Line 2116: season parameter - list_games
+  - **FIXED:** Now uses CURRENT_SEASON
+- [x] Line 2295: `get_player_stats` - needs resolution
+  - **FIXED:** Now uses CURRENT_SEASON
+- [x] Line 2603: `get_player_gamelogs` - needs resolution
+  - **FIXED:** Now uses CURRENT_SEASON
 
 ---
 
@@ -224,9 +229,9 @@ def my_function(season: int = None, week: int = None):
 | P1 Critical | 5 | 5 | 0 ✅ |
 | P2 Analysis | 12 | 6 | 0 (6 intentionally skipped) ✅ |
 | P3 Features | 15 | 15 | 0 ✅ |
-| P4 API | 17 | 0 | 17 |
+| P4 API | 17 | 5 | 12 |
 
-**Overall: 26/49 items fixed (P1, P2, & P3 COMPLETE!)**
+**Overall: 31/49 items fixed (P1, P2, P3 complete; P4 in progress)**
 
 Note: Synthetic data generators deleted, fallbacks removed.
 

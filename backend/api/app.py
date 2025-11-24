@@ -1634,7 +1634,7 @@ async def get_standings(
     Essential context for understanding team strength and playoff implications.
 
     Args:
-        season: Season year (default 2024)
+        season: Season year (default: current season)
         week: Week number (optional, returns current standings if not specified)
 
     Returns:
@@ -1645,6 +1645,8 @@ async def get_standings(
     """
     from pathlib import Path
     import pandas as pd
+
+    season = season or CURRENT_SEASON
 
     # Try to load standings from nflverse data
     standings_file = Path(f'inputs/{season}_standings.csv')
@@ -2061,11 +2063,13 @@ def get_team_stats(team_id: str, season: int = None):
 
     Args:
         team_id: Team abbreviation
-        season: Season year (default: 2024)
+        season: Season year (default: current season)
 
     Returns:
         Team offensive/defensive stats and rankings
     """
+    season = season or CURRENT_SEASON
+
     team = get_team(team_id.upper())
     if not team:
         raise HTTPException(status_code=404, detail=f'Team not found: {team_id}')
@@ -2117,13 +2121,15 @@ def list_games(
 
     Args:
         week: Filter by week number
-        season: Season year (default: 2024)
+        season: Season year (default: current season)
         team: Filter by team abbreviation
         limit: Max number of games to return
 
     Returns:
         List of games matching filters
     """
+    season = season or CURRENT_SEASON
+
     # Load schedule for the season
     games = schedule_loader.load_schedule(season)
 
@@ -2291,11 +2297,13 @@ def get_player_stats(player_id: str, season: int = None):
 
     Args:
         player_id: Player ID (nflverse format)
-        season: Season year (default: 2024)
+        season: Season year (default: current season)
 
     Returns:
         Season statistics by position
     """
+    season = season or CURRENT_SEASON
+
     # TODO: Load from player_stats CSV or database
     return {
         'player_id': player_id,
@@ -2597,12 +2605,14 @@ def get_player_gamelogs(player_id: str, season: int = None, limit: int = 20):
 
     Args:
         player_id: Player ID (nflverse format)
-        season: Season year (default: 2024)
+        season: Season year (default: current season)
         limit: Max number of games to return
 
     Returns:
         List of game performances
     """
+    season = season or CURRENT_SEASON
+
     # TODO: Load from player_stats CSV (filtered by week)
     return {
         'player_id': player_id,
