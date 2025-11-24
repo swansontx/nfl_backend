@@ -54,9 +54,13 @@ app = FastAPI(
 )
 
 # CORS middleware for frontend
+# Set CORS_ORIGINS environment variable for production (comma-separated)
+# Example: export CORS_ORIGINS="https://app.example.com,https://example.com"
+cors_origins = os.getenv('CORS_ORIGINS', '*').split(',') if os.getenv('CORS_ORIGINS') else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Restrict in production
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -985,19 +989,123 @@ async def get_game_insights(game_id: str):
     Args:
         game_id: Game ID in format {season}_{week}_{away}_{home}
     """
-    # TODO: Integrate with ML models and feature analysis
-    # This should pull from:
-    # - backend/features/ for player trends
-    # - backend/modeling/ for predictions
-    # - Historical matchup data
-    # - Weather data
+    # Load real insights from model projections and stadium data
+    insights = []
 
-    # Not yet implemented - requires ML model integration
-    return {
-        "error": "Feature not implemented",
-        "message": "Game insights require ML model integration. See P4_EXTERNAL_SERVICE_REQUIREMENTS.md item #4.",
-        "insights": []
-    }
+    # Parse game_id to get teams
+    try:
+        parts = game_id.split('_')
+        if len(parts) >= 4:
+            season = parts[0]
+            week = parts[1]
+            away_team = parts[2]
+            home_team = parts[3]
+        else:
+            return {
+                "error": "Invalid game_id format",
+                "message": "Expected format: {season}_{week}_{away}_{home}",
+                "insights": []
+            }
+
+        # Get stadium information
+        from backend.api.stadium_database import get_stadium_for_game
+        stadium = get_stadium_for_game(game_id)
+
+        # Stadium insight (dome vs outdoor)
+        if stadium and stadium.get('is_dome'):
+            insights.append(MatchupInsight(
+                insight_type="venue",
+                title=f"Indoor Game - {stadium['name']}",
+                description=f"Game in dome stadium. Controlled environment eliminates weather variables.",
+                confidence=1.0,
+                supporting_data={
+                    "stadium": stadium['name'],
+                    "is_dome": True,
+                    "city": stadium.get('city', 'Unknown')
+                }
+            ))
+
+        # Load projections for this game to analyze trends
+        projections = model_loader.load_projections_for_game(game_id)
+
+        if projections:
+            # Analyze QB projections
+            qb_projections = [p for p in projections if 'passing' in p.prop_type]
+            if qb_projections:
+                # Find highest projected passing yards
+                top_qb = max(qb_projections, key=lambda x: x.projection if 'yards' in x.prop_type else 0)
+
+                if 'yards' in top_qb.prop_type:
+                    insights.append(MatchupInsight(
+                        insight_type="trend",
+                        title=f"QB Projection: {top_qb.player_name}",
+                        description=f"Model projects {top_qb.projection:.0f} passing yards (confidence: {top_qb.hit_probability_over:.0%})",
+                        confidence=top_qb.hit_probability_over,
+                        supporting_data={
+                            "player": top_qb.player_name,
+                            "projection": round(top_qb.projection, 1),
+                            "confidence_interval": (
+                                round(top_qb.confidence_interval[0], 1),
+                                round(top_qb.confidence_interval[1], 1)
+                            ),
+                            "std_dev": round(top_qb.std_dev, 1)
+                        }
+                    ))
+
+            # Analyze receiving projections
+            rec_projections = [p for p in projections if 'receiving' in p.prop_type]
+            if rec_projections:
+                # Find highest confidence receiver
+                top_receiver = max(rec_projections, key=lambda x: x.hit_probability_over)
+
+                if 'yards' in top_receiver.prop_type:
+                    insights.append(MatchupInsight(
+                        insight_type="matchup",
+                        title=f"Top Target: {top_receiver.player_name}",
+                        description=f"High confidence projection of {top_receiver.projection:.0f} receiving yards",
+                        confidence=top_receiver.hit_probability_over,
+                        supporting_data={
+                            "player": top_receiver.player_name,
+                            "projection": round(top_receiver.projection, 1),
+                            "confidence": round(top_receiver.hit_probability_over, 3)
+                        }
+                    ))
+
+            # Overall projection summary
+            insights.append(MatchupInsight(
+                insight_type="summary",
+                title="Model Projection Coverage",
+                description=f"Model has {len(projections)} prop projections for this game across {len(set(p.player_id for p in projections))} players",
+                confidence=0.9,
+                supporting_data={
+                    "total_projections": len(projections),
+                    "unique_players": len(set(p.player_id for p in projections)),
+                    "prop_types": list(set(p.prop_type for p in projections))
+                }
+            ))
+
+        else:
+            # No projections available
+            insights.append(MatchupInsight(
+                insight_type="warning",
+                title="No Model Projections Available",
+                description=f"No projection files found for {game_id}. Run models to generate projections.",
+                confidence=0.0,
+                supporting_data={
+                    "game_id": game_id,
+                    "expected_file": f"outputs/predictions/props_{game_id}.csv"
+                }
+            ))
+
+    except Exception as e:
+        print(f"Error generating insights: {e}")
+        return {
+            "error": "Error generating insights",
+            "message": str(e),
+            "insights": []
+        }
+
+    return insights
 
 
 @app.get('/api/v1/games/{game_id}/narrative', response_model=List[GameNarrative])
@@ -1273,15 +1381,74 @@ async def compare_props(
     Returns:
         Comparative analysis of players for the specified prop
     """
-    # TODO: Load actual player projections from model outputs
-    # Not yet implemented - requires model loading integration
+    # Load actual player projections from model outputs
+    player_id_list = player_ids.split(',')
+    comparisons = []
+
+    for pid in player_id_list[:5]:  # Limit to 5 players
+        # Try to load projection for this player
+        projection = model_loader.load_projection_for_player(
+            player_id=pid.strip(),
+            prop_type=prop_type
+        )
+
+        if projection:
+            # Calculate trend from confidence interval
+            range_pct = ((projection.confidence_interval[1] - projection.confidence_interval[0]) /
+                        projection.projection) * 100 if projection.projection > 0 else 0
+
+            # Trend based on hit probability
+            if projection.hit_probability_over > 0.6:
+                trend = "increasing"
+            elif projection.hit_probability_over < 0.4:
+                trend = "decreasing"
+            else:
+                trend = "stable"
+
+            # Matchup grade based on confidence
+            if projection.hit_probability_over >= 0.65:
+                grade = "A"
+            elif projection.hit_probability_over >= 0.60:
+                grade = "B+"
+            elif projection.hit_probability_over >= 0.55:
+                grade = "B"
+            elif projection.hit_probability_over >= 0.50:
+                grade = "C+"
+            else:
+                grade = "C"
+
+            comparisons.append({
+                "player_id": pid.strip(),
+                "player_name": projection.player_name,
+                "projection": round(projection.projection, 1),
+                "std_dev": round(projection.std_dev, 1),
+                "confidence_interval": (
+                    round(projection.confidence_interval[0], 1),
+                    round(projection.confidence_interval[1], 1)
+                ),
+                "hit_probability_over": round(projection.hit_probability_over, 3),
+                "trend": trend,
+                "matchup_grade": grade,
+                "recommendation": f"Consider {'OVER' if projection.hit_probability_over > 0.5 else 'UNDER'}"
+            })
+
+    if not comparisons:
+        return {
+            "error": "No projections found",
+            "message": f"No model projections found for players: {player_ids}. Ensure projection files exist in outputs/predictions/",
+            "prop_type": prop_type,
+            "players_compared": 0,
+            "comparisons": []
+        }
+
+    # Sort by hit probability (best value first)
+    comparisons.sort(key=lambda x: x['hit_probability_over'], reverse=True)
 
     return {
-        "error": "Feature not implemented",
-        "message": "Player comparison requires model projection loading. See P4_EXTERNAL_SERVICE_REQUIREMENTS.md item #8.",
         "prop_type": prop_type,
-        "players_compared": 0,
-        "comparisons": []
+        "players_compared": len(comparisons),
+        "comparisons": comparisons,
+        "best_value": comparisons[0] if comparisons else None
     }
 
 
