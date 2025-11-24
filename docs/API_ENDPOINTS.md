@@ -290,6 +290,78 @@ Get NFL standings by division and conference.
 }
 ```
 
+### Advanced Analysis Endpoints
+
+These routes power the MCP analysis workflows. Full schemas live in [docs/ADVANCED_ANALYSIS.md](ADVANCED_ANALYSIS.md).
+
+#### GET /analysis/situational
+
+Blend weather, rest, travel, injuries, and positional matchup indicators for a single game.
+
+**Query Parameters:**
+- `game_id` (required): Game identifier (e.g., `2024_12_KC_BUF`)
+- `home_team` (required): Home team abbreviation
+- `away_team` (required): Away team abbreviation
+- `season` (required): Season year
+- `week` (required): Week number
+
+**Example:**
+```bash
+curl "http://localhost:8000/analysis/situational?game_id=2024_12_KC_BUF&home_team=KC&away_team=BUF&season=2024&week=12"
+```
+
+#### GET /analysis/defense/{team}
+
+Combined run/pass defense report with positional edges and recent opponent context.
+
+**Path Parameters:**
+- `team` (required): Team abbreviation (e.g., `KC`)
+
+**Query Parameters:**
+- `season` (required): Season year
+- `week` (optional): Week number for contextual trends
+
+**Examples:**
+```bash
+# Overall defensive profile
+curl "http://localhost:8000/analysis/defense/KC?season=2024"
+
+# Pass defense vs recent quarterbacks
+curl "http://localhost:8000/analysis/defense/KC/pass?season=2024&week=12"
+
+# Rush defense vs recent running backs
+curl "http://localhost:8000/analysis/defense/KC/rush?season=2024&week=12"
+```
+
+#### GET /analysis/evaluate/game
+
+End-to-end evaluator that fuses situational analysis, positional matchups, injuries, and prop signals for a single game.
+
+**Query Parameters:**
+- `game_id` (required): Game identifier
+- `home_team` (required): Home team abbreviation
+- `away_team` (required): Away team abbreviation
+- `season` (required): Season year
+- `week` (required): Week number
+
+**Example:**
+```bash
+curl "http://localhost:8000/analysis/evaluate/game?game_id=2024_12_KC_BUF&home_team=KC&away_team=BUF&season=2024&week=12"
+```
+
+#### GET /analysis/evaluate/week
+
+Ranks games for the week with recommended prop targets and model notes.
+
+**Query Parameters:**
+- `season` (required): Season year
+- `week` (required): Week number
+
+**Example:**
+```bash
+curl "http://localhost:8000/analysis/evaluate/week?season=2024&week=12"
+```
+
 ---
 
 ## Usage Guide: Prop Betting Workflow
