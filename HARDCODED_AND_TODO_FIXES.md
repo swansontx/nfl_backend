@@ -103,8 +103,8 @@ Track progress by marking items as:
   - **FIXED:** Implemented with joblib serialization
 - [x] Line 99-100: `TODO: Load calibrator` - Not implemented
   - **FIXED:** Implemented with joblib deserialization
-- [ ] Line 121: `TODO: Load historical data`
-  - Remains: run_calibration function data loading
+- [x] Line 147-168: `TODO: Load historical data`
+  - **FIXED:** Implemented JSON file loading with validation, removed placeholder data fallback
 
 ### backend/calib_backtest/backtest.py
 - [x] Line 42-44: `TODO: Implement using sklearn.metrics` - Calibration error not implemented
@@ -235,15 +235,15 @@ def my_function(season: int = None, week: int = None):
 |----------|-------|-------|-----------|
 | P1 Critical | 5 | 5 | 0 ✅ |
 | P2 Analysis | 12 | 6 | 0 (6 intentionally skipped) ✅ |
-| P3 Features | 15 | 15 | 0 ✅ |
+| P3 Features | 16 | 16 | 0 ✅ |
 | P4 API | 17 | 9 | 8 (external services) |
 
-**Overall: 35/49 items fixed (71.4% complete)**
+**Overall: 36/50 items fixed (72% complete)**
 
-Note: Synthetic data generators deleted, fallbacks removed.
+Note: Synthetic data generators deleted, fallbacks removed. P4 external service requirements documented in P4_EXTERNAL_SERVICE_REQUIREMENTS.md.
 
 ### P3 Completed Items:
-- calibrate.py: Platt scaling, isotonic regression, save/load with joblib
+- calibrate.py: Platt scaling, isotonic regression, save/load with joblib, JSON data loading (no placeholder fallback)
 - backtest.py: Classification and regression metrics with sklearn
 - player_map.py: JSON loading, fuzzy matching with fuzzywuzzy, name variations
 - extract_weather_features.py: OpenWeather API integration with error handling
