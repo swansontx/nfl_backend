@@ -18,6 +18,8 @@ from typing import List, Dict, Optional
 import csv
 from datetime import datetime
 
+from backend.nfl_calendar import get_current_nfl_season
+
 # Import injury adjustments
 try:
     from backend.data.injury_adjustments import adjust_projection_for_injury, injury_adjuster
@@ -181,16 +183,17 @@ class ProjectionGenerator:
             'confidence_upper': round(conf_upper, 1),
         }
 
-    def generate_for_week(self, week: int, season: int = 2025) -> str:
+    def generate_for_week(self, week: int, season: int = None) -> str:
         """Generate projections for all players in a given week.
 
         Args:
             week: NFL week number
-            season: Season year
+            season: Season year (defaults to current season)
 
         Returns:
             Path to output file
         """
+        season = season or get_current_nfl_season()
         print(f"\n{'='*60}")
         print(f"GENERATING PROJECTIONS FOR WEEK {week}")
         print(f"{'='*60}\n")

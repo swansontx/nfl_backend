@@ -14,12 +14,15 @@ Note: Season year remains constant even for games played in January/February.
 For example, a playoff game in January 2026 is still part of the 2025 season.
 """
 
-def map_event_to_game(event_json: dict, season: int = 2025) -> str:
+from backend.nfl_calendar import get_current_nfl_season
+
+
+def map_event_to_game(event_json: dict, season: int = None) -> str:
     """Return canonical game_id in format {season}_{week}_{away}_{home}.
 
     Args:
         event_json: Event data from odds API containing teams, date, etc.
-        season: NFL season year (default 2025)
+        season: NFL season year (defaults to current season)
 
     Returns:
         Canonical game_id (e.g., 2025_10_KC_BUF)
@@ -27,6 +30,7 @@ def map_event_to_game(event_json: dict, season: int = 2025) -> str:
     Raises:
         ValueError: If event cannot be mapped to a valid game_id
     """
+    season = season or get_current_nfl_season()
     # TODO: implement mapping heuristics from event_json
     # - Extract week from date/schedule lookup
     # - Map team names to nflverse abbreviations

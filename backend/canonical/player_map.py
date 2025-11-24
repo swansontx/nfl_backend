@@ -20,13 +20,15 @@ from typing import Optional, Dict, List
 from pathlib import Path
 import json
 
+from backend.nfl_calendar import get_current_nfl_season
+
 
 # In-memory cache of player mappings
 _player_lookup: Dict[str, str] = {}
 _name_to_id: Dict[str, str] = {}
 
 
-def load_player_lookup(year: int = 2025, lookup_dir: Path = Path('inputs')) -> None:
+def load_player_lookup(year: int = None, lookup_dir: Path = Path('inputs')) -> None:
     """Load nflverse player lookup table into memory.
 
     Args:
@@ -45,6 +47,7 @@ def load_player_lookup(year: int = 2025, lookup_dir: Path = Path('inputs')) -> N
         }
     """
     global _player_lookup, _name_to_id
+    year = year or get_current_nfl_season()
 
     lookup_file = lookup_dir / f"player_lookup_{year}.json"
 

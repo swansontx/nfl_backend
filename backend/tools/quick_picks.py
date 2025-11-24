@@ -10,9 +10,12 @@ import argparse
 from pathlib import Path
 from math import erf, sqrt
 
+from backend.nfl_calendar import get_current_nfl_season
 
-def load_projections(week: int, season: int = 2025) -> pd.DataFrame:
+
+def load_projections(week: int, season: int = None) -> pd.DataFrame:
     """Load projections for a given week."""
+    season = season or get_current_nfl_season()
     proj_file = Path(f"outputs/predictions/props_{season}_{week}.csv")
     if not proj_file.exists():
         print(f"Error: {proj_file} not found. Run generate_projections first.")
