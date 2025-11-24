@@ -34,12 +34,11 @@ def fetch_weather_from_api(
     # Placeholder for actual weather API integration
     # In production, integrate with OpenWeather API, WeatherAPI, etc.
 
-    weather = {
-        'temp_f': 65,
-        'wind_mph': 8,
-        'precipitation': False,
-        'conditions': 'Clear'
-    }
+    if not weather_api_key:
+        raise ValueError(
+            "OPENWEATHER_API_KEY not set - cannot fetch weather data. "
+            "Set environment variable: export OPENWEATHER_API_KEY=your_key_here"
+        )
 
     if weather_api_key:
         try:
@@ -54,16 +53,18 @@ def fetch_weather_from_api(
 
             if response.status_code == 200:
                 data = response.json()
-                weather = {
+                return {
                     'temp_f': data['main']['temp'],
                     'wind_mph': data['wind']['speed'],
                     'precipitation': data['weather'][0]['main'].lower() in ['rain', 'snow', 'drizzle'],
                     'conditions': data['weather'][0]['description']
                 }
+            else:
+                raise RuntimeError(f"Weather API returned status {response.status_code}")
         except (requests.RequestException, KeyError, ValueError) as e:
-            print(f"Weather API error: {e}, using defaults")
+            raise RuntimeError(f"Weather API error: {e}. Check API key and location format.")
 
-    return weather
+    raise RuntimeError("Weather API key provided but request failed")
 
 
 def load_weather_from_nflverse(

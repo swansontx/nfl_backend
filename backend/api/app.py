@@ -54,9 +54,13 @@ app = FastAPI(
 )
 
 # CORS middleware for frontend
+# Set CORS_ORIGINS environment variable for production (comma-separated)
+# Example: export CORS_ORIGINS="https://app.example.com,https://example.com"
+cors_origins = os.getenv('CORS_ORIGINS', '*').split(',') if os.getenv('CORS_ORIGINS') else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Restrict in production
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -214,9 +218,62 @@ def _get_setup_recommendations(env_status: dict) -> list[str]:
 
 @app.post('/admin/recompute')
 async def recompute(req: RecomputeRequest):
-    """Trigger model recomputation for a specific game."""
-    # TODO: Integrate with orchestration pipeline
-    return {'status': 'started', 'game_id': req.game_id}
+    """Trigger model recomputation for a specific game.
+
+    This runs the orchestration pipeline to regenerate predictions.
+    Note: This is a long-running operation that runs synchronously.
+    For production, consider using a job queue (Celery, Redis, etc.)
+    """
+    from backend.orchestration.orchestrator import NFLPropsPipeline
+
+    # Parse game_id to extract season and week
+    try:
+        parts = req.game_id.split('_')
+        if len(parts) < 2:
+            return {
+                'status': 'error',
+                'message': 'Invalid game_id format. Expected: {season}_{week}_{away}_{home}',
+                'game_id': req.game_id
+            }
+
+        season = int(parts[0])
+        week = int(parts[1])
+
+        # Run orchestration pipeline for this season/week
+        print(f"Starting recomputation for {req.game_id} (Season {season}, Week {week})")
+
+        pipeline = NFLPropsPipeline(season=season, week=week)
+        success = pipeline.run_full_pipeline()
+
+        if success:
+            return {
+                'status': 'completed',
+                'game_id': req.game_id,
+                'season': season,
+                'week': week,
+                'message': 'Pipeline completed successfully. New projections available in outputs/predictions/'
+            }
+        else:
+            return {
+                'status': 'failed',
+                'game_id': req.game_id,
+                'season': season,
+                'week': week,
+                'message': 'Pipeline failed. Check logs for details.'
+            }
+
+    except ValueError as e:
+        return {
+            'status': 'error',
+            'message': f'Invalid game_id format: {e}',
+            'game_id': req.game_id
+        }
+    except Exception as e:
+        return {
+            'status': 'error',
+            'message': f'Pipeline error: {str(e)}',
+            'game_id': req.game_id
+        }
 
 
 @app.get('/admin/odds-api-usage')
@@ -793,19 +850,64 @@ async def get_news(
             related_teams=[injury['team']]
         ))
 
-    # TODO: Add non-injury news items
-    # Placeholder for demonstration
-    if not category or category == "news":
-        news_items.append(NewsItem(
-            id="news_001",
-            title="NFL Week 12 Preview",
-            summary="Key matchups and storylines for Week 12",
-            source="NFL.com",
-            published_at=datetime.now().isoformat(),
-            category="news",
-            related_players=[],
-            related_teams=[]
-        ))
+    # Add news from RSS feeds (no API keys needed)
+    if not category or category in ["news", "analysis"]:
+        try:
+            import feedparser
+            from datetime import datetime
+
+            # NFL.com RSS feed
+            nfl_feed = feedparser.parse('https://www.nfl.com/feeds/rss/news')
+            for entry in nfl_feed.entries[:5]:  # Top 5 articles
+                # Extract teams mentioned in title/summary
+                related_teams = []
+                if team:
+                    # Simple team name matching
+                    if team.upper() in entry.title.upper() or team.upper() in entry.get('summary', '').upper():
+                        related_teams = [team.upper()]
+                    else:
+                        continue  # Skip if filtering by team and not mentioned
+
+                news_items.append(NewsItem(
+                    id=f"nfl_{entry.get('id', entry.link)}",
+                    title=entry.title[:200],  # Limit title length
+                    summary=entry.get('summary', '')[:500],  # Limit summary length
+                    source="NFL.com",
+                    published_at=entry.get('published', datetime.now().isoformat()),
+                    category="news",
+                    related_players=[],
+                    related_teams=related_teams,
+                    url=entry.link
+                ))
+
+            # ESPN NFL RSS feed
+            espn_feed = feedparser.parse('https://www.espn.com/espn/rss/nfl/news')
+            for entry in espn_feed.entries[:5]:  # Top 5 articles
+                related_teams = []
+                if team:
+                    if team.upper() in entry.title.upper() or team.upper() in entry.get('summary', '').upper():
+                        related_teams = [team.upper()]
+                    else:
+                        continue
+
+                news_items.append(NewsItem(
+                    id=f"espn_{entry.get('id', entry.link)}",
+                    title=entry.title[:200],
+                    summary=entry.get('summary', '')[:500],
+                    source="ESPN",
+                    published_at=entry.get('published', datetime.now().isoformat()),
+                    category="news",
+                    related_players=[],
+                    related_teams=related_teams,
+                    url=entry.link
+                ))
+
+        except ImportError:
+            print("Warning: feedparser not installed. Install with: pip install feedparser")
+            print("Only showing injury news")
+        except Exception as e:
+            print(f"Error fetching RSS feeds: {e}")
+            print("Continuing with injury news only")
 
     return news_items[:limit]
 
@@ -996,45 +1098,121 @@ async def get_game_insights(game_id: str):
     Args:
         game_id: Game ID in format {season}_{week}_{away}_{home}
     """
-    # TODO: Integrate with ML models and feature analysis
-    # This should pull from:
-    # - backend/features/ for player trends
-    # - backend/modeling/ for predictions
-    # - Historical matchup data
-    # - Weather data
-
+    # Load real insights from model projections and stadium data
     insights = []
 
-    # Example insights (placeholder)
-    insights.append(MatchupInsight(
-        insight_type="trend",
-        title="QB Performance vs. Defense",
-        description="Away team QB has averaged 285 passing yards vs. similar defenses",
-        confidence=0.82,
-        supporting_data={
-            "avg_yards": 285,
-            "sample_size": 6,
-            "trend": "increasing"
-        }
-    ))
+    # Parse game_id to get teams
+    try:
+        parts = game_id.split('_')
+        if len(parts) >= 4:
+            season = parts[0]
+            week = parts[1]
+            away_team = parts[2]
+            home_team = parts[3]
+        else:
+            return {
+                "error": "Invalid game_id format",
+                "message": "Expected format: {season}_{week}_{away}_{home}",
+                "insights": []
+            }
 
-    insights.append(MatchupInsight(
-        insight_type="matchup",
-        title="Run Defense Vulnerability",
-        description="Home team allows 4.8 yards per carry, 2nd worst in league",
-        confidence=0.91,
-        supporting_data={
-            "ypc_allowed": 4.8,
-            "league_rank": 30,
-            "last_3_games": 5.2
-        }
-    ))
+        # Get stadium information
+        from backend.api.stadium_database import get_stadium_for_game
+        stadium = get_stadium_for_game(game_id)
 
-    # Add weather insight if applicable
-    # TODO: Get stadium location from game_id/schedule
-    # weather = weather_api.get_game_weather(lat, lon, game_time)
-    # if weather['wind_speed'] > 15:
-    #     insights.append(weather_impact_insight)
+        # Stadium insight (dome vs outdoor)
+        if stadium and stadium.get('is_dome'):
+            insights.append(MatchupInsight(
+                insight_type="venue",
+                title=f"Indoor Game - {stadium['name']}",
+                description=f"Game in dome stadium. Controlled environment eliminates weather variables.",
+                confidence=1.0,
+                supporting_data={
+                    "stadium": stadium['name'],
+                    "is_dome": True,
+                    "city": stadium.get('city', 'Unknown')
+                }
+            ))
+
+        # Load projections for this game to analyze trends
+        projections = model_loader.load_projections_for_game(game_id)
+
+        if projections:
+            # Analyze QB projections
+            qb_projections = [p for p in projections if 'passing' in p.prop_type]
+            if qb_projections:
+                # Find highest projected passing yards
+                top_qb = max(qb_projections, key=lambda x: x.projection if 'yards' in x.prop_type else 0)
+
+                if 'yards' in top_qb.prop_type:
+                    insights.append(MatchupInsight(
+                        insight_type="trend",
+                        title=f"QB Projection: {top_qb.player_name}",
+                        description=f"Model projects {top_qb.projection:.0f} passing yards (confidence: {top_qb.hit_probability_over:.0%})",
+                        confidence=top_qb.hit_probability_over,
+                        supporting_data={
+                            "player": top_qb.player_name,
+                            "projection": round(top_qb.projection, 1),
+                            "confidence_interval": (
+                                round(top_qb.confidence_interval[0], 1),
+                                round(top_qb.confidence_interval[1], 1)
+                            ),
+                            "std_dev": round(top_qb.std_dev, 1)
+                        }
+                    ))
+
+            # Analyze receiving projections
+            rec_projections = [p for p in projections if 'receiving' in p.prop_type]
+            if rec_projections:
+                # Find highest confidence receiver
+                top_receiver = max(rec_projections, key=lambda x: x.hit_probability_over)
+
+                if 'yards' in top_receiver.prop_type:
+                    insights.append(MatchupInsight(
+                        insight_type="matchup",
+                        title=f"Top Target: {top_receiver.player_name}",
+                        description=f"High confidence projection of {top_receiver.projection:.0f} receiving yards",
+                        confidence=top_receiver.hit_probability_over,
+                        supporting_data={
+                            "player": top_receiver.player_name,
+                            "projection": round(top_receiver.projection, 1),
+                            "confidence": round(top_receiver.hit_probability_over, 3)
+                        }
+                    ))
+
+            # Overall projection summary
+            insights.append(MatchupInsight(
+                insight_type="summary",
+                title="Model Projection Coverage",
+                description=f"Model has {len(projections)} prop projections for this game across {len(set(p.player_id for p in projections))} players",
+                confidence=0.9,
+                supporting_data={
+                    "total_projections": len(projections),
+                    "unique_players": len(set(p.player_id for p in projections)),
+                    "prop_types": list(set(p.prop_type for p in projections))
+                }
+            ))
+
+        else:
+            # No projections available
+            insights.append(MatchupInsight(
+                insight_type="warning",
+                title="No Model Projections Available",
+                description=f"No projection files found for {game_id}. Run models to generate projections.",
+                confidence=0.0,
+                supporting_data={
+                    "game_id": game_id,
+                    "expected_file": f"outputs/predictions/props_{game_id}.csv"
+                }
+            ))
+
+    except Exception as e:
+        print(f"Error generating insights: {e}")
+        return {
+            "error": "Error generating insights",
+            "message": str(e),
+            "insights": []
+        }
 
     return insights
 
@@ -1061,40 +1239,12 @@ async def get_game_narrative(game_id: str):
     # - Weather conditions
     # - Historical matchups
 
-    narratives = []
-
-    # Placeholder narratives
-    narratives.append(GameNarrative(
-        narrative_type="preview",
-        content=(
-            "This AFC showdown features two high-powered offenses. "
-            "The away team's passing attack ranks 2nd in the league, "
-            "while the home team's defense has struggled against elite QBs."
-        ),
-        generated_at=datetime.now().isoformat()
-    ))
-
-    narratives.append(GameNarrative(
-        narrative_type="key_matchups",
-        content=(
-            "Watch for the battle in the trenches. The away team's offensive line "
-            "has allowed just 12 sacks this season, while the home team's pass rush "
-            "leads the league with 42 sacks. This matchup will dictate the game flow."
-        ),
-        generated_at=datetime.now().isoformat()
-    ))
-
-    narratives.append(GameNarrative(
-        narrative_type="betting_angle",
-        content=(
-            "Value opportunity on the away team's RB receiving props. "
-            "He's averaged 6.2 receptions in games where the team is favored, "
-            "and books have his line at 4.5. Weather forecast shows clear conditions."
-        ),
-        generated_at=datetime.now().isoformat()
-    ))
-
-    return narratives
+    # Not yet implemented - requires LLM API integration
+    return {
+        "error": "Feature not implemented",
+        "message": "Game narratives require LLM API integration (OpenAI/Anthropic). See P4_EXTERNAL_SERVICE_REQUIREMENTS.md item #6.",
+        "narratives": []
+    }
 
 
 # ============================================================================
@@ -1123,34 +1273,12 @@ async def get_game_content(
     # - Podcast APIs (Apple Podcasts, Spotify)
     # - Twitter for embedded video content
 
-    content_items = []
-
-    # Placeholder content
-    content_items.append(ContentItem(
-        content_type="article",
-        title="Week 12 Preview: Key Matchups to Watch",
-        source="ESPN",
-        url="https://espn.com/nfl/preview",
-        published_at=datetime.now().isoformat(),
-        thumbnail_url="https://placeholder.com/thumbnail.jpg"
-    ))
-
-    content_items.append(ContentItem(
-        content_type="video",
-        title="Film Breakdown: Offensive Schemes",
-        source="YouTube",
-        url="https://youtube.com/watch?v=example",
-        published_at=datetime.now().isoformat(),
-        thumbnail_url="https://placeholder.com/video-thumb.jpg"
-    ))
-
-    if content_type:
-        content_items = [
-            item for item in content_items
-            if item.content_type == content_type
-        ]
-
-    return content_items[:limit]
+    # Not yet implemented - requires content API integration
+    return {
+        "error": "Feature not implemented",
+        "message": "Content aggregation requires YouTube/RSS/Podcast API integration. See P4_EXTERNAL_SERVICE_REQUIREMENTS.md item #7.",
+        "content_items": []
+    }
 
 
 # ============================================================================
@@ -1187,7 +1315,8 @@ async def find_prop_value(
     player_id: Optional[str] = None,
     min_edge: float = 5.0,
     min_grade: str = "B",
-    limit: int = 10
+    limit: int = 10,
+    bankroll: float = 1000.0
 ):
     """Find high-value prop bets.
 
@@ -1228,33 +1357,20 @@ async def find_prop_value(
         for gid in available_games[:10]:  # Limit to 10 most recent games
             projections.extend(model_loader.load_projections_for_game(gid))
 
-    # If no real data available, use sample data for demo
-    if not prop_lines or not projections:
-        print("No real odds or projections found, using sample data")
-        prop_lines = [
-            PropLine(
-                player_id="player_001",
-                player_name="Patrick Mahomes",
-                prop_type="passing_yards",
-                line=275.5,
-                over_odds=-110,
-                under_odds=-110,
-                book="DraftKings",
-                timestamp=datetime.now().isoformat()
-            )
-        ]
-        projections = [
-            PropProjection(
-                player_id="player_001",
-                player_name="Patrick Mahomes",
-                prop_type="passing_yards",
-                projection=295.3,
-                std_dev=42.5,
-                confidence_interval=(252.8, 337.8),
-                hit_probability_over=0.68,
-                hit_probability_under=0.32
-            )
-        ]
+    # Check if we have real data
+    if not prop_lines:
+        return {
+            "error": "No prop lines available",
+            "message": "Odds API returned no data. Check ODDS_API_KEY or wait for games to be available.",
+            "props": []
+        }
+
+    if not projections:
+        return {
+            "error": "No projections available",
+            "message": "No model projections found. Ensure models have been trained and projection files exist in outputs/predictions/",
+            "props": []
+        }
 
     # Find value props using real data
     value_props = prop_analyzer.find_best_props(
@@ -1270,7 +1386,7 @@ async def find_prop_value(
         stake = prop_analyzer.calculate_kelly_stake(
             max(value.edge_over, value.edge_under),
             value.confidence,
-            bankroll=1000  # Placeholder bankroll
+            bankroll=bankroll
         )
 
         results.append({
@@ -1374,22 +1490,68 @@ async def compare_props(
     Returns:
         Comparative analysis of players for the specified prop
     """
+    # Load actual player projections from model outputs
     player_id_list = player_ids.split(',')
-
-    # TODO: Load actual player projections
-    # Placeholder data
     comparisons = []
+
     for pid in player_id_list[:5]:  # Limit to 5 players
-        comparisons.append({
-            "player_id": pid,
-            "player_name": f"Player {pid}",
-            "projection": 275.5,
-            "std_dev": 35.2,
-            "recent_avg": 282.3,
-            "trend": "increasing",
-            "matchup_grade": "B+",
-            "recommendation": "Consider OVER"
-        })
+        # Try to load projection for this player
+        projection = model_loader.load_projection_for_player(
+            player_id=pid.strip(),
+            prop_type=prop_type
+        )
+
+        if projection:
+            # Calculate trend from confidence interval
+            range_pct = ((projection.confidence_interval[1] - projection.confidence_interval[0]) /
+                        projection.projection) * 100 if projection.projection > 0 else 0
+
+            # Trend based on hit probability
+            if projection.hit_probability_over > 0.6:
+                trend = "increasing"
+            elif projection.hit_probability_over < 0.4:
+                trend = "decreasing"
+            else:
+                trend = "stable"
+
+            # Matchup grade based on confidence
+            if projection.hit_probability_over >= 0.65:
+                grade = "A"
+            elif projection.hit_probability_over >= 0.60:
+                grade = "B+"
+            elif projection.hit_probability_over >= 0.55:
+                grade = "B"
+            elif projection.hit_probability_over >= 0.50:
+                grade = "C+"
+            else:
+                grade = "C"
+
+            comparisons.append({
+                "player_id": pid.strip(),
+                "player_name": projection.player_name,
+                "projection": round(projection.projection, 1),
+                "std_dev": round(projection.std_dev, 1),
+                "confidence_interval": (
+                    round(projection.confidence_interval[0], 1),
+                    round(projection.confidence_interval[1], 1)
+                ),
+                "hit_probability_over": round(projection.hit_probability_over, 3),
+                "trend": trend,
+                "matchup_grade": grade,
+                "recommendation": f"Consider {'OVER' if projection.hit_probability_over > 0.5 else 'UNDER'}"
+            })
+
+    if not comparisons:
+        return {
+            "error": "No projections found",
+            "message": f"No model projections found for players: {player_ids}. Ensure projection files exist in outputs/predictions/",
+            "prop_type": prop_type,
+            "players_compared": 0,
+            "comparisons": []
+        }
+
+    # Sort by hit probability (best value first)
+    comparisons.sort(key=lambda x: x['hit_probability_over'], reverse=True)
 
     return {
         "prop_type": prop_type,
@@ -1634,7 +1796,7 @@ async def get_standings(
     Essential context for understanding team strength and playoff implications.
 
     Args:
-        season: Season year (default 2024)
+        season: Season year (default: current season)
         week: Week number (optional, returns current standings if not specified)
 
     Returns:
@@ -1645,6 +1807,8 @@ async def get_standings(
     """
     from pathlib import Path
     import pandas as pd
+
+    season = season or CURRENT_SEASON
 
     # Try to load standings from nflverse data
     standings_file = Path(f'inputs/{season}_standings.csv')
@@ -1659,15 +1823,70 @@ async def get_standings(
 
         # Group by division
         divisions = {}
+
+        # Try to get current odds for upcoming games
+        try:
+            from backend.ingestion.fetch_odds import fetch_odds_api
+            odds_events = fetch_odds_api()
+            # Create a map of team -> odds
+            team_odds_map = {}
+            for event in odds_events:
+                home_team = event.get('home_team', '')
+                away_team = event.get('away_team', '')
+                # Extract odds if available
+                if event.get('bookmakers'):
+                    bookmaker = event['bookmakers'][0]  # First bookmaker
+                    markets = bookmaker.get('markets', [])
+
+                    # Find spread and totals
+                    spread_market = next((m for m in markets if m.get('key') == 'spreads'), None)
+                    totals_market = next((m for m in markets if m.get('key') == 'totals'), None)
+
+                    if spread_market and spread_market.get('outcomes'):
+                        for outcome in spread_market['outcomes']:
+                            team_name = outcome.get('name', '')
+                            team_odds_map[team_name] = {
+                                'spread': outcome.get('point'),
+                                'spread_odds': outcome.get('price'),
+                                'opponent': away_team if team_name == home_team else home_team,
+                                'is_home': team_name == home_team
+                            }
+
+                    if totals_market and totals_market.get('outcomes'):
+                        total = totals_market['outcomes'][0].get('point')
+                        for team_name in [home_team, away_team]:
+                            if team_name in team_odds_map:
+                                team_odds_map[team_name]['total'] = total
+        except Exception as e:
+            print(f"Could not fetch odds for standings: {e}")
+            team_odds_map = {}
+
         for division in ['AFC East', 'AFC North', 'AFC South', 'AFC West',
                         'NFC East', 'NFC North', 'NFC South', 'NFC West']:
             div_teams = standings_df[standings_df['division'] == division].to_dict('records')
+
+            # Enrich with betting lines
+            for team in div_teams:
+                team_name = team.get('team', '')
+                # Try to match with odds data (fuzzy matching)
+                matching_odds = None
+                for odds_team_name, odds_data in team_odds_map.items():
+                    if team_name.upper() in odds_team_name.upper() or odds_team_name.upper() in team_name.upper():
+                        matching_odds = odds_data
+                        break
+
+                if matching_odds:
+                    team['next_game'] = matching_odds
+                else:
+                    team['next_game'] = None
+
             divisions[division.lower().replace(' ', '_')] = div_teams
 
         return {
             "season": season,
             "week": week,
-            "standings": divisions
+            "standings": divisions,
+            "odds_included": len(team_odds_map) > 0
         }
 
     # Fallback: Calculate from schedule/games data
@@ -1765,34 +1984,107 @@ async def get_game_prop_sheet(game_id: str):
         - Value assessments
         - Recommended plays
     """
-    # TODO: Aggregate all props for the game
-    # TODO: Generate projections for all players
-    # TODO: Calculate value for each prop
+    # Load projections for this game
+    projections = model_loader.load_projections_for_game(game_id)
+
+    if not projections:
+        return {
+            "error": "No projections available",
+            "message": f"No model projections found for {game_id}. Run models or create sample data.",
+            "game_id": game_id,
+            "command": f"POST /admin/create-sample-projections/{game_id}"
+        }
+
+    # Get odds from Odds API (now have the key!)
+    from backend.ingestion.fetch_odds import fetch_odds_api
+
+    try:
+        odds_events = fetch_odds_api()
+
+        # Parse game_id to match with odds
+        parts = game_id.split('_')
+        if len(parts) >= 4:
+            away_team = parts[2]
+            home_team = parts[3]
+
+            # Find matching event in odds (simple team name matching)
+            game_odds = None
+            for event in odds_events:
+                event_home = event.get('home_team', '').upper()
+                event_away = event.get('away_team', '').upper()
+                if (home_team.upper() in event_home or away_team.upper() in event_away):
+                    game_odds = event
+                    break
+
+    except Exception as e:
+        print(f"Could not fetch odds: {e}")
+        game_odds = None
+
+    # Aggregate props by category
+    categories = {
+        "passing": [],
+        "rushing": [],
+        "receiving": [],
+        "scoring": []
+    }
+
+    for proj in projections:
+        category = None
+        if 'passing' in proj.prop_type:
+            category = "passing"
+        elif 'rushing' in proj.prop_type or 'carries' in proj.prop_type:
+            category = "rushing"
+        elif 'receiving' in proj.prop_type or 'receptions' in proj.prop_type or 'targets' in proj.prop_type:
+            category = "receiving"
+        elif 'td' in proj.prop_type or 'touchdown' in proj.prop_type:
+            category = "scoring"
+
+        if category:
+            categories[category].append(proj)
+
+    # Calculate value for top projections
+    top_plays = []
+    for proj in sorted(projections, key=lambda x: x.hit_probability_over, reverse=True)[:20]:
+        # Grade based on confidence
+        if proj.hit_probability_over >= 0.70:
+            grade = "A+"
+        elif proj.hit_probability_over >= 0.65:
+            grade = "A"
+        elif proj.hit_probability_over >= 0.60:
+            grade = "B+"
+        elif proj.hit_probability_over >= 0.55:
+            grade = "B"
+        else:
+            grade = "C+"
+
+        # Calculate edge (simplified - would use actual line if available)
+        edge = (proj.hit_probability_over - 0.5) * 100  # Percentage edge over 50%
+
+        top_plays.append({
+            "player": proj.player_name,
+            "prop": f"{proj.prop_type} {'OVER' if proj.hit_probability_over > 0.5 else 'UNDER'} {proj.projection:.1f}",
+            "projection": round(proj.projection, 1),
+            "confidence": round(proj.hit_probability_over, 3),
+            "edge": round(edge, 1),
+            "grade": grade
+        })
 
     return {
         "game_id": game_id,
-        "total_props": 150,
-        "high_value_props": 12,
+        "total_props": len(projections),
+        "high_value_props": len([p for p in projections if p.hit_probability_over >= 0.60]),
         "categories": {
-            "passing": 50,
-            "rushing": 35,
-            "receiving": 45,
-            "scoring": 20
+            "passing": len(categories["passing"]),
+            "rushing": len(categories["rushing"]),
+            "receiving": len(categories["receiving"]),
+            "scoring": len(categories["scoring"])
         },
-        "top_plays": [
-            {
-                "player": "Player A",
-                "prop": "passing_yards OVER 285.5",
-                "edge": 8.5,
-                "grade": "A"
-            },
-            {
-                "player": "Player B",
-                "prop": "receiving_yards UNDER 72.5",
-                "edge": 6.2,
-                "grade": "B+"
-            }
-        ]
+        "odds_available": game_odds is not None,
+        "top_plays": top_plays[:15],  # Top 15 plays
+        "game_odds": {
+            "spread": game_odds.get('bookmakers', [{}])[0].get('markets', [{}])[0].get('outcomes', [{}])[0].get('point', 'N/A') if game_odds else None,
+            "total": game_odds.get('bookmakers', [{}])[0].get('markets', [{}])[1].get('outcomes', [{}])[0].get('point', 'N/A') if game_odds else None
+        } if game_odds else None
     }
 
 
@@ -2061,34 +2353,61 @@ def get_team_stats(team_id: str, season: int = None):
 
     Args:
         team_id: Team abbreviation
-        season: Season year (default: 2024)
+        season: Season year (default: current season)
 
     Returns:
         Team offensive/defensive stats and rankings
     """
+    from pathlib import Path
+    import pandas as pd
+
+    season = season or CURRENT_SEASON
+
     team = get_team(team_id.upper())
     if not team:
         raise HTTPException(status_code=404, detail=f'Team not found: {team_id}')
 
-    # TODO: Load actual team stats from database or computed files
-    # For now, return structure with mock data
+    # Load actual defensive stats from NFLverse data
+    defensive_stats_file = Path(f'inputs/defensive_stats_{season-1}_{season}.csv')
+
+    offensive_stats = {
+        'points_per_game': 0.0,
+        'yards_per_game': 0.0,
+        'pass_yards_per_game': 0.0,
+        'rush_yards_per_game': 0.0,
+        'turnovers_per_game': 0.0,
+    }
+
+    defensive_stats = {
+        'points_allowed_per_game': 0.0,
+        'yards_allowed_per_game': 0.0,
+        'sacks': 0,
+        'turnovers_forced': 0,
+        'interceptions': 0,
+    }
+
+    if defensive_stats_file.exists():
+        try:
+            df = pd.read_csv(defensive_stats_file, low_memory=False)
+            team_data = df[df['team'] == team_id.upper()]
+
+            if not team_data.empty:
+                # Aggregate defensive stats
+                defensive_stats = {
+                    'points_allowed_per_game': round(team_data['def_points'].mean(), 1) if 'def_points' in team_data.columns else 0.0,
+                    'yards_allowed_per_game': round(team_data['def_yards'].mean(), 1) if 'def_yards' in team_data.columns else 0.0,
+                    'sacks': int(team_data['sacks'].sum()) if 'sacks' in team_data.columns else 0,
+                    'turnovers_forced': int(team_data['turnovers_forced'].sum()) if 'turnovers_forced' in team_data.columns else 0,
+                    'interceptions': int(team_data['interceptions'].sum()) if 'interceptions' in team_data.columns else 0,
+                }
+        except Exception as e:
+            print(f"Error loading team stats: {e}")
+
     return {
         'team_id': team_id.upper(),
         'season': season,
-        'offensive_stats': {
-            'points_per_game': 0.0,
-            'yards_per_game': 0.0,
-            'pass_yards_per_game': 0.0,
-            'rush_yards_per_game': 0.0,
-            'turnovers_per_game': 0.0,
-        },
-        'defensive_stats': {
-            'points_allowed_per_game': 0.0,
-            'yards_allowed_per_game': 0.0,
-            'sacks': 0,
-            'turnovers_forced': 0,
-            'interceptions': 0,
-        },
+        'offensive_stats': offensive_stats,
+        'defensive_stats': defensive_stats,
         'rankings': {
             'offensive_rank': None,
             'defensive_rank': None,
@@ -2117,13 +2436,15 @@ def list_games(
 
     Args:
         week: Filter by week number
-        season: Season year (default: 2024)
+        season: Season year (default: current season)
         team: Filter by team abbreviation
         limit: Max number of games to return
 
     Returns:
         List of games matching filters
     """
+    season = season or CURRENT_SEASON
+
     # Load schedule for the season
     games = schedule_loader.load_schedule(season)
 
@@ -2271,7 +2592,35 @@ def get_player_details(player_id: str):
     Returns:
         Player details and metadata
     """
-    # TODO: Load from player lookup JSON or database
+    from pathlib import Path
+    import pandas as pd
+
+    # Load from NFLverse players.csv
+    players_file = Path('inputs/players.csv')
+
+    if players_file.exists():
+        try:
+            df = pd.read_csv(players_file, low_memory=False)
+            player_data = df[df['player_id'] == player_id]
+
+            if not player_data.empty:
+                player = player_data.iloc[0]
+                return {
+                    'player_id': player_id,
+                    'player_name': player.get('display_name', player.get('player_name', 'Unknown')),
+                    'position': player.get('position'),
+                    'team': player.get('team_abbr'),
+                    'number': int(player.get('jersey_number')) if pd.notna(player.get('jersey_number')) else None,
+                    'height': player.get('height'),
+                    'weight': int(player.get('weight')) if pd.notna(player.get('weight')) else None,
+                    'college': player.get('college'),
+                    'draft_year': int(player.get('entry_year')) if pd.notna(player.get('entry_year')) else None,
+                    'birth_date': player.get('birth_date'),
+                    'years_exp': int(player.get('years_exp')) if pd.notna(player.get('years_exp')) else None,
+                }
+        except Exception as e:
+            print(f"Error loading player details: {e}")
+
     return {
         'player_id': player_id,
         'player_name': 'Unknown Player',
@@ -2291,34 +2640,71 @@ def get_player_stats(player_id: str, season: int = None):
 
     Args:
         player_id: Player ID (nflverse format)
-        season: Season year (default: 2024)
+        season: Season year (default: current season)
 
     Returns:
         Season statistics by position
     """
-    # TODO: Load from player_stats CSV or database
+    from pathlib import Path
+    import pandas as pd
+
+    season = season or CURRENT_SEASON
+
+    # Load from NFLverse player_stats CSV
+    stats_file = Path(f'inputs/player_stats_{season-1}_{season}.csv')
+    if not stats_file.exists():
+        stats_file = Path(f'inputs/player_stats_{season}.csv')
+
+    passing_stats = {'attempts': 0, 'completions': 0, 'yards': 0, 'touchdowns': 0, 'interceptions': 0}
+    rushing_stats = {'attempts': 0, 'yards': 0, 'touchdowns': 0, 'fumbles': 0}
+    receiving_stats = {'targets': 0, 'receptions': 0, 'yards': 0, 'touchdowns': 0}
+    games_played = 0
+
+    if stats_file.exists():
+        try:
+            df = pd.read_csv(stats_file, low_memory=False)
+            player_data = df[df['player_id'] == player_id]
+
+            if not player_data.empty:
+                games_played = len(player_data)
+
+                # Aggregate passing stats
+                if 'passing_yards' in player_data.columns:
+                    passing_stats = {
+                        'attempts': int(player_data['attempts'].sum()) if 'attempts' in player_data.columns else 0,
+                        'completions': int(player_data['completions'].sum()) if 'completions' in player_data.columns else 0,
+                        'yards': int(player_data['passing_yards'].sum()),
+                        'touchdowns': int(player_data['passing_tds'].sum()) if 'passing_tds' in player_data.columns else 0,
+                        'interceptions': int(player_data['interceptions'].sum()) if 'interceptions' in player_data.columns else 0,
+                    }
+
+                # Aggregate rushing stats
+                if 'rushing_yards' in player_data.columns:
+                    rushing_stats = {
+                        'attempts': int(player_data['carries'].sum()) if 'carries' in player_data.columns else 0,
+                        'yards': int(player_data['rushing_yards'].sum()),
+                        'touchdowns': int(player_data['rushing_tds'].sum()) if 'rushing_tds' in player_data.columns else 0,
+                        'fumbles': int(player_data['rushing_fumbles'].sum()) if 'rushing_fumbles' in player_data.columns else 0,
+                    }
+
+                # Aggregate receiving stats
+                if 'receiving_yards' in player_data.columns:
+                    receiving_stats = {
+                        'targets': int(player_data['targets'].sum()) if 'targets' in player_data.columns else 0,
+                        'receptions': int(player_data['receptions'].sum()) if 'receptions' in player_data.columns else 0,
+                        'yards': int(player_data['receiving_yards'].sum()),
+                        'touchdowns': int(player_data['receiving_tds'].sum()) if 'receiving_tds' in player_data.columns else 0,
+                    }
+        except Exception as e:
+            print(f"Error loading player stats: {e}")
+
     return {
         'player_id': player_id,
         'season': season,
-        'games_played': 0,
-        'passing': {
-            'attempts': 0,
-            'completions': 0,
-            'yards': 0,
-            'touchdowns': 0,
-            'interceptions': 0,
-        },
-        'rushing': {
-            'attempts': 0,
-            'yards': 0,
-            'touchdowns': 0,
-        },
-        'receiving': {
-            'targets': 0,
-            'receptions': 0,
-            'yards': 0,
-            'touchdowns': 0,
-        }
+        'games_played': games_played,
+        'passing': passing_stats,
+        'rushing': rushing_stats,
+        'receiving': receiving_stats
     }
 
 
@@ -2597,18 +2983,62 @@ def get_player_gamelogs(player_id: str, season: int = None, limit: int = 20):
 
     Args:
         player_id: Player ID (nflverse format)
-        season: Season year (default: 2024)
+        season: Season year (default: current season)
         limit: Max number of games to return
 
     Returns:
         List of game performances
     """
-    # TODO: Load from player_stats CSV (filtered by week)
+    from pathlib import Path
+    import pandas as pd
+
+    season = season or CURRENT_SEASON
+
+    # Load from NFLverse player_stats CSV
+    stats_file = Path(f'inputs/player_stats_{season-1}_{season}.csv')
+    if not stats_file.exists():
+        stats_file = Path(f'inputs/player_stats_{season}.csv')
+
+    games = []
+
+    if stats_file.exists():
+        try:
+            df = pd.read_csv(stats_file, low_memory=False)
+            player_data = df[df['player_id'] == player_id].head(limit)
+
+            for _, game in player_data.iterrows():
+                game_log = {
+                    'week': int(game['week']) if 'week' in game and pd.notna(game['week']) else None,
+                    'opponent': game.get('opponent_team'),
+                    'game_id': game.get('game_id'),
+                    'passing': {
+                        'attempts': int(game.get('attempts', 0)) if pd.notna(game.get('attempts')) else 0,
+                        'completions': int(game.get('completions', 0)) if pd.notna(game.get('completions')) else 0,
+                        'yards': int(game.get('passing_yards', 0)) if pd.notna(game.get('passing_yards')) else 0,
+                        'touchdowns': int(game.get('passing_tds', 0)) if pd.notna(game.get('passing_tds')) else 0,
+                        'interceptions': int(game.get('interceptions', 0)) if pd.notna(game.get('interceptions')) else 0,
+                    },
+                    'rushing': {
+                        'attempts': int(game.get('carries', 0)) if pd.notna(game.get('carries')) else 0,
+                        'yards': int(game.get('rushing_yards', 0)) if pd.notna(game.get('rushing_yards')) else 0,
+                        'touchdowns': int(game.get('rushing_tds', 0)) if pd.notna(game.get('rushing_tds')) else 0,
+                    },
+                    'receiving': {
+                        'targets': int(game.get('targets', 0)) if pd.notna(game.get('targets')) else 0,
+                        'receptions': int(game.get('receptions', 0)) if pd.notna(game.get('receptions')) else 0,
+                        'yards': int(game.get('receiving_yards', 0)) if pd.notna(game.get('receiving_yards')) else 0,
+                        'touchdowns': int(game.get('receiving_tds', 0)) if pd.notna(game.get('receiving_tds')) else 0,
+                    }
+                }
+                games.append(game_log)
+        except Exception as e:
+            print(f"Error loading player gamelogs: {e}")
+
     return {
         'player_id': player_id,
         'season': season,
-        'count': 0,
-        'games': []
+        'count': len(games),
+        'games': games
     }
 
 

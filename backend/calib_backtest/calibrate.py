@@ -145,17 +145,27 @@ def run_calibration(historical_preds_path: Path,
     print(f"Running {method} calibration")
 
     # Load historical data
-    if historical_preds_path.exists() and historical_actuals_path.exists():
+    if not historical_preds_path.exists():
+        raise FileNotFoundError(f"Predictions file not found: {historical_preds_path}")
+    if not historical_actuals_path.exists():
+        raise FileNotFoundError(f"Actuals file not found: {historical_actuals_path}")
+
+    try:
         with open(historical_preds_path) as f:
             predictions = json.load(f)
         with open(historical_actuals_path) as f:
             actuals = json.load(f)
+
+        # Validate data
+        if not predictions or not actuals:
+            raise ValueError("Empty predictions or actuals data")
+        if len(predictions) != len(actuals):
+            raise ValueError(f"Mismatch: {len(predictions)} predictions vs {len(actuals)} actuals")
+
         print(f"Loaded {len(predictions)} predictions and {len(actuals)} actuals")
-    else:
-        # Use placeholder data for testing
-        print("Warning: Using placeholder data (files not found)")
-        predictions = [0.1, 0.3, 0.5, 0.7, 0.9]
-        actuals = [0, 0, 1, 1, 1]
+
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON format: {e}")
 
     # Fit calibrator
     calibrator = Calibrator(method=method)

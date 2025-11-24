@@ -9,6 +9,8 @@ from pathlib import Path
 import requests
 from typing import Dict, Set
 
+from backend.nfl_calendar import get_current_nfl_season
+
 
 def fetch_weekly_rosters(year: int) -> pd.DataFrame:
     """Fetch weekly roster data from NFLverse.
@@ -209,26 +211,27 @@ def filter_predictions_by_status(
 
 
 def main():
-    """Demo: Fetch injury data for 2025 season."""
+    """Demo: Fetch injury data for current NFL season."""
 
-    # Fetch 2025 rosters
-    rosters_2025 = fetch_weekly_rosters(2025)
+    # Fetch current season rosters
+    current_season = get_current_nfl_season()
+    rosters_current = fetch_weekly_rosters(current_season)
 
-    if len(rosters_2025) == 0:
-        print("❌ No roster data available for 2025")
-        print("   Trying 2024 instead...")
+    if len(rosters_current) == 0:
+        print(f"❌ No roster data available for {current_season}")
+        print(f"   Trying {current_season - 1} instead...")
 
-        rosters_2024 = fetch_weekly_rosters(2024)
+        rosters_prev = fetch_weekly_rosters(current_season - 1)
 
-        if len(rosters_2024) == 0:
+        if len(rosters_prev) == 0:
             print("❌ No roster data available")
             return
 
-        rosters_df = rosters_2024
-        year = 2024
+        rosters_df = rosters_prev
+        year = current_season - 1
     else:
-        rosters_df = rosters_2025
-        year = 2025
+        rosters_df = rosters_current
+        year = current_season
 
     # Save rosters
     output_file = Path(f'inputs/weekly_rosters_{year}.csv')

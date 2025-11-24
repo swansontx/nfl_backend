@@ -103,8 +103,8 @@ Track progress by marking items as:
   - **FIXED:** Implemented with joblib serialization
 - [x] Line 99-100: `TODO: Load calibrator` - Not implemented
   - **FIXED:** Implemented with joblib deserialization
-- [ ] Line 121: `TODO: Load historical data`
-  - Remains: run_calibration function data loading
+- [x] Line 147-168: `TODO: Load historical data`
+  - **FIXED:** Implemented JSON file loading with validation, removed placeholder data fallback
 
 ### backend/calib_backtest/backtest.py
 - [x] Line 42-44: `TODO: Implement using sklearn.metrics` - Calibration error not implemented
@@ -139,13 +139,24 @@ Track progress by marking items as:
   - **FIXED:** Now extracts spread, total, dome, weather from bet record
 
 ### backend/modeling/train_usage_efficiency_models.py
-- [ ] Line 413: `TODO: Need team totals to calculate actual shares`
+- [x] Line 413: `TODO: Need team totals to calculate actual shares`
+  - **FIXED:** Calculate actual team totals from game data with fallback
 
 ---
 
 ## Priority 4: API Endpoints (LOW - Some have TODOs)
 
-### backend/api/app.py
+### backend/api/app.py - Real Data Integrations
+- [x] Line 2077: `TODO: Load actual team stats from database`
+  - **FIXED:** Now loads from defensive_stats_{season-1}_{season}.csv
+- [x] Line 2305: `TODO: Load from player lookup JSON or database`
+  - **FIXED:** get_player_details loads from players.csv
+- [x] Line 2332: `TODO: Load from player_stats CSV or database`
+  - **FIXED:** get_player_stats loads aggregated stats from player_stats CSVs
+- [x] Line 2704: `TODO: Load from player_stats CSV (filtered by week)`
+  - **FIXED:** get_player_gamelogs loads game-by-game data from player_stats CSVs
+
+### backend/api/app.py - External Service Integrations (Require APIs/Services)
 - [ ] Line 55: `TODO: Restrict in production` - CORS origins allow all
 - [ ] Line 214: `TODO: Integrate with orchestration pipeline`
 - [ ] Line 754: `TODO: Integrate with actual news API or RSS feeds`
@@ -154,19 +165,21 @@ Track progress by marking items as:
 - [ ] Line 1019: `TODO: Get stadium location from game_id/schedule`
 - [ ] Line 1041: `TODO: Integrate with LLM (OpenAI, Claude, etc.)`
 - [ ] Line 1105: `TODO: Integrate with content APIs`
-- [ ] Line 1301: `TODO: Load actual player data from database/files`
 - [ ] Line 1364: `TODO: Load actual player projections`
 - [ ] Line 1753-1755: Multiple TODOs for game analysis
-- [ ] Line 2058: `TODO: Load actual team stats from database`
 - [ ] Line 2210: `TODO: Add betting lines when available`
-- [ ] Line 2236: `TODO: Load from player lookup JSON or database`
 
 ### Remaining endpoints in app.py that need default resolution:
-- [ ] Line 1618: `season: int = None` - needs resolution
-- [ ] Line 2048: `get_team_stats` - needs resolution
-- [ ] Line 2101: season parameter - needs resolution
-- [ ] Line 2278: `get_player_stats` - needs resolution
-- [ ] Line 2584: `get_player_gamelogs` - needs resolution
+- [x] Line 1629: `season: int = None` - get_standings
+  - **FIXED:** Now uses CURRENT_SEASON
+- [x] Line 2061: `get_team_stats` - needs resolution
+  - **FIXED:** Now uses CURRENT_SEASON
+- [x] Line 2116: season parameter - list_games
+  - **FIXED:** Now uses CURRENT_SEASON
+- [x] Line 2295: `get_player_stats` - needs resolution
+  - **FIXED:** Now uses CURRENT_SEASON
+- [x] Line 2603: `get_player_gamelogs` - needs resolution
+  - **FIXED:** Now uses CURRENT_SEASON
 
 ---
 
@@ -220,21 +233,22 @@ def my_function(season: int = None, week: int = None):
 
 | Priority | Total | Fixed | Remaining |
 |----------|-------|-------|-----------|
-| P1 Critical | 5 | 5 | 0 |
-| P2 Analysis | 12 | 6 | 0 (6 intentionally skipped) |
-| P3 Features | 15 | 14 | 1 |
-| P4 API | 17 | 0 | 17 |
+| P1 Critical | 5 | 5 | 0 ✅ |
+| P2 Analysis | 12 | 6 | 0 (6 intentionally skipped) ✅ |
+| P3 Features | 16 | 16 | 0 ✅ |
+| P4 API | 17 | 9 | 8 (external services) |
 
-**Overall: 25/49 items fixed (P1 & P2 Complete, P3 Nearly Complete)**
+**Overall: 36/50 items fixed (72% complete)**
 
-Note: Synthetic data generators deleted, fallbacks removed.
+Note: Synthetic data generators deleted, fallbacks removed. P4 external service requirements documented in P4_EXTERNAL_SERVICE_REQUIREMENTS.md.
 
 ### P3 Completed Items:
-- calibrate.py: Platt scaling, isotonic regression, save/load
+- calibrate.py: Platt scaling, isotonic regression, save/load with joblib, JSON data loading (no placeholder fallback)
 - backtest.py: Classification and regression metrics with sklearn
-- player_map.py: JSON loading, fuzzy matching with fuzzywuzzy
-- extract_weather_features.py: OpenWeather API integration
-- hfa_impact_analysis.py: Data-driven HFA calculation method
+- player_map.py: JSON loading, fuzzy matching with fuzzywuzzy, name variations
+- extract_weather_features.py: OpenWeather API integration with error handling
+- hfa_impact_analysis.py: Data-driven HFA calculation method using pandas
 - external_apis.py: Forecast time matching, stadium dome detection
-- fetch_odds.py: OddsAPI integration with quota tracking
+- fetch_odds.py: OddsAPI integration with quota tracking and caching
 - meta_trust_model.py: Bet context extraction for game features
+- train_usage_efficiency_models.py: Actual team totals for share calculations
