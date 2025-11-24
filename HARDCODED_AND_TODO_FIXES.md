@@ -49,11 +49,11 @@ Track progress by marking items as:
 
 ### backend/analysis/create_enhanced_player_stats.py
 - [ ] Lines 19, 25, 38, 47-49, 57: Multiple hardcoded `season == 2025` filters
-  - Consider parameterizing season
+  - SKIP: One-time data processing script, intentionally hardcoded
 
 ### backend/analysis/train_baseline_model.py
 - [ ] Line 168: Hardcoded `season == 2025`
-  - Consider parameterizing
+  - SKIP: Specific week 10 training script, intentionally hardcoded
 
 ### backend/analysis/train_scoring_props.py
 - [x] Line 39: Hardcoded `season == 2025`
@@ -68,8 +68,7 @@ Track progress by marking items as:
   - **FIXED:** Now uses get_current_nfl_season()
 
 ### backend/analysis/generate_synthetic_player_stats.py
-- [ ] Line 30: Hardcoded `season == 2025`
-  - SKIP: Synthetic data generator, keep as-is
+- [x] DELETED: Synthetic data generator removed
 
 ### backend/analysis/fetch_2025_training_data.py
 - [ ] Line 34: Hardcoded `season == 2025`
@@ -208,8 +207,10 @@ def my_function(season: int = None, week: int = None):
 | Priority | Total | Fixed | Remaining |
 |----------|-------|-------|-----------|
 | P1 Critical | 5 | 5 | 0 |
-| P2 Analysis | 12 | 5 | 7 |
+| P2 Analysis | 12 | 6 | 6 (4 intentionally skipped) |
 | P3 Features | 15 | 0 | 15 |
 | P4 API | 17 | 0 | 17 |
 
-**Overall: 10/49 items fixed (P1 Complete, P2 In Progress)**
+**Overall: 11/49 items fixed (P1 Complete, P2 Mostly Complete)**
+
+Note: Synthetic data generators deleted, fallbacks removed.
