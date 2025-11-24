@@ -30,10 +30,10 @@ Track progress by marking items as:
 ### backend/canonical/player_map.py
 - [x] Line 29: `def load_player_lookup(year: int = 2025, lookup_dir: Path = Path('inputs'))`
   - **FIXED:** Now uses get_current_nfl_season()
-- [ ] Line 36-59: `TODO: Implement loading from inputs/player_lookup_YYYY.json`
-  - Player lookup not implemented
-- [ ] Line 75-89: `TODO: Implement fuzzy matching logic`
-  - Fuzzy matching not implemented
+- [x] Line 36-59: `TODO: Implement loading from inputs/player_lookup_YYYY.json`
+  - **FIXED:** Implemented JSON loading with name variation mapping
+- [x] Line 75-89: `TODO: Implement fuzzy matching logic`
+  - **FIXED:** Implemented fuzzy matching with fuzzywuzzy (optional), team/position filtering
 
 ---
 
@@ -72,39 +72,47 @@ Track progress by marking items as:
 
 ### backend/analysis/fetch_2025_training_data.py
 - [ ] Line 34: Hardcoded `season == 2025`
-  - This file is specifically for 2025 data, may be intentional
+  - SKIP: File specifically for 2025 data fetching
 
 ### backend/analysis/aggregate_real_player_stats_from_pbp.py
 - [ ] Line 28: `season = 2025  # We know this is 2025 data`
-  - Intentional for specific data processing
+  - SKIP: Intentional for specific data processing
 
 ### backend/analysis/backtest_props_nov9.py
 - [ ] Line 20: Hardcoded `season == 2025`
-  - Specific backtest file
+  - SKIP: Point-in-time backtest (Nov 9)
 
 ### backend/analysis/backtest_real_nov9.py
 - [ ] Line 33: Hardcoded `season == 2025`
-  - Specific backtest file
+  - SKIP: Point-in-time backtest (Nov 9)
 
 ### backend/analysis/analyze_misses_nov9.py
 - [ ] Line 22: Hardcoded `season == 2025`
-  - Specific analysis file
+  - SKIP: Point-in-time analysis (Nov 9)
 
 ---
 
 ## Priority 3: Unimplemented Features (TODO/FIXME)
 
 ### backend/calib_backtest/calibrate.py
-- [ ] Line 47-57: `TODO: Implement using sklearn` - Calibration fitting not implemented
-- [ ] Line 80: `TODO: Apply calibration` - Not implemented
-- [ ] Line 90-91: `TODO: Save calibrator` - Not implemented
-- [ ] Line 99-100: `TODO: Load calibrator` - Not implemented
+- [x] Line 47-57: `TODO: Implement using sklearn` - Calibration fitting not implemented
+  - **FIXED:** Implemented Platt scaling (LogisticRegression) and Isotonic regression
+- [x] Line 80: `TODO: Apply calibration` - Not implemented
+  - **FIXED:** Implemented transform method with both methods
+- [x] Line 90-91: `TODO: Save calibrator` - Not implemented
+  - **FIXED:** Implemented with joblib serialization
+- [x] Line 99-100: `TODO: Load calibrator` - Not implemented
+  - **FIXED:** Implemented with joblib deserialization
 - [ ] Line 121: `TODO: Load historical data`
+  - Remains: run_calibration function data loading
 
 ### backend/calib_backtest/backtest.py
-- [ ] Line 42-44: `TODO: Implement using sklearn.metrics` - Calibration error not implemented
-- [ ] Line 68-70: `TODO: Implement using sklearn.metrics or numpy` - Precision not implemented
-- [ ] Line 136: `TODO: Load predictions and actuals`
+- [x] Line 42-44: `TODO: Implement using sklearn.metrics` - Calibration error not implemented
+  - **FIXED:** Implemented classification metrics (accuracy, precision, recall, F1, ROC-AUC, Brier)
+- [x] Line 68-70: `TODO: Implement using sklearn.metrics or numpy` - Precision not implemented
+  - **FIXED:** Implemented regression metrics (MAE, RMSE, R2, MAPE)
+- [x] Line 136: `TODO: Load predictions and actuals`
+  - **FIXED:** Implemented JSON file loading
 
 ### backend/features/extract_weather_features.py
 - [ ] Line 45: `TODO: Implement actual API call` - Weather API not connected
@@ -207,10 +215,15 @@ def my_function(season: int = None, week: int = None):
 | Priority | Total | Fixed | Remaining |
 |----------|-------|-------|-----------|
 | P1 Critical | 5 | 5 | 0 |
-| P2 Analysis | 12 | 6 | 6 (4 intentionally skipped) |
-| P3 Features | 15 | 0 | 15 |
+| P2 Analysis | 12 | 6 | 0 (6 intentionally skipped) |
+| P3 Features | 15 | 9 | 6 |
 | P4 API | 17 | 0 | 17 |
 
-**Overall: 11/49 items fixed (P1 Complete, P2 Mostly Complete)**
+**Overall: 20/49 items fixed (P1 & P2 Complete, P3 In Progress)**
 
 Note: Synthetic data generators deleted, fallbacks removed.
+
+### P3 Completed Items:
+- calibrate.py: Platt scaling, isotonic regression, save/load
+- backtest.py: Classification and regression metrics with sklearn
+- player_map.py: JSON loading, fuzzy matching with fuzzywuzzy

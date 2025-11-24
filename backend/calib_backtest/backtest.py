@@ -19,6 +19,12 @@ import argparse
 import json
 from typing import Dict, List, Tuple
 from datetime import datetime
+import numpy as np
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    roc_auc_score, brier_score_loss,
+    mean_absolute_error, mean_squared_error, r2_score
+)
 
 
 class BacktestMetrics:
@@ -39,19 +45,27 @@ class BacktestMetrics:
         Returns:
             Dictionary of metrics (accuracy, precision, recall, etc.)
 
-        TODO: Implement using sklearn.metrics
         """
-        # TODO: Implement
-        # from sklearn.metrics import accuracy_score, precision_score, recall_score
-        # from sklearn.metrics import roc_auc_score, brier_score_loss
+        # Convert predictions to binary decisions at 0.5 threshold
+        pred_binary = [1 if p >= 0.5 else 0 for p in predictions]
 
-        return {
-            'accuracy': 0.0,
-            'precision': 0.0,
-            'recall': 0.0,
-            'roc_auc': 0.0,
-            'brier_score': 0.0
+        metrics = {
+            'accuracy': accuracy_score(actuals, pred_binary),
+            'precision': precision_score(actuals, pred_binary, zero_division=0),
+            'recall': recall_score(actuals, pred_binary, zero_division=0),
+            'f1': f1_score(actuals, pred_binary, zero_division=0),
         }
+
+        # ROC-AUC requires both classes present
+        if len(set(actuals)) > 1:
+            metrics['roc_auc'] = roc_auc_score(actuals, predictions)
+        else:
+            metrics['roc_auc'] = 0.0
+
+        # Brier score (lower is better)
+        metrics['brier_score'] = brier_score_loss(actuals, predictions)
+
+        return metrics
 
     def calculate_regression_metrics(self,
                                      predictions: List[float],
@@ -65,17 +79,30 @@ class BacktestMetrics:
         Returns:
             Dictionary of metrics (MAE, RMSE, R2, etc.)
 
-        TODO: Implement using sklearn.metrics or numpy
         """
-        # TODO: Implement
-        # from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-        # import numpy as np
+        predictions_arr = np.array(predictions)
+        actuals_arr = np.array(actuals)
+
+        mae = mean_absolute_error(actuals_arr, predictions_arr)
+        mse = mean_squared_error(actuals_arr, predictions_arr)
+        rmse = np.sqrt(mse)
+
+        # R2 score
+        r2 = r2_score(actuals_arr, predictions_arr)
+
+        # MAPE (Mean Absolute Percentage Error)
+        # Avoid division by zero
+        mask = actuals_arr != 0
+        if mask.sum() > 0:
+            mape = np.mean(np.abs((actuals_arr[mask] - predictions_arr[mask]) / actuals_arr[mask])) * 100
+        else:
+            mape = 0.0
 
         return {
-            'mae': 0.0,
-            'rmse': 0.0,
-            'r2': 0.0,
-            'mape': 0.0
+            'mae': mae,
+            'rmse': rmse,
+            'r2': r2,
+            'mape': mape
         }
 
     def calculate_roi(self,
@@ -133,15 +160,18 @@ def run_backtest(predictions_path: Path,
     """
     print(f"Running backtest for {prop_type} prop")
 
-    # TODO: Load predictions and actuals
-    # with open(predictions_path) as f:
-    #     predictions = json.load(f)
-    # with open(actuals_path) as f:
-    #     actuals = json.load(f)
-
-    # Placeholder data
-    predictions = [0.2, 0.4, 0.6, 0.8, 0.9]
-    actuals = [0, 0, 1, 1, 1]
+    # Load predictions and actuals
+    if predictions_path.exists() and actuals_path.exists():
+        with open(predictions_path) as f:
+            predictions = json.load(f)
+        with open(actuals_path) as f:
+            actuals = json.load(f)
+        print(f"Loaded {len(predictions)} predictions and {len(actuals)} actuals")
+    else:
+        # Use placeholder data for testing
+        print("Warning: Using placeholder data (files not found)")
+        predictions = [0.2, 0.4, 0.6, 0.8, 0.9]
+        actuals = [0, 0, 1, 1, 1]
 
     # Calculate metrics
     metrics_calc = BacktestMetrics()
