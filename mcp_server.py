@@ -16,15 +16,17 @@ import httpx
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
+from backend.api.defaults import (
+    DEFAULT_WEEK,
+    DEFAULT_FETCH_SEASON,
+    DEFAULT_STATS_SEASON,
+)
 
 # Create MCP server
 server = Server("nfl-betting")
 
 # API server URL
 API_BASE = "http://localhost:8000"
-DEFAULT_WEEK = 12
-DEFAULT_FETCH_SEASON = 2024
-DEFAULT_STATS_SEASON = 2025
 
 
 def _int_property(default: int, description: str | None = None) -> dict:

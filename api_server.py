@@ -39,13 +39,15 @@ from backend.api.situational_analyzer import (
 )
 from backend.api.defense_analyzer import defense_analyzer
 from backend.api.evaluation_pipeline import evaluate_game, evaluate_week
+from backend.api.defaults import (
+    DEFAULT_WEEK,
+    DEFAULT_FETCH_SEASON,
+    DEFAULT_STATS_SEASON,
+    DEFAULT_SEASON,
+)
 
 # Project root
 PROJECT_ROOT = Path(__file__).parent
-DEFAULT_WEEK = 12
-DEFAULT_FETCH_SEASON = 2024
-DEFAULT_STATS_SEASON = 2025
-DEFAULT_SEASON = DEFAULT_STATS_SEASON
 
 
 def _normalize_param(value, fallback=None):
