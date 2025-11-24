@@ -42,6 +42,8 @@ from backend.api.evaluation_pipeline import evaluate_game, evaluate_week
 
 # Project root
 PROJECT_ROOT = Path(__file__).parent
+DEFAULT_WEEK = 12
+DEFAULT_SEASON = 2025
 
 
 def _normalize_param(value, fallback=None):
@@ -1486,7 +1488,7 @@ async def player_full_outlook(
 @app.get("/stats/player/{player_name}")
 async def get_player_stats(
     player_name: str,
-    season: int = Query(2025, description="NFL season")
+    season: int = Query(DEFAULT_SEASON, description="NFL season")
 ):
     """
     FULL PLAYER STATS - Like ESPN player page:
@@ -1538,7 +1540,7 @@ async def get_player_stats(
 @app.get("/stats/team/{team}")
 async def get_team_stats(
     team: str,
-    season: int = Query(2025, description="NFL season")
+    season: int = Query(DEFAULT_SEASON, description="NFL season")
 ):
     """
     FULL TEAM STATS - Team profile and stats:
@@ -1602,7 +1604,7 @@ def _group_roster_by_position(roster):
 @app.get("/stats/leaders/{stat_type}")
 async def get_league_leaders(
     stat_type: str,
-    season: int = Query(2025, description="NFL season"),
+    season: int = Query(DEFAULT_SEASON, description="NFL season"),
     limit: int = Query(20, description="Number of leaders")
 ):
     """
@@ -1644,7 +1646,7 @@ async def get_league_leaders(
 
 @app.get("/stats/schedule")
 async def get_schedule(
-    season: int = Query(2025, description="NFL season"),
+    season: int = Query(DEFAULT_SEASON, description="NFL season"),
     week: Optional[int] = Query(None, description="Specific week")
 ):
     """Get full season schedule."""
@@ -1689,7 +1691,7 @@ async def get_schedule(
 
 
 @app.get("/stats/rankings")
-async def get_team_rankings(season: int = Query(2025, description="NFL season")):
+async def get_team_rankings(season: int = Query(DEFAULT_SEASON, description="NFL season")):
     """Get all teams ranked by record."""
     teams = TeamStatsRepository.get_all_teams(season)
 
@@ -1716,7 +1718,7 @@ async def get_team_rankings(season: int = Query(2025, description="NFL season"))
 
 @app.post("/populate/stats")
 async def populate_player_stats(
-    season: int = Query(2025, description="NFL season"),
+    season: int = Query(DEFAULT_SEASON, description="NFL season"),
     week: Optional[int] = Query(None, description="Specific week to load")
 ):
     """
@@ -1725,7 +1727,7 @@ async def populate_player_stats(
     """
     import pandas as pd
 
-    season = _normalize_param(season, 2025)
+    season = _normalize_param(season, DEFAULT_SEASON)
     week = _normalize_param(week)
 
     stats_file = PROJECT_ROOT / "inputs" / f"player_stats_{season}.csv"
@@ -1799,11 +1801,11 @@ async def populate_player_stats(
 
 
 @app.post("/populate/schedule")
-async def populate_schedule(season: int = Query(2025, description="NFL season")):
+async def populate_schedule(season: int = Query(DEFAULT_SEASON, description="NFL season")):
     """Populate full season schedule from nflverse."""
     import pandas as pd
 
-    season = _normalize_param(season, 2025)
+    season = _normalize_param(season, DEFAULT_SEASON)
 
     # Look for schedule file
     schedule_file = None
@@ -1850,13 +1852,13 @@ async def populate_schedule(season: int = Query(2025, description="NFL season"))
 
 @app.post("/populate/rosters")
 async def populate_rosters(
-    season: int = Query(2025, description="NFL season"),
+    season: int = Query(DEFAULT_SEASON, description="NFL season"),
     week: int = Query(12, description="Week for roster snapshot")
 ):
     """Populate rosters from nflverse."""
     import pandas as pd
 
-    season = _normalize_param(season, 2025)
+    season = _normalize_param(season, DEFAULT_SEASON)
     week = _normalize_param(week, 12)
 
     roster_file = None
@@ -1923,7 +1925,7 @@ async def populate_rosters(
 
 @app.post("/populate/all")
 async def populate_all_data(
-    season: int = Query(2025, description="NFL season"),
+    season: int = Query(DEFAULT_SEASON, description="NFL season"),
     week: int = Query(12, description="Current week"),
     fetch_first: bool = Query(False, description="Fetch from nflverse first"),
     include_odds: bool = Query(True, description="Fetch DraftKings odds from OddsAPI")
@@ -1938,7 +1940,7 @@ async def populate_all_data(
 
     This is the recommended way to initialize the database.
     """
-    season = _normalize_param(season, 2025)
+    season = _normalize_param(season, DEFAULT_SEASON)
     week = _normalize_param(week, 12)
     fetch_first = _normalize_param(fetch_first, False)
     include_odds = _normalize_param(include_odds, True)

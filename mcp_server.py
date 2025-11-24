@@ -22,6 +22,9 @@ server = Server("nfl-betting")
 
 # API server URL
 API_BASE = "http://localhost:8000"
+DEFAULT_WEEK = 12
+DEFAULT_FETCH_SEASON = 2024
+DEFAULT_STATS_SEASON = 2025
 
 
 def add_source_label(data: dict, source: str = "YOUR_MODEL") -> dict:
@@ -655,360 +658,344 @@ async def list_tools():
     ]
 
 
+
+async def _call_api(client: httpx.AsyncClient, method: str, path: str, *, params=None, timeout: float = 60.0):
+    """Shared wrapper to hit the API server."""
+    return await client.request(
+        method,
+        f"{API_BASE}{path}",
+        params=params or {},
+        timeout=timeout,
+    )
+
+
+async def _handle_fetch_odds(client, args):
+    params = {
+        "week": args.get("week", DEFAULT_WEEK),
+        "season": args.get("season", DEFAULT_FETCH_SEASON),
+    }
+    return await _call_api(client, "post", "/fetch/odds", params=params)
+
+
+async def _handle_fetch_injuries(client, args):
+    params = {"season": args.get("season", DEFAULT_FETCH_SEASON)}
+    if args.get("week") is not None:
+        params["week"] = args["week"]
+    return await _call_api(client, "post", "/fetch/injuries", params=params)
+
+
+async def _handle_fetch_nflverse(client, args):
+    params = {"year": args.get("year", DEFAULT_FETCH_SEASON), "include_all": True}
+    return await _call_api(client, "post", "/fetch/nflverse", params=params, timeout=300.0)
+
+
+async def _handle_sync_all_data(client, args):
+    params = {
+        "week": args.get("week", DEFAULT_WEEK),
+        "year": args.get("year", DEFAULT_FETCH_SEASON),
+    }
+    return await _call_api(client, "post", "/fetch/all", params=params)
+
+
+async def _handle_check_data_freshness(client, _args):
+    return await _call_api(client, "get", "/refresh/check")
+
+
+async def _handle_auto_refresh(client, args):
+    params = {
+        "week": args.get("week", DEFAULT_WEEK),
+        "year": args.get("year", DEFAULT_FETCH_SEASON),
+        "force": args.get("force", False),
+    }
+    return await _call_api(client, "post", "/refresh/auto", params=params)
+
+
+async def _handle_get_status(client, _args):
+    return await _call_api(client, "get", "/")
+
+
+async def _handle_quick_props(client, args):
+    params = {"min_edge": args.get("min_edge", 5.0), "limit": args.get("limit", 10)}
+    if args.get("prop_types"):
+        params["prop_types"] = args["prop_types"]
+    return await _call_api(client, "get", "/analysis/quick-props", params=params)
+
+
+async def _handle_game_deep_dive(client, args):
+    return await _call_api(client, "get", f"/analysis/game/{args.get('game_id', '')}")
+
+
+async def _handle_full_matchup_analysis(client, args):
+    return await _call_api(client, "get", f"/intelligence/matchup/{args.get('game_id', '')}")
+
+
+async def _handle_daily_betting_brief(client, args):
+    params = {
+        "week": args.get("week", DEFAULT_WEEK),
+        "min_edge": args.get("min_edge", 3.0),
+        "auto_refresh": args.get("auto_refresh", True),
+    }
+    return await _call_api(client, "get", "/intelligence/daily-brief", params=params)
+
+
+async def _handle_player_outlook(client, args):
+    return await _call_api(client, "get", f"/intelligence/player/{args.get('player_name', '')}")
+
+
+async def _handle_get_situational_analysis(client, args):
+    params = {
+        "game_id": args.get("game_id", ""),
+        "home_team": args.get("home_team", ""),
+        "away_team": args.get("away_team", ""),
+        "season": args.get("season", DEFAULT_FETCH_SEASON),
+        "week": args.get("week", DEFAULT_WEEK),
+    }
+    return await _call_api(client, "get", "/analysis/situational", params=params)
+
+
+async def _handle_get_positional_matchups(client, args):
+    params = {
+        "home_team": args.get("home_team", ""),
+        "away_team": args.get("away_team", ""),
+        "season": args.get("season", DEFAULT_FETCH_SEASON),
+        "week": args.get("week", DEFAULT_WEEK),
+    }
+    return await _call_api(
+        client,
+        "get",
+        f"/analysis/game/{args.get('game_id', '')}/positional",
+        params=params,
+    )
+
+
+async def _handle_evaluate_game(client, args):
+    params = {
+        "game_id": args.get("game_id", ""),
+        "home_team": args.get("home_team", ""),
+        "away_team": args.get("away_team", ""),
+        "season": args.get("season", DEFAULT_FETCH_SEASON),
+        "week": args.get("week", DEFAULT_WEEK),
+    }
+    return await _call_api(client, "get", "/analysis/evaluate/game", params=params, timeout=90.0)
+
+
+async def _handle_evaluate_week(client, args):
+    params = {
+        "week": args.get("week", DEFAULT_WEEK),
+        "season": args.get("season", DEFAULT_FETCH_SEASON),
+    }
+    return await _call_api(client, "get", "/analysis/evaluate/week", params=params, timeout=120.0)
+
+
+async def _handle_get_team_trending_form(client, args):
+    params = {
+        "team": args.get("team", ""),
+        "season": args.get("season", DEFAULT_FETCH_SEASON),
+        "week": args.get("week", DEFAULT_WEEK),
+    }
+    return await _call_api(client, "get", "/analysis/team/form", params=params)
+
+
+async def _handle_get_rush_defense(client, args):
+    params = {
+        "season": args.get("season", DEFAULT_FETCH_SEASON),
+        "last_n_games": args.get("last_n_games", 5),
+    }
+    return await _call_api(client, "get", f"/analysis/defense/{args.get('team', '')}/rush", params=params)
+
+
+async def _handle_get_pass_defense(client, args):
+    params = {
+        "season": args.get("season", DEFAULT_FETCH_SEASON),
+        "last_n_games": args.get("last_n_games", 5),
+    }
+    return await _call_api(client, "get", f"/analysis/defense/{args.get('team', '')}/pass", params=params)
+
+
+async def _handle_get_defense_summary(client, args):
+    params = {"season": args.get("season", DEFAULT_FETCH_SEASON)}
+    return await _call_api(client, "get", f"/analysis/defense/{args.get('team', '')}", params=params)
+
+
+async def _handle_get_line_movement(client, args):
+    params = {
+        "player_name": args.get("player_name", ""),
+        "prop_type": args.get("prop_type", ""),
+        "days": args.get("days", 7),
+    }
+    return await _call_api(client, "get", "/odds/movement", params=params)
+
+
+async def _handle_get_hot_movers(client, args):
+    params = {"min_movement": args.get("min_movement", 1.5), "hours": args.get("hours", 48)}
+    return await _call_api(client, "get", "/odds/movers", params=params)
+
+
+async def _handle_get_latest_odds(client, args):
+    params = {}
+    if args.get("game_id"):
+        params["game_id"] = args["game_id"]
+    if args.get("player_name"):
+        params["player_name"] = args["player_name"]
+    if args.get("prop_type"):
+        params["prop_type"] = args["prop_type"]
+    return await _call_api(client, "get", "/odds/latest", params=params)
+
+
+async def _handle_get_latest_projections(client, args):
+    params = {}
+    if args.get("game_id"):
+        params["game_id"] = args["game_id"]
+    if args.get("player_name"):
+        params["player_name"] = args["player_name"]
+    if args.get("prop_type"):
+        params["prop_type"] = args["prop_type"]
+    return await _call_api(client, "get", "/projections/latest", params=params)
+
+
+async def _handle_get_injuries(client, args):
+    params = {"season": args.get("season", DEFAULT_FETCH_SEASON)}
+    if args.get("week") is not None:
+        params["week"] = args["week"]
+    return await _call_api(client, "get", "/injuries", params=params)
+
+
+async def _handle_get_games(client, args):
+    params = {"season": args.get("season", DEFAULT_FETCH_SEASON)}
+    if args.get("week") is not None:
+        params["week"] = args["week"]
+    return await _call_api(client, "get", "/games", params=params)
+
+
+async def _handle_get_value_props_history(client, args):
+    params = {"days": args.get("days", 7), "min_edge": args.get("min_edge", 0)}
+    return await _call_api(client, "get", "/value-props/history", params=params)
+
+
+async def _handle_get_model_runs(client, args):
+    return await _call_api(client, "get", "/model/runs", params={"limit": args.get("limit", 20)})
+
+
+async def _handle_get_player_stats(client, args):
+    params = {"season": args.get("season", DEFAULT_STATS_SEASON)}
+    return await _call_api(client, "get", f"/stats/player/{args.get('player_name', '')}", params=params)
+
+
+async def _handle_get_team_profile(client, args):
+    params = {"season": args.get("season", DEFAULT_STATS_SEASON)}
+    return await _call_api(client, "get", f"/stats/team/{args.get('team', '')}", params=params)
+
+
+async def _handle_get_league_leaders(client, args):
+    params = {
+        "season": args.get("season", DEFAULT_STATS_SEASON),
+        "limit": args.get("limit", 20),
+    }
+    return await _call_api(client, "get", f"/stats/leaders/{args.get('stat_type', 'passing_yards')}", params=params)
+
+
+async def _handle_get_schedule(client, args):
+    params = {"season": args.get("season", DEFAULT_STATS_SEASON)}
+    if args.get("week") is not None:
+        params["week"] = args["week"]
+    return await _call_api(client, "get", "/stats/schedule", params=params)
+
+
+async def _handle_get_team_rankings(client, args):
+    params = {"season": args.get("season", DEFAULT_STATS_SEASON)}
+    return await _call_api(client, "get", "/stats/rankings", params=params)
+
+
+async def _handle_populate_database(client, args):
+    params = {
+        "season": args.get("season", DEFAULT_STATS_SEASON),
+        "week": args.get("week", DEFAULT_WEEK),
+        "fetch_first": args.get("fetch_first", False),
+        "include_odds": True,
+    }
+    return await _call_api(client, "post", "/populate/all", params=params, timeout=180.0)
+
+
+async def _handle_best_props_all_games(client, args):
+    params = {
+        "min_edge": args.get("min_edge", 3.0),
+        "limit": args.get("limit", 20),
+        "week": args.get("week", DEFAULT_WEEK),
+    }
+    if args.get("prop_types"):
+        params["prop_types"] = args["prop_types"]
+    return await _call_api(client, "get", "/analysis/quick-props", params=params)
+
+
+TOOL_HANDLERS = {
+    "fetch_odds": _handle_fetch_odds,
+    "fetch_injuries": _handle_fetch_injuries,
+    "fetch_nflverse": _handle_fetch_nflverse,
+    "sync_all_data": _handle_sync_all_data,
+    "check_data_freshness": _handle_check_data_freshness,
+    "auto_refresh": _handle_auto_refresh,
+    "get_status": _handle_get_status,
+    "quick_props": _handle_quick_props,
+    "game_deep_dive": _handle_game_deep_dive,
+    "full_matchup_analysis": _handle_full_matchup_analysis,
+    "daily_betting_brief": _handle_daily_betting_brief,
+    "player_outlook": _handle_player_outlook,
+    "get_situational_analysis": _handle_get_situational_analysis,
+    "get_positional_matchups": _handle_get_positional_matchups,
+    "evaluate_game": _handle_evaluate_game,
+    "evaluate_week": _handle_evaluate_week,
+    "get_team_trending_form": _handle_get_team_trending_form,
+    "get_rush_defense": _handle_get_rush_defense,
+    "get_pass_defense": _handle_get_pass_defense,
+    "get_defense_summary": _handle_get_defense_summary,
+    "get_line_movement": _handle_get_line_movement,
+    "get_hot_movers": _handle_get_hot_movers,
+    "get_latest_odds": _handle_get_latest_odds,
+    "get_latest_projections": _handle_get_latest_projections,
+    "get_injuries": _handle_get_injuries,
+    "get_games": _handle_get_games,
+    "get_value_props_history": _handle_get_value_props_history,
+    "get_model_runs": _handle_get_model_runs,
+    "get_player_stats": _handle_get_player_stats,
+    "get_team_profile": _handle_get_team_profile,
+    "get_league_leaders": _handle_get_league_leaders,
+    "get_schedule": _handle_get_schedule,
+    "get_team_rankings": _handle_get_team_rankings,
+    "populate_database": _handle_populate_database,
+    "best_props_all_games": _handle_best_props_all_games,
+}
+
+
 @server.call_tool()
 async def call_tool(name: str, arguments: dict):
     """Handle tool calls by calling the local API server."""
 
     async with httpx.AsyncClient(timeout=60.0) as client:
+        handler = TOOL_HANDLERS.get(name)
+        if handler is None:
+            return [TextContent(
+                type="text",
+                text=json.dumps({"error": f"Unknown tool: {name}"})
+            )]
+
         try:
-            # ========== FETCH TOOLS ==========
-            if name == "fetch_odds":
-                week = arguments.get("week", 12)
-                season = arguments.get("season", 2024)
-                response = await client.post(
-                    f"{API_BASE}/fetch/odds",
-                    params={"week": week, "season": season}
-                )
+            response = await handler(client, arguments)
 
-            elif name == "fetch_injuries":
-                week = arguments.get("week")
-                season = arguments.get("season", 2024)
-                params = {"season": season}
-                if week:
-                    params["week"] = week
-                response = await client.post(
-                    f"{API_BASE}/fetch/injuries",
-                    params=params
-                )
-
-            elif name == "fetch_nflverse":
-                year = arguments.get("year", 2024)
-                response = await client.post(
-                    f"{API_BASE}/fetch/nflverse",
-                    params={"year": year, "include_all": True},
-                    timeout=300.0  # 5 minutes for large download
-                )
-
-            elif name == "sync_all_data":
-                week = arguments.get("week", 12)
-                year = arguments.get("year", 2024)
-                response = await client.post(
-                    f"{API_BASE}/fetch/all",
-                    params={"week": week, "year": year}
-                )
-
-            elif name == "check_data_freshness":
-                response = await client.get(f"{API_BASE}/refresh/check")
-
-            elif name == "auto_refresh":
-                week = arguments.get("week", 12)
-                year = arguments.get("year", 2024)
-                force = arguments.get("force", False)
-                response = await client.post(
-                    f"{API_BASE}/refresh/auto",
-                    params={"week": week, "year": year, "force": force}
-                )
-
-            # ========== QUERY TOOLS ==========
-            elif name == "get_status":
-                response = await client.get(f"{API_BASE}/")
-
-            elif name == "quick_props":
-                min_edge = arguments.get("min_edge", 5.0)
-                limit = arguments.get("limit", 10)
-                prop_types = arguments.get("prop_types")
-                params = {"min_edge": min_edge, "limit": limit}
-                if prop_types:
-                    params["prop_types"] = prop_types
-                response = await client.get(
-                    f"{API_BASE}/analysis/quick-props",
-                    params=params
-                )
-
-            elif name == "game_deep_dive":
-                game_id = arguments.get("game_id", "")
-                response = await client.get(f"{API_BASE}/analysis/game/{game_id}")
-
-            # ========== COMPREHENSIVE INTELLIGENCE ==========
-            elif name == "full_matchup_analysis":
-                game_id = arguments.get("game_id", "")
-                response = await client.get(
-                    f"{API_BASE}/intelligence/matchup/{game_id}"
-                )
-
-            elif name == "daily_betting_brief":
-                week = arguments.get("week", 12)
-                min_edge = arguments.get("min_edge", 3.0)
-                do_refresh = arguments.get("auto_refresh", True)
-                response = await client.get(
-                    f"{API_BASE}/intelligence/daily-brief",
-                    params={
-                        "week": week,
-                        "min_edge": min_edge,
-                        "auto_refresh": do_refresh
-                    }
-                )
-
-            elif name == "player_outlook":
-                player_name = arguments.get("player_name", "")
-                response = await client.get(
-                    f"{API_BASE}/intelligence/player/{player_name}"
-                )
-
-            elif name == "get_situational_analysis":
-                response = await client.get(
-                    f"{API_BASE}/analysis/situational",
-                    params={
-                        "game_id": arguments.get("game_id", ""),
-                        "home_team": arguments.get("home_team", ""),
-                        "away_team": arguments.get("away_team", ""),
-                        "season": arguments.get("season", 2024),
-                        "week": arguments.get("week", 12),
-                    },
-                )
-
-            elif name == "get_positional_matchups":
-                response = await client.get(
-                    f"{API_BASE}/analysis/game/{arguments.get('game_id', '')}/positional",
-                    params={
-                        "home_team": arguments.get("home_team", ""),
-                        "away_team": arguments.get("away_team", ""),
-                        "season": arguments.get("season", 2024),
-                        "week": arguments.get("week", 12),
-                    },
-                )
-
-            elif name == "evaluate_game":
-                response = await client.get(
-                    f"{API_BASE}/analysis/evaluate/game",
-                    params={
-                        "game_id": arguments.get("game_id", ""),
-                        "home_team": arguments.get("home_team", ""),
-                        "away_team": arguments.get("away_team", ""),
-                        "season": arguments.get("season", 2024),
-                        "week": arguments.get("week", 12),
-                    },
-                    timeout=90.0,
-                )
-
-            elif name == "evaluate_week":
-                response = await client.get(
-                    f"{API_BASE}/analysis/evaluate/week",
-                    params={
-                        "week": arguments.get("week", 12),
-                        "season": arguments.get("season", 2024),
-                    },
-                    timeout=120.0,
-                )
-
-            elif name == "get_team_trending_form":
-                response = await client.get(
-                    f"{API_BASE}/analysis/team/form",
-                    params={
-                        "team": arguments.get("team", ""),
-                        "season": arguments.get("season", 2024),
-                        "week": arguments.get("week", 12),
-                    },
-                )
-
-            elif name == "get_rush_defense":
-                response = await client.get(
-                    f"{API_BASE}/analysis/defense/{arguments.get('team', '')}/rush",
-                    params={
-                        "season": arguments.get("season", 2024),
-                        "last_n_games": arguments.get("last_n_games", 5),
-                    },
-                )
-
-            elif name == "get_pass_defense":
-                response = await client.get(
-                    f"{API_BASE}/analysis/defense/{arguments.get('team', '')}/pass",
-                    params={
-                        "season": arguments.get("season", 2024),
-                        "last_n_games": arguments.get("last_n_games", 5),
-                    },
-                )
-
-            elif name == "get_defense_summary":
-                response = await client.get(
-                    f"{API_BASE}/analysis/defense/{arguments.get('team', '')}",
-                    params={"season": arguments.get("season", 2024)},
-                )
-
-            elif name == "get_line_movement":
-                player_name = arguments.get("player_name", "")
-                prop_type = arguments.get("prop_type", "")
-                days = arguments.get("days", 7)
-                response = await client.get(
-                    f"{API_BASE}/odds/movement",
-                    params={
-                        "player_name": player_name,
-                        "prop_type": prop_type,
-                        "days": days
-                    }
-                )
-
-            elif name == "get_hot_movers":
-                min_movement = arguments.get("min_movement", 1.5)
-                hours = arguments.get("hours", 48)
-                response = await client.get(
-                    f"{API_BASE}/odds/movers",
-                    params={"min_movement": min_movement, "hours": hours}
-                )
-
-            elif name == "get_latest_odds":
-                params = {}
-                if arguments.get("game_id"):
-                    params["game_id"] = arguments["game_id"]
-                if arguments.get("player_name"):
-                    params["player_name"] = arguments["player_name"]
-                if arguments.get("prop_type"):
-                    params["prop_type"] = arguments["prop_type"]
-                response = await client.get(f"{API_BASE}/odds/latest", params=params)
-
-            elif name == "get_latest_projections":
-                params = {}
-                if arguments.get("game_id"):
-                    params["game_id"] = arguments["game_id"]
-                if arguments.get("player_name"):
-                    params["player_name"] = arguments["player_name"]
-                if arguments.get("prop_type"):
-                    params["prop_type"] = arguments["prop_type"]
-                response = await client.get(
-                    f"{API_BASE}/projections/latest",
-                    params=params
-                )
-
-            elif name == "get_injuries":
-                params = {}
-                if arguments.get("team"):
-                    params["team"] = arguments["team"]
-                if arguments.get("status"):
-                    params["status"] = arguments["status"]
-                response = await client.get(
-                    f"{API_BASE}/injuries/latest",
-                    params=params
-                )
-
-            elif name == "get_games":
-                week = arguments.get("week")
-                season = arguments.get("season", 2024)
-                params = {"season": season}
-                if week:
-                    params["week"] = week
-                response = await client.get(f"{API_BASE}/games", params=params)
-
-            elif name == "get_value_props_history":
-                days = arguments.get("days", 7)
-                min_edge = arguments.get("min_edge", 0)
-                response = await client.get(
-                    f"{API_BASE}/value-props/history",
-                    params={"days": days, "min_edge": min_edge}
-                )
-
-            elif name == "get_model_runs":
-                limit = arguments.get("limit", 20)
-                response = await client.get(
-                    f"{API_BASE}/model/runs",
-                    params={"limit": limit}
-                )
-
-            # ========== STATS/KNOWLEDGE TOOLS ==========
-            elif name == "get_player_stats":
-                player_name = arguments.get("player_name", "")
-                season = arguments.get("season", 2025)
-                response = await client.get(
-                    f"{API_BASE}/stats/player/{player_name}",
-                    params={"season": season}
-                )
-
-            elif name == "get_team_profile":
-                team = arguments.get("team", "")
-                season = arguments.get("season", 2025)
-                response = await client.get(
-                    f"{API_BASE}/stats/team/{team}",
-                    params={"season": season}
-                )
-
-            elif name == "get_league_leaders":
-                stat_type = arguments.get("stat_type", "passing_yards")
-                season = arguments.get("season", 2025)
-                limit = arguments.get("limit", 20)
-                response = await client.get(
-                    f"{API_BASE}/stats/leaders/{stat_type}",
-                    params={"season": season, "limit": limit}
-                )
-
-            elif name == "get_schedule":
-                season = arguments.get("season", 2025)
-                week = arguments.get("week")
-                params = {"season": season}
-                if week:
-                    params["week"] = week
-                response = await client.get(f"{API_BASE}/stats/schedule", params=params)
-
-            elif name == "get_team_rankings":
-                season = arguments.get("season", 2025)
-                response = await client.get(
-                    f"{API_BASE}/stats/rankings",
-                    params={"season": season}
-                )
-
-            elif name == "populate_database":
-                season = arguments.get("season", 2025)
-                week = arguments.get("week", 12)
-                fetch_first = arguments.get("fetch_first", False)
-                response = await client.post(
-                    f"{API_BASE}/populate/all",
-                    params={
-                        "season": season,
-                        "week": week,
-                        "fetch_first": fetch_first,
-                        "include_odds": True
-                    },
-                    timeout=180.0  # 3 minutes for full population
-                )
-
-            # ========== CROSS-GAME PARLAY TOOLS ==========
-            elif name == "best_props_all_games":
-                week = arguments.get("week", 12)
-                min_edge = arguments.get("min_edge", 3.0)
-                limit = arguments.get("limit", 20)
-                prop_types = arguments.get("prop_types")
-                params = {
-                    "min_edge": min_edge,
-                    "limit": limit,
-                    "week": week
-                }
-                if prop_types:
-                    params["prop_types"] = prop_types
-                response = await client.get(
-                    f"{API_BASE}/analysis/quick-props",
-                    params=params
-                )
-
-            else:
-                return [TextContent(
-                    type="text",
-                    text=json.dumps({"error": f"Unknown tool: {name}"})
-                )]
-
-            # Handle response
             if response.status_code == 200:
                 result = response.json()
                 return [TextContent(
                     type="text",
                     text=json.dumps(result, indent=2)
                 )]
-            else:
-                return [TextContent(
-                    type="text",
-                    text=json.dumps({
-                        "_source": "ERROR",
-                        "status_code": response.status_code,
-                        "detail": response.text
-                    })
-                )]
+
+            return [TextContent(
+                type="text",
+                text=json.dumps({
+                    "_source": "ERROR",
+                    "status_code": response.status_code,
+                    "detail": response.text
+                })
+            )]
 
         except httpx.ConnectError:
             return [TextContent(
