@@ -104,11 +104,13 @@ async def health():
 
 @app.post("/fetch/odds", response_model=FetchResponse)
 async def fetch_odds(
-    week: int = Query(12, description="NFL week number"),
-    season: int = Query(2024, description="NFL season"),
+    week: int = Query(None, description="NFL week number"),
+    season: int = Query(None, description="NFL season"),
     background_tasks: BackgroundTasks = None
 ):
     """Fetch odds from The Odds API and store in database."""
+    week = week or CURRENT_WEEK
+    season = season or CURRENT_SEASON
     api_key = os.getenv("ODDS_API_KEY")
     if not api_key:
         raise HTTPException(status_code=400, detail="ODDS_API_KEY not set")
@@ -167,9 +169,11 @@ async def fetch_odds(
 @app.post("/fetch/injuries", response_model=FetchResponse)
 async def fetch_injuries(
     week: Optional[int] = Query(None, description="NFL week number"),
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(None, description="NFL season")
 ):
     """Fetch injury reports from ESPN and store in database."""
+    week = week or CURRENT_WEEK
+    season = season or CURRENT_SEASON
     try:
         output_dir = PROJECT_ROOT / "inputs" / "injuries"
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -209,10 +213,11 @@ async def fetch_injuries(
 
 @app.post("/fetch/nflverse")
 async def fetch_nflverse(
-    year: int = Query(2024, description="NFL season year"),
+    year: int = Query(None, description="NFL season year"),
     include_all: bool = Query(True, description="Include all datasets")
 ):
     """Fetch nflverse data (play-by-play, stats, rosters)."""
+    year = year or CURRENT_SEASON
     try:
         from backend.ingestion.fetch_nflverse import fetch_nflverse
 
@@ -242,11 +247,13 @@ async def fetch_nflverse(
 
 @app.post("/fetch/all")
 async def fetch_all(
-    week: int = Query(12, description="NFL week"),
-    year: int = Query(2024, description="NFL season"),
+    week: int = Query(None, description="NFL week"),
+    year: int = Query(None, description="NFL season"),
     background_tasks: BackgroundTasks = None
 ):
     """Fetch all data sources."""
+    week = week or CURRENT_WEEK
+    year = year or CURRENT_SEASON
     results = {
         "odds": None,
         "injuries": None,
@@ -378,13 +385,15 @@ async def check_data_freshness(
 
 @app.post("/refresh/auto")
 async def auto_refresh(
-    week: int = Query(12, description="NFL week"),
-    year: int = Query(2024, description="NFL season"),
+    week: int = Query(None, description="NFL week"),
+    year: int = Query(None, description="NFL season"),
     odds_max_age_hours: int = Query(4, description="Max age for odds before refresh"),
     injuries_max_age_hours: int = Query(12, description="Max age for injuries before refresh"),
     force: bool = Query(False, description="Force refresh even if data is fresh")
 ):
     """Automatically refresh stale data sources."""
+    week = week or CURRENT_WEEK
+    year = year or CURRENT_SEASON
     # Check freshness
     freshness_check = await check_data_freshness(
         odds_max_age_hours, injuries_max_age_hours
@@ -550,9 +559,10 @@ async def get_projection_history(
 async def store_projections(
     projections: List[dict],
     week: int = Query(..., description="NFL week"),
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(None, description="NFL season")
 ):
     """Store generated projections in database."""
+    season = season or CURRENT_SEASON
     inserted = ProjectionsRepository.insert_projections(projections, week, season)
     return {
         "success": True,
@@ -594,9 +604,10 @@ async def get_injury_history(
 @app.get("/games")
 async def get_games(
     week: Optional[int] = None,
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(None, description="NFL season")
 ):
     """Get games/schedule."""
+    season = season or CURRENT_SEASON
     games = GamesRepository.get_games(week, season)
     return {
         "source": "LOCAL_DB",
@@ -662,9 +673,10 @@ async def get_value_props_history(
 async def store_value_props(
     props: List[dict],
     week: int = Query(..., description="NFL week"),
-    season: int = Query(2024, description="NFL season")
+    season: int = Query(None, description="NFL season")
 ):
     """Store value props found."""
+    season = season or CURRENT_SEASON
     count = ValuePropsRepository.insert_value_props(props, week, season)
     return {
         "success": True,
@@ -981,7 +993,7 @@ async def full_matchup_analysis(game_id: str):
 
 @app.get("/intelligence/daily-brief")
 async def get_daily_betting_brief(
-    week: int = Query(12, description="NFL week"),
+    week: int = Query(None, description="NFL week"),
     min_edge: float = Query(3.0, description="Minimum edge for top props"),
     auto_refresh: bool = Query(True, description="Auto-refresh stale data first")
 ):
@@ -993,6 +1005,7 @@ async def get_daily_betting_brief(
     - Sharp line movements
     - Best parlay candidates
     """
+    week = week or CURRENT_WEEK
     results = {"data_refreshed": False}
 
     # Auto-refresh if requested
@@ -1185,7 +1198,7 @@ async def player_full_outlook(
 @app.get("/stats/player/{player_name}")
 async def get_player_stats(
     player_name: str,
-    season: int = Query(2025, description="NFL season")
+    season: int = Query(None, description="NFL season")
 ):
     """
     FULL PLAYER STATS - Like ESPN player page:
@@ -1194,6 +1207,7 @@ async def get_player_stats(
     - Bio information
     - All relevant stats
     """
+    season = season or CURRENT_SEASON
     # Get season totals
     totals = PlayerStatsRepository.get_player_season_totals(player_name, season)
 
@@ -1237,7 +1251,7 @@ async def get_player_stats(
 @app.get("/stats/team/{team}")
 async def get_team_stats(
     team: str,
-    season: int = Query(2025, description="NFL season")
+    season: int = Query(None, description="NFL season")
 ):
     """
     FULL TEAM STATS - Team profile and stats:
@@ -1245,6 +1259,7 @@ async def get_team_stats(
     - Key players by position
     - Roster information
     """
+    season = season or CURRENT_SEASON
     # Get team stats
     stats = TeamStatsRepository.get_team_stats(team, season)
 
@@ -1301,7 +1316,7 @@ def _group_roster_by_position(roster):
 @app.get("/stats/leaders/{stat_type}")
 async def get_league_leaders(
     stat_type: str,
-    season: int = Query(2025, description="NFL season"),
+    season: int = Query(None, description="NFL season"),
     limit: int = Query(20, description="Number of leaders")
 ):
     """
@@ -1321,6 +1336,7 @@ async def get_league_leaders(
             "error": f"Invalid stat_type. Use one of: {', '.join(valid_stats)}"
         }
 
+    season = season or CURRENT_SEASON
     leaders = PlayerStatsRepository.get_league_leaders(stat_type, season, limit)
 
     return {
@@ -1343,10 +1359,11 @@ async def get_league_leaders(
 
 @app.get("/stats/schedule")
 async def get_schedule(
-    season: int = Query(2025, description="NFL season"),
+    season: int = Query(None, description="NFL season"),
     week: Optional[int] = Query(None, description="Specific week")
 ):
     """Get full season schedule."""
+    season = season or CURRENT_SEASON
     schedule = SchedulesRepository.get_schedule(season, week)
 
     return {
@@ -1360,8 +1377,9 @@ async def get_schedule(
 
 
 @app.get("/stats/rankings")
-async def get_team_rankings(season: int = Query(2025, description="NFL season")):
+async def get_team_rankings(season: int = Query(None, description="NFL season")):
     """Get all teams ranked by record."""
+    season = season or CURRENT_SEASON
     teams = TeamStatsRepository.get_all_teams(season)
 
     return {
@@ -1387,7 +1405,7 @@ async def get_team_rankings(season: int = Query(2025, description="NFL season"))
 
 @app.post("/populate/stats")
 async def populate_player_stats(
-    season: int = Query(2025, description="NFL season"),
+    season: int = Query(None, description="NFL season"),
     week: Optional[int] = Query(None, description="Specific week to load")
 ):
     """
@@ -1395,11 +1413,12 @@ async def populate_player_stats(
     Loads weekly stats for all players.
     """
     import pandas as pd
+    season = season or CURRENT_SEASON
 
     stats_file = PROJECT_ROOT / "inputs" / f"player_stats_{season}.csv"
     if not stats_file.exists():
-        # Try combined file
-        stats_file = PROJECT_ROOT / "inputs" / f"player_stats_2024_{season}.csv"
+        # Try combined file (e.g., player_stats_2024_2025.csv)
+        stats_file = PROJECT_ROOT / "inputs" / "player_stats_2024_2025.csv"
 
     if not stats_file.exists():
         return {
@@ -1467,9 +1486,10 @@ async def populate_player_stats(
 
 
 @app.post("/populate/schedule")
-async def populate_schedule(season: int = Query(2025, description="NFL season")):
+async def populate_schedule(season: int = Query(None, description="NFL season")):
     """Populate full season schedule from nflverse."""
     import pandas as pd
+    season = season or CURRENT_SEASON
 
     # Look for schedule file
     schedule_file = None
@@ -1516,11 +1536,13 @@ async def populate_schedule(season: int = Query(2025, description="NFL season"))
 
 @app.post("/populate/rosters")
 async def populate_rosters(
-    season: int = Query(2025, description="NFL season"),
-    week: int = Query(12, description="Week for roster snapshot")
+    season: int = Query(None, description="NFL season"),
+    week: int = Query(None, description="Week for roster snapshot")
 ):
     """Populate rosters from nflverse."""
     import pandas as pd
+    season = season or CURRENT_SEASON
+    week = week or CURRENT_WEEK
 
     roster_file = PROJECT_ROOT / "inputs" / f"weekly_rosters_{season}.csv"
     if not roster_file.exists():
@@ -1577,8 +1599,8 @@ async def populate_rosters(
 
 @app.post("/populate/all")
 async def populate_all_data(
-    season: int = Query(2025, description="NFL season"),
-    week: int = Query(12, description="Current week"),
+    season: int = Query(None, description="NFL season"),
+    week: int = Query(None, description="Current week"),
     fetch_first: bool = Query(False, description="Fetch from nflverse first"),
     include_odds: bool = Query(True, description="Fetch DraftKings odds from OddsAPI")
 ):
@@ -1592,6 +1614,8 @@ async def populate_all_data(
 
     This is the recommended way to initialize the database.
     """
+    season = season or CURRENT_SEASON
+    week = week or CURRENT_WEEK
     results = {}
 
     # Optionally fetch data first
