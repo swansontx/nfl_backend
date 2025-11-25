@@ -3608,6 +3608,98 @@ async def get_public_betting(game_id: str):
     return response
 
 
+@app.get('/api/v1/betting/public-betting/week/{week}', tags=['Betting', 'Public Betting'])
+async def get_week_public_betting(
+    week: int,
+    season: Optional[int] = None,
+    min_sharp_diff: float = 15.0,
+    min_contrarian_pct: float = 75.0
+):
+    """Get weekly sharp money and contrarian plays across all games.
+
+    Returns:
+        Weekly summary with best sharp money and contrarian opportunities
+    """
+    from backend.orchestration.public_betting_orchestrator import public_betting_orchestrator
+
+    season = season or 2025
+
+    # Analyze the week
+    summary = public_betting_orchestrator.analyze_week(
+        week=week,
+        min_sharp_diff=min_sharp_diff,
+        min_contrarian_pct=min_contrarian_pct
+    )
+
+    # Format response
+    response = {
+        "week": summary.week,
+        "season": summary.season,
+        "total_games": summary.total_games,
+        "games_with_sharp_money": summary.games_with_sharp_money,
+        "games_with_contrarian_opps": summary.games_with_contrarian_opps,
+        "avg_sharp_differential": round(summary.avg_sharp_differential, 1),
+
+        "sharp_money_plays": [
+            {
+                "game": f"{play.away_team} @ {play.home_team}",
+                "game_id": play.game_id,
+                "market": play.market,
+                "side": play.side,
+                "recommended_play": play.recommended_play,
+                "bet_pct": play.bet_pct,
+                "money_pct": play.money_pct,
+                "sharp_differential": round(play.sharp_differential, 1),
+                "confidence": play.confidence,
+                "reasoning": play.reasoning
+            }
+            for play in summary.sharp_money_plays
+        ],
+
+        "contrarian_plays": [
+            {
+                "game": f"{play.away_team} @ {play.home_team}",
+                "game_id": play.game_id,
+                "market": play.market,
+                "side": play.side,
+                "recommended_play": play.recommended_play,
+                "public_pct": round(play.public_pct, 1),
+                "bet_pct": play.bet_pct,
+                "money_pct": play.money_pct,
+                "confidence": play.confidence,
+                "reasoning": play.reasoning
+            }
+            for play in summary.contrarian_plays
+        ],
+
+        "top_plays": {
+            "sharp_money": None,
+            "contrarian": None
+        }
+    }
+
+    # Add top plays
+    if summary.top_sharp_play:
+        response["top_plays"]["sharp_money"] = {
+            "game": f"{summary.top_sharp_play.away_team} @ {summary.top_sharp_play.home_team}",
+            "recommended_play": summary.top_sharp_play.recommended_play,
+            "sharp_differential": round(summary.top_sharp_play.sharp_differential, 1),
+            "confidence": summary.top_sharp_play.confidence,
+            "reasoning": summary.top_sharp_play.reasoning
+        }
+
+    if summary.top_contrarian_play:
+        response["top_plays"]["contrarian"] = {
+            "game": f"{summary.top_contrarian_play.away_team} @ {summary.top_contrarian_play.home_team}",
+            "recommended_play": summary.top_contrarian_play.recommended_play,
+            "public_pct": round(summary.top_contrarian_play.public_pct, 1),
+            "confidence": summary.top_contrarian_play.confidence,
+            "reasoning": summary.top_contrarian_play.reasoning
+        }
+
+    return response
+
+
 @app.get('/api/v1/players/{player_id}/gamelogs', tags=['Players'])
 def get_player_gamelogs(player_id: str, season: int = None, limit: int = 20):
     """Get game-by-game performance logs for a player.
