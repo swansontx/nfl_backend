@@ -13,6 +13,8 @@ from backend.backtesting.framework import BacktestingFramework, BacktestResult
 from backend.backtesting.injury_impact_backtest import InjuryImpactBacktester
 from backend.backtesting.defense_matchup_backtest import DefenseMatchupBacktester
 from backend.backtesting.weather_impact_backtest import WeatherImpactBacktester
+from backend.backtesting.situational_factors_backtest import SituationalFactorsBacktester
+from backend.backtesting.overall_accuracy_backtest import OverallAccuracyBacktester
 from backend.backtesting.data_collector import HistoricalDataCollector
 
 
@@ -134,8 +136,37 @@ class BacktestingOrchestrator:
                 notes=[f"Error: {str(e)}"]
             )
 
-        # TODO: Add situational factors backtest
-        # TODO: Add overall prediction accuracy backtest
+        print("\n" + "-" * 80)
+        print("4. SITUATIONAL FACTORS ADJUSTMENTS")
+        print("-" * 80)
+        try:
+            situational_backtester = SituationalFactorsBacktester(self.framework)
+            results['situational_factors'] = situational_backtester.run_backtest()
+            print("✓ Situational factors backtest complete")
+        except Exception as e:
+            print(f"✗ Situational factors backtest failed: {e}")
+            results['situational_factors'] = BacktestResult(
+                feature_name="Situational Factors",
+                seasons_tested=self.seasons,
+                sample_size=0,
+                notes=[f"Error: {str(e)}"]
+            )
+
+        print("\n" + "-" * 80)
+        print("5. OVERALL PREDICTION ACCURACY")
+        print("-" * 80)
+        try:
+            accuracy_backtester = OverallAccuracyBacktester(self.framework)
+            results['overall_accuracy'] = accuracy_backtester.run_backtest()
+            print("✓ Overall accuracy backtest complete")
+        except Exception as e:
+            print(f"✗ Overall accuracy backtest failed: {e}")
+            results['overall_accuracy'] = BacktestResult(
+                feature_name="Overall Accuracy",
+                seasons_tested=self.seasons,
+                sample_size=0,
+                notes=[f"Error: {str(e)}"]
+            )
 
         self.results = results
         return results
