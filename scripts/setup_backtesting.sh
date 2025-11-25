@@ -42,6 +42,8 @@ modules=(
     "backend/backtesting/injury_impact_backtest.py"
     "backend/backtesting/defense_matchup_backtest.py"
     "backend/backtesting/weather_impact_backtest.py"
+    "backend/backtesting/situational_factors_backtest.py"
+    "backend/backtesting/overall_accuracy_backtest.py"
     "backend/backtesting/run_all_backtests.py"
 )
 
@@ -69,6 +71,8 @@ python3 -m py_compile backend/backtesting/data_collector.py
 python3 -m py_compile backend/backtesting/injury_impact_backtest.py
 python3 -m py_compile backend/backtesting/defense_matchup_backtest.py
 python3 -m py_compile backend/backtesting/weather_impact_backtest.py
+python3 -m py_compile backend/backtesting/situational_factors_backtest.py
+python3 -m py_compile backend/backtesting/overall_accuracy_backtest.py
 python3 -m py_compile backend/backtesting/run_all_backtests.py
 
 if [ $? -eq 0 ]; then
