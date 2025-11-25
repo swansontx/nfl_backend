@@ -11,6 +11,9 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
+# Import validated weights from backtesting
+from backend.config import INJURY_REDISTRIBUTION
+
 
 @dataclass
 class InjuryImpact:
@@ -122,10 +125,40 @@ class InjuryImpactAnalyzer:
     def _initialize_redistribution_patterns(self) -> Dict:
         """Initialize usage redistribution patterns based on position.
 
+        Uses validated weights from historical backtesting when available.
+        Falls back to default patterns if backtesting hasn't been run yet.
+
         Returns:
             Dictionary of redistribution patterns by position
         """
-        return {
+        # Use validated weights from backtesting
+        validated_patterns = {}
+
+        # Convert validated weights to expected format
+        for position, scenarios in INJURY_REDISTRIBUTION.items():
+            if position == 'metadata':
+                continue  # Skip metadata
+
+            validated_patterns[position] = {}
+
+            for scenario, beneficiaries in scenarios.items():
+                if isinstance(beneficiaries, dict):
+                    validated_patterns[position][scenario] = {}
+
+                    for beneficiary, stats in beneficiaries.items():
+                        if isinstance(stats, dict) and 'target_share' in stats:
+                            # Convert from validated weights format
+                            validated_patterns[position][scenario][beneficiary] = {
+                                'targets': stats.get('target_share', 0.0),
+                                'carries': stats.get('carry_share', 0.0),
+                                'yards': stats.get('yards_per_target', 0.0) * stats.get('target_share', 0.0),
+                                'confidence': stats.get('confidence', 0.5)
+                            }
+                        elif beneficiary == 'team_total_impact':
+                            validated_patterns[position][scenario]['team_total_impact'] = stats
+
+        return validated_patterns if validated_patterns else {
+            # Fallback to default patterns if config is empty
             'WR': {
                 # When WR1 out
                 'WR1_OUT': {

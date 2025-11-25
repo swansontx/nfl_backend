@@ -10,6 +10,9 @@ from pathlib import Path
 import pandas as pd
 from datetime import datetime
 
+# Import validated weights from backtesting
+from backend.config import WEATHER_IMPACT, SITUATIONAL_ADJUSTMENTS
+
 
 @dataclass
 class WeatherImpact:
@@ -31,20 +34,32 @@ class WeatherImpact:
     severity: str = "normal"  # normal, moderate, severe, extreme
 
     def calculate_impacts(self):
-        """Calculate all weather impacts."""
+        """Calculate all weather impacts using validated coefficients."""
         if self.is_dome:
             # Dome game - slight boost to passing
             self.total_adjustment = 1.5
             self.passing_yards_adjustment = 8.0
             return
 
+        # Get validated weather coefficients
+        wind_config = WEATHER_IMPACT.get('wind', {})
+        cold_config = WEATHER_IMPACT.get('cold', {})
+        precip_config = WEATHER_IMPACT.get('precipitation', {})
+
         # Wind impact (most significant for passing)
-        if self.wind_mph and self.wind_mph > 15:
-            wind_over_15 = self.wind_mph - 15
-            self.total_adjustment -= wind_over_15 * 0.4
-            self.passing_yards_adjustment -= wind_over_15 * 3.5
-            self.completion_pct_adjustment -= wind_over_15 * 0.5
-            self.kicking_range_adjustment -= wind_over_15 * 0.8
+        wind_threshold = wind_config.get('threshold_mph', 15.0)
+        if self.wind_mph and self.wind_mph > wind_threshold:
+            wind_over_threshold = self.wind_mph - wind_threshold
+
+            # Use validated coefficients
+            passing_coef = wind_config.get('passing_yards_per_mph', -3.5)
+            points_coef = wind_config.get('total_points_per_mph', -0.4)
+            completion_coef = wind_config.get('completion_pct_per_mph', -0.5)
+
+            self.total_adjustment += wind_over_threshold * points_coef
+            self.passing_yards_adjustment += wind_over_threshold * passing_coef
+            self.completion_pct_adjustment += wind_over_threshold * completion_coef
+            self.kicking_range_adjustment -= wind_over_threshold * 0.8
 
             if self.wind_mph > 25:
                 self.severity = "extreme"
@@ -57,11 +72,17 @@ class WeatherImpact:
                 self.is_significant = True
 
         # Cold weather impact
-        if self.temperature and self.temperature < 32:
-            cold_below_32 = 32 - self.temperature
-            self.total_adjustment -= cold_below_32 * 0.2
-            self.passing_yards_adjustment -= cold_below_32 * 0.8
-            self.completion_pct_adjustment -= cold_below_32 * 0.15
+        cold_threshold = cold_config.get('threshold_fahrenheit', 32.0)
+        if self.temperature and self.temperature < cold_threshold:
+            cold_below_threshold = cold_threshold - self.temperature
+
+            # Use validated coefficients
+            passing_coef = cold_config.get('passing_yards_per_degree', -0.8)
+            points_coef = cold_config.get('total_points_per_degree', -0.2)
+
+            self.total_adjustment += cold_below_threshold * points_coef
+            self.passing_yards_adjustment += cold_below_threshold * passing_coef
+            self.completion_pct_adjustment -= cold_below_threshold * 0.15
 
             if self.temperature < 10:
                 self.severity = "extreme"
@@ -72,19 +93,24 @@ class WeatherImpact:
 
         # Precipitation impact
         if self.precipitation and self.precipitation != 'none':
+            rain_config = precip_config.get('rain', {})
+            snow_config = precip_config.get('snow', {})
+
             if self.precipitation == 'rain':
-                self.total_adjustment -= 4.5
-                self.passing_yards_adjustment -= 25
-                self.rushing_yards_adjustment += 10  # More run-heavy
-                self.completion_pct_adjustment -= 4.0
+                # Use validated coefficients
+                self.total_adjustment += rain_config.get('total_points', -4.5)
+                self.passing_yards_adjustment += rain_config.get('passing_yards', -25)
+                self.rushing_yards_adjustment += rain_config.get('rushing_yards', 10)
+                self.completion_pct_adjustment += rain_config.get('completion_pct', -4.0)
                 self.severity = "moderate" if self.severity == "normal" else self.severity
                 self.is_significant = True
 
             elif self.precipitation == 'snow':
-                self.total_adjustment -= 7.0
-                self.passing_yards_adjustment -= 35
-                self.rushing_yards_adjustment += 5  # More run-heavy but slower
-                self.completion_pct_adjustment -= 6.0
+                # Use validated coefficients
+                self.total_adjustment += snow_config.get('total_points', -7.0)
+                self.passing_yards_adjustment += snow_config.get('passing_yards', -35)
+                self.rushing_yards_adjustment += snow_config.get('rushing_yards', 5)
+                self.completion_pct_adjustment += snow_config.get('completion_pct', -6.0)
                 self.kicking_range_adjustment -= 5.0
                 self.severity = "severe"
                 self.is_significant = True
