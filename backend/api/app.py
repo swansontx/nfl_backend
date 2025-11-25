@@ -3405,6 +3405,141 @@ async def analyze_week_game_markets(
     }
 
 
+@app.get('/api/v1/betting/public-betting/{game_id}', tags=['Betting', 'Public Betting'])
+async def get_public_betting(game_id: str):
+    """Get public betting percentages and sharp money indicators for a game.
+
+    Returns:
+        Public betting data including bet %, money %, sharp money indicators,
+        and contrarian opportunities
+    """
+    from backend.ingestion.fetch_public_betting import public_betting_scraper
+
+    # Parse game_id
+    parts = game_id.split('_')
+    if len(parts) < 4:
+        return {"error": "Invalid game_id format. Expected: {season}_{week}_{away}_{home}"}
+
+    away_team = parts[2]
+    home_team = parts[3]
+
+    # Get public betting data
+    # For now using mock data (until HTML scraping implemented)
+    public_data = public_betting_scraper.create_mock_data(
+        game_id=game_id,
+        home_team=home_team,
+        away_team=away_team
+    )
+
+    # Format response
+    response = {
+        "game_id": game_id,
+        "home_team": home_team,
+        "away_team": away_team,
+        "timestamp": public_data.timestamp.isoformat() if public_data.timestamp else None,
+
+        "spread": None,
+        "total": None,
+        "moneyline": None,
+
+        "indicators": {
+            "sharp_money": [],
+            "contrarian_opportunities": []
+        }
+    }
+
+    # Spread data
+    if public_data.spread:
+        response["spread"] = {
+            "line": public_data.spread.line,
+            "home_bet_pct": public_data.spread.home_bet_pct,
+            "home_money_pct": public_data.spread.home_money_pct,
+            "away_bet_pct": public_data.spread.away_bet_pct,
+            "away_money_pct": public_data.spread.away_money_pct,
+            "sharp_on_home": public_data.spread_sharp_on_home,
+            "sharp_on_away": public_data.spread_sharp_on_away,
+            "contrarian_home": public_data.spread_contrarian_home,
+            "contrarian_away": public_data.spread_contrarian_away
+        }
+
+    # Total data
+    if public_data.total:
+        response["total"] = {
+            "line": public_data.total.line,
+            "over_bet_pct": public_data.total.over_bet_pct,
+            "over_money_pct": public_data.total.over_money_pct,
+            "under_bet_pct": public_data.total.under_bet_pct,
+            "under_money_pct": public_data.total.under_money_pct,
+            "sharp_on_over": public_data.total_sharp_on_over,
+            "sharp_on_under": public_data.total_sharp_on_under,
+            "contrarian_over": public_data.total_contrarian_over,
+            "contrarian_under": public_data.total_contrarian_under
+        }
+
+    # Moneyline data
+    if public_data.moneyline:
+        response["moneyline"] = {
+            "home_bet_pct": public_data.moneyline.home_bet_pct,
+            "home_money_pct": public_data.moneyline.home_money_pct,
+            "away_bet_pct": public_data.moneyline.away_bet_pct,
+            "away_money_pct": public_data.moneyline.away_money_pct
+        }
+
+    # Add sharp money indicators
+    if public_data.spread_sharp_on_home:
+        response["indicators"]["sharp_money"].append({
+            "market": "spread",
+            "side": home_team,
+            "description": f"Sharp money detected on {home_team} spread (fewer bets but more money)"
+        })
+    if public_data.spread_sharp_on_away:
+        response["indicators"]["sharp_money"].append({
+            "market": "spread",
+            "side": away_team,
+            "description": f"Sharp money detected on {away_team} spread (fewer bets but more money)"
+        })
+    if public_data.total_sharp_on_over:
+        response["indicators"]["sharp_money"].append({
+            "market": "total",
+            "side": "OVER",
+            "description": "Sharp money detected on OVER (fewer bets but more money)"
+        })
+    if public_data.total_sharp_on_under:
+        response["indicators"]["sharp_money"].append({
+            "market": "total",
+            "side": "UNDER",
+            "description": "Sharp money detected on UNDER (fewer bets but more money)"
+        })
+
+    # Add contrarian opportunities
+    if public_data.spread_contrarian_away:
+        response["indicators"]["contrarian_opportunities"].append({
+            "market": "spread",
+            "play": f"Bet {away_team}",
+            "description": f"Heavy public on {home_team} - fade the public and bet {away_team}"
+        })
+    if public_data.spread_contrarian_home:
+        response["indicators"]["contrarian_opportunities"].append({
+            "market": "spread",
+            "play": f"Bet {home_team}",
+            "description": f"Heavy public on {away_team} - fade the public and bet {home_team}"
+        })
+    if public_data.total_contrarian_over:
+        response["indicators"]["contrarian_opportunities"].append({
+            "market": "total",
+            "play": "Bet OVER",
+            "description": "Heavy public on UNDER - fade the public and bet OVER"
+        })
+    if public_data.total_contrarian_under:
+        response["indicators"]["contrarian_opportunities"].append({
+            "market": "total",
+            "play": "Bet UNDER",
+            "description": "Heavy public on OVER - fade the public and bet UNDER"
+        })
+
+    return response
+
+
 @app.get('/api/v1/players/{player_id}/gamelogs', tags=['Players'])
 def get_player_gamelogs(player_id: str, season: int = None, limit: int = 20):
     """Get game-by-game performance logs for a player.

@@ -66,6 +66,26 @@ class GameFeatures:
     line_movement_spread: Optional[float] = None
     line_movement_total: Optional[float] = None
 
+    # Public betting data (bet % and money %)
+    spread_bet_pct_home: Optional[float] = None
+    spread_money_pct_home: Optional[float] = None
+    total_bet_pct_over: Optional[float] = None
+    total_money_pct_over: Optional[float] = None
+    ml_bet_pct_home: Optional[float] = None
+    ml_money_pct_home: Optional[float] = None
+
+    # Sharp money indicators (money % >> bet %)
+    spread_sharp_on_home: bool = False
+    spread_sharp_on_away: bool = False
+    total_sharp_on_over: bool = False
+    total_sharp_on_under: bool = False
+
+    # Contrarian opportunities (heavy public on one side)
+    spread_contrarian_home: bool = False  # Bet home (public on away)
+    spread_contrarian_away: bool = False  # Bet away (public on home)
+    total_contrarian_over: bool = False  # Bet over (public on under)
+    total_contrarian_under: bool = False  # Bet under (public on over)
+
 
 @dataclass
 class GameOutcomePrediction:
@@ -169,6 +189,9 @@ class GameOutcomeOrchestrator:
 
         # Collect market data (if available)
         features = self._add_market_data(features)
+
+        # Collect public betting data (if available)
+        features = self._add_public_betting_data(features)
 
         return features
 
@@ -413,6 +436,59 @@ class GameOutcomeOrchestrator:
 
         return features
 
+    def _add_public_betting_data(self, features: GameFeatures) -> GameFeatures:
+        """Add public betting percentages (bet % and money %).
+
+        Args:
+            features: GameFeatures object
+
+        Returns:
+            Updated features with public betting data
+        """
+        try:
+            from backend.ingestion.fetch_public_betting import public_betting_scraper
+
+            # For now, use mock data (until HTML parsing implemented)
+            # In production, would call: scraper.fetch_sportsbettingdime(week=features.week)
+            public_data = public_betting_scraper.create_mock_data(
+                game_id=features.game_id,
+                home_team=features.home_team,
+                away_team=features.away_team
+            )
+
+            # Add spread betting data
+            if public_data.spread:
+                features.spread_bet_pct_home = public_data.spread.home_bet_pct
+                features.spread_money_pct_home = public_data.spread.home_money_pct
+
+            # Add total betting data
+            if public_data.total:
+                features.total_bet_pct_over = public_data.total.over_bet_pct
+                features.total_money_pct_over = public_data.total.over_money_pct
+
+            # Add moneyline betting data
+            if public_data.moneyline:
+                features.ml_bet_pct_home = public_data.moneyline.home_bet_pct
+                features.ml_money_pct_home = public_data.moneyline.home_money_pct
+
+            # Add sharp money indicators
+            features.spread_sharp_on_home = public_data.spread_sharp_on_home
+            features.spread_sharp_on_away = public_data.spread_sharp_on_away
+            features.total_sharp_on_over = public_data.total_sharp_on_over
+            features.total_sharp_on_under = public_data.total_sharp_on_under
+
+            # Add contrarian opportunities
+            features.spread_contrarian_home = public_data.spread_contrarian_home
+            features.spread_contrarian_away = public_data.spread_contrarian_away
+            features.total_contrarian_over = public_data.total_contrarian_over
+            features.total_contrarian_under = public_data.total_contrarian_under
+
+        except Exception as e:
+            print(f"Error fetching public betting data: {e}")
+            # Continue without public betting data
+
+        return features
+
     # ========================================================================
     # PHASE 2: Feature Engineering
     # ========================================================================
@@ -567,6 +643,21 @@ class GameOutcomeOrchestrator:
         if X['is_division_game']:
             margin *= 0.9
 
+        # PUBLIC BETTING ADJUSTMENTS
+        # Sharp money adjustment (follow the smart money)
+        if features.spread_sharp_on_home:
+            margin += 0.5  # Boost home team (sharp money on them)
+        elif features.spread_sharp_on_away:
+            margin -= 0.5  # Reduce home team (sharp money on away)
+
+        # Contrarian adjustment (fade heavy public)
+        if features.spread_contrarian_away:
+            # Public heavily on home, fade them (bet away)
+            margin -= 0.3
+        elif features.spread_contrarian_home:
+            # Public heavily on away, fade them (bet home)
+            margin += 0.3
+
         # Standard deviation (typical NFL game variance)
         std = 13.5
 
@@ -607,6 +698,21 @@ class GameOutcomeOrchestrator:
         # Division game adjustment (usually lower scoring)
         if X['is_division_game']:
             total -= 1.5
+
+        # PUBLIC BETTING ADJUSTMENTS
+        # Sharp money adjustment (follow the smart money)
+        if features.total_sharp_on_over:
+            total += 1.0  # Boost total (sharp money on over)
+        elif features.total_sharp_on_under:
+            total -= 1.0  # Reduce total (sharp money on under)
+
+        # Contrarian adjustment (fade heavy public)
+        if features.total_contrarian_under:
+            # Public heavily on over, fade them (bet under)
+            total -= 0.7
+        elif features.total_contrarian_over:
+            # Public heavily on under, fade them (bet over)
+            total += 0.7
 
         # Standard deviation
         std = 11.0

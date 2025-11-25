@@ -889,6 +889,22 @@ async def list_tools():
                     }
                 }
             }
+        ),
+
+        # ========== PUBLIC BETTING & SHARP MONEY ==========
+        Tool(
+            name="get_public_betting",
+            description="PUBLIC BETTING & SHARP MONEY - Get public betting percentages (bet % and money %) for a game with sharp money indicators and contrarian opportunities. Shows where the public is betting vs. where the smart money is going. USE THIS when asked about 'sharp money', 'public betting', 'contrarian plays', or 'where is the money going?'",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "game_id": {
+                        "type": "string",
+                        "description": "Game ID (e.g., '2025_12_BUF_KC')"
+                    }
+                },
+                "required": ["game_id"]
+            }
         )
     ]
 
@@ -1304,6 +1320,13 @@ async def call_tool(name: str, arguments: dict):
                 response = await client.get(
                     f"{API_BASE}/api/v1/betting/game-markets/week/{week}",
                     params={"season": season, "min_ev": min_ev}
+                )
+
+            # ========== PUBLIC BETTING & SHARP MONEY ==========
+            elif name == "get_public_betting":
+                game_id = arguments.get("game_id", "")
+                response = await client.get(
+                    f"{API_BASE}/api/v1/betting/public-betting/{game_id}"
                 )
 
             else:
