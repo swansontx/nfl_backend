@@ -3078,6 +3078,7 @@ async def analyze_game_markets(
         Complete game market analysis with predictions and recommendations
     """
     from backend.analysis.game_markets import GameMarketAnalyzer
+    from backend.orchestration.game_outcome_orchestrator import game_outcome_orchestrator
     from backend.ingestion.fetch_odds import fetch_odds_api
 
     # Parse game_id if teams not provided
@@ -3148,7 +3149,15 @@ async def analyze_game_markets(
     except Exception as e:
         print(f"Could not fetch market odds: {e}")
 
-    # Analyze game
+    # Use orchestrator for enhanced prediction with comprehensive features
+    orchestrator_prediction = game_outcome_orchestrator.predict_game(
+        game_id=game_id,
+        week=week,
+        market_spread=market_data.get('spread') if market_data else None,
+        market_total=market_data.get('total') if market_data else None
+    )
+
+    # Also use GameMarketAnalyzer for detailed market analysis and recommendations
     analysis = analyzer.analyze_game(
         game_id=game_id,
         home_team=home_team,
@@ -3157,7 +3166,7 @@ async def analyze_game_markets(
         market_data=market_data
     )
 
-    # Format response
+    # Format response with enhanced prediction from orchestrator
     response = {
         "game_id": game_id,
         "home_team": home_team,
@@ -3165,13 +3174,18 @@ async def analyze_game_markets(
         "week": week,
 
         "prediction": {
-            "home_score": analysis.prediction.home_score,
-            "away_score": analysis.prediction.away_score,
-            "home_win_prob": analysis.prediction.home_win_prob,
-            "away_win_prob": analysis.prediction.away_win_prob,
-            "predicted_spread": analysis.prediction.predicted_spread,
-            "predicted_total": analysis.prediction.predicted_total,
-            "confidence": analysis.prediction.confidence
+            "home_score": orchestrator_prediction.predicted_home_score,
+            "away_score": orchestrator_prediction.predicted_away_score,
+            "home_win_prob": orchestrator_prediction.home_win_prob,
+            "away_win_prob": round(1 - orchestrator_prediction.home_win_prob, 3),
+            "predicted_spread": orchestrator_prediction.predicted_margin,
+            "predicted_total": orchestrator_prediction.predicted_total,
+            "confidence": orchestrator_prediction.confidence,
+            # Enhanced: Add confidence intervals
+            "margin_ci_95": orchestrator_prediction.margin_ci,
+            "total_ci_95": orchestrator_prediction.total_ci,
+            "margin_std": orchestrator_prediction.margin_std,
+            "total_std": orchestrator_prediction.total_std
         },
 
         "markets": {},
