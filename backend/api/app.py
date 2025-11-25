@@ -3157,6 +3157,9 @@ async def analyze_game_markets(
         market_total=market_data.get('total') if market_data else None
     )
 
+    # Collect features to access public betting data
+    features = game_outcome_orchestrator.collect_features(game_id, week)
+
     # Also use GameMarketAnalyzer for detailed market analysis and recommendations
     analysis = analyzer.analyze_game(
         game_id=game_id,
@@ -3189,8 +3192,73 @@ async def analyze_game_markets(
         },
 
         "markets": {},
-        "best_bet": None
+        "best_bet": None,
+
+        # Public betting insights
+        "public_betting": {
+            "spread": {
+                "home_bet_pct": features.spread_bet_pct_home,
+                "home_money_pct": features.spread_money_pct_home,
+                "sharp_on_home": features.spread_sharp_on_home,
+                "sharp_on_away": features.spread_sharp_on_away,
+                "contrarian_home": features.spread_contrarian_home,
+                "contrarian_away": features.spread_contrarian_away
+            },
+            "total": {
+                "over_bet_pct": features.total_bet_pct_over,
+                "over_money_pct": features.total_money_pct_over,
+                "sharp_on_over": features.total_sharp_on_over,
+                "sharp_on_under": features.total_sharp_on_under,
+                "contrarian_over": features.total_contrarian_over,
+                "contrarian_under": features.total_contrarian_under
+            },
+            "insights": []
+        }
     }
+
+    # Add public betting insights narratively
+    insights = []
+
+    # Sharp money insights
+    if features.spread_sharp_on_home:
+        insights.append(f"💰 Sharp money detected on {home_team} spread (fewer bets but more money)")
+    if features.spread_sharp_on_away:
+        insights.append(f"💰 Sharp money detected on {away_team} spread (fewer bets but more money)")
+    if features.total_sharp_on_over:
+        insights.append(f"💰 Sharp money detected on OVER (professional money flowing to over)")
+    if features.total_sharp_on_under:
+        insights.append(f"💰 Sharp money detected on UNDER (professional money flowing to under)")
+
+    # Contrarian insights
+    if features.spread_contrarian_away:
+        insights.append(f"📊 Contrarian opportunity: Bet {away_team} (public heavily on {home_team})")
+    if features.spread_contrarian_home:
+        insights.append(f"📊 Contrarian opportunity: Bet {home_team} (public heavily on {away_team})")
+    if features.total_contrarian_over:
+        insights.append(f"📊 Contrarian opportunity: Bet OVER (public heavily on under)")
+    if features.total_contrarian_under:
+        insights.append(f"📊 Contrarian opportunity: Bet UNDER (public heavily on over)")
+
+    # Public betting distribution
+    if features.spread_bet_pct_home and features.spread_money_pct_home:
+        bet_diff = abs(features.spread_bet_pct_home - features.spread_money_pct_home)
+        if bet_diff < 5:
+            insights.append(f"📈 Balanced action on spread: {features.spread_bet_pct_home:.0f}% bets, {features.spread_money_pct_home:.0f}% money on {home_team}")
+        elif features.spread_money_pct_home > features.spread_bet_pct_home:
+            insights.append(f"📈 Spread: {features.spread_bet_pct_home:.0f}% bets but {features.spread_money_pct_home:.0f}% money on {home_team} (bigger bettors on {home_team})")
+        else:
+            insights.append(f"📈 Spread: {features.spread_bet_pct_home:.0f}% bets but only {features.spread_money_pct_home:.0f}% money on {home_team} (smaller bettors on {home_team})")
+
+    if features.total_bet_pct_over and features.total_money_pct_over:
+        bet_diff = abs(features.total_bet_pct_over - features.total_money_pct_over)
+        if bet_diff < 5:
+            insights.append(f"📈 Balanced action on total: {features.total_bet_pct_over:.0f}% bets, {features.total_money_pct_over:.0f}% money on OVER")
+        elif features.total_money_pct_over > features.total_bet_pct_over:
+            insights.append(f"📈 Total: {features.total_bet_pct_over:.0f}% bets but {features.total_money_pct_over:.0f}% money on OVER (bigger bettors on over)")
+        else:
+            insights.append(f"📈 Total: {features.total_bet_pct_over:.0f}% bets but only {features.total_money_pct_over:.0f}% money on OVER (smaller bettors on over)")
+
+    response["public_betting"]["insights"] = insights
 
     # Add market analyses
     if analysis.spread_analysis:
