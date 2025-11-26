@@ -3193,10 +3193,12 @@ async def analyze_game_markets(
 
         # ML Model Information
         "ml_model": {
-            "totals_model": "Neural Network" if game_outcome_orchestrator.total_model else "Formula",
-            "accuracy_improvement": "+10.8% vs baseline" if game_outcome_orchestrator.total_model else "N/A",
-            "features": 26 if game_outcome_orchestrator.total_model else "N/A",
-            "model_type": "MLPRegressor (100, 50, 25)" if game_outcome_orchestrator.total_model else "Rule-based"
+            "prediction_method": "Unified Neural Network" if game_outcome_orchestrator.unified_predictor else "Formula",
+            "spreads_improvement": "+4.2% vs baseline" if game_outcome_orchestrator.unified_predictor else "N/A",
+            "totals_improvement": "+1.3% vs baseline" if game_outcome_orchestrator.unified_predictor else "N/A",
+            "features": 26 if game_outcome_orchestrator.unified_predictor else "N/A",
+            "model_type": "MLPRegressor (predicts home & away scores)" if game_outcome_orchestrator.unified_predictor else "Rule-based",
+            "interconnected": True if game_outcome_orchestrator.unified_predictor else False
         },
 
         "markets": {},

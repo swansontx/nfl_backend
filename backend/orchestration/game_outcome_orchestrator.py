@@ -17,13 +17,13 @@ from datetime import datetime, timedelta
 import pickle
 import json
 
-# Import ML predictor for game totals
+# Import ML predictors
 try:
-    from backend.ml.game_totals_predictor import MLGameTotalsPredictor
-    ML_PREDICTOR_AVAILABLE = True
+    from backend.ml.unified_game_predictor import UnifiedGamePredictor
+    UNIFIED_ML_AVAILABLE = True
 except ImportError:
-    ML_PREDICTOR_AVAILABLE = False
-    print("⚠️  ML predictor not available, using formula-based predictions")
+    UNIFIED_ML_AVAILABLE = False
+    print("⚠️  Unified ML predictor not available, using formula-based predictions")
 
 
 @dataclass
@@ -139,18 +139,17 @@ class GameOutcomeOrchestrator:
         self.models_dir.mkdir(parents=True, exist_ok=True)
 
         # Models (loaded on demand)
-        self.margin_model = None
         self.ml_model = None
 
-        # Initialize ML predictor for game totals
-        self.total_model = None
-        if ML_PREDICTOR_AVAILABLE:
+        # Initialize unified ML predictor for spreads and totals
+        self.unified_predictor = None
+        if UNIFIED_ML_AVAILABLE:
             try:
-                self.total_model = MLGameTotalsPredictor()
-                print("✓ Loaded Neural Network game totals predictor (+10.8% vs baseline)")
+                self.unified_predictor = UnifiedGamePredictor()
+                print("✓ Loaded Unified Neural Network (Spreads +4.2%, Totals +1.3%)")
             except Exception as e:
-                print(f"⚠️  Could not load ML predictor: {e}")
-                self.total_model = None
+                print(f"⚠️  Could not load unified ML predictor: {e}")
+                self.unified_predictor = None
 
         # Calibrators
         self.margin_calibrator = None
@@ -573,22 +572,50 @@ class GameOutcomeOrchestrator:
         # Collect features
         features = self.collect_features(game_id, week)
 
-        # Engineer features
-        X = self.engineer_features(features)
+        # Try unified ML predictor first (predicts spreads AND totals)
+        if self.unified_predictor is not None:
+            try:
+                from backend.backtesting.framework import BacktestingFramework
 
-        # For now, use formula-based prediction (until models trained)
-        # This matches the current simple game_markets.py approach
-        predicted_margin, margin_std = self._predict_margin_formula(X, features)
-        predicted_total, total_std = self._predict_total_formula(X, features)
+                # Use unified ML predictor
+                framework = BacktestingFramework(seasons=[features.season])
+                ml_prediction = self.unified_predictor.predict_game(
+                    home_team=features.home_team,
+                    away_team=features.away_team,
+                    season=features.season,
+                    week=features.week,
+                    framework=framework
+                )
 
-        # Calculate scores
-        predicted_home_score = (predicted_total + predicted_margin) / 2
-        predicted_away_score = (predicted_total - predicted_margin) / 2
+                # Extract predictions from ML model
+                predicted_home_score = ml_prediction.predicted_home_score
+                predicted_away_score = ml_prediction.predicted_away_score
+                predicted_margin = ml_prediction.predicted_spread
+                predicted_total = ml_prediction.predicted_total
+                home_win_prob = ml_prediction.home_win_prob
+                margin_std = ml_prediction.spread_std
+                total_std = ml_prediction.total_std
 
-        # Win probability from margin
-        # Rule: 1 point ≈ 2.8% shift from 50%
-        home_win_prob = 0.5 + (predicted_margin * 0.028)
-        home_win_prob = max(0.01, min(0.99, home_win_prob))
+            except Exception as e:
+                print(f"⚠️  Unified ML prediction failed, falling back to formula: {e}")
+                # Fall back to formula
+                X = self.engineer_features(features)
+                predicted_margin, margin_std = self._predict_margin_formula(X, features)
+                predicted_total, total_std = self._predict_total_formula(X, features)
+                predicted_home_score = (predicted_total + predicted_margin) / 2
+                predicted_away_score = (predicted_total - predicted_margin) / 2
+                home_win_prob = 0.5 + (predicted_margin * 0.028)
+                home_win_prob = max(0.01, min(0.99, home_win_prob))
+
+        else:
+            # FALLBACK: Use formula-based prediction
+            X = self.engineer_features(features)
+            predicted_margin, margin_std = self._predict_margin_formula(X, features)
+            predicted_total, total_std = self._predict_total_formula(X, features)
+            predicted_home_score = (predicted_total + predicted_margin) / 2
+            predicted_away_score = (predicted_total - predicted_margin) / 2
+            home_win_prob = 0.5 + (predicted_margin * 0.028)
+            home_win_prob = max(0.01, min(0.99, home_win_prob))
 
         # Confidence intervals
         margin_ci = (
@@ -685,7 +712,7 @@ class GameOutcomeOrchestrator:
         X: Dict[str, float],
         features: GameFeatures
     ) -> Tuple[float, float]:
-        """Predict total using ML model or formula fallback.
+        """Predict total using formula (fallback when unified ML unavailable).
 
         Args:
             X: Engineered features
@@ -694,34 +721,7 @@ class GameOutcomeOrchestrator:
         Returns:
             (predicted_total, std_dev)
         """
-        # Try ML predictor first (Neural Network: +10.8% vs baseline)
-        if self.total_model is not None:
-            try:
-                from backend.backtesting.framework import BacktestingFramework
-
-                # Use ML predictor
-                framework = BacktestingFramework(seasons=[features.season])
-                ml_prediction = self.total_model.predict_game(
-                    home_team=features.home_team,
-                    away_team=features.away_team,
-                    season=features.season,
-                    week=features.week,
-                    framework=framework
-                )
-
-                # Use ML prediction with its confidence-based std
-                # Lower confidence = higher uncertainty
-                base_std = 11.0
-                confidence_factor = ml_prediction.confidence
-                std = base_std * (1.0 - 0.3 * confidence_factor)  # Range: 7.7 to 11.0
-
-                return ml_prediction.predicted_total, std
-
-            except Exception as e:
-                print(f"⚠️  ML prediction failed, falling back to formula: {e}")
-                # Fall through to formula
-
-        # FALLBACK: Formula-based prediction (original logic)
+        # Formula-based prediction
         # Average of offense vs defense matchups
         total = (
             (features.home_off_ppg + features.away_def_ppg) / 2 +
