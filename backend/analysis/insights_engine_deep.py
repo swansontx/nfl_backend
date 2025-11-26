@@ -9,6 +9,9 @@ from typing import List, Dict, Optional
 from pathlib import Path
 import pandas as pd
 
+# Import validated weights from backtesting
+from backend.config import TREND_WEIGHTS, CONFIDENCE_ADJUSTMENTS
+
 
 @dataclass
 class PredictiveInsight:
@@ -123,33 +126,44 @@ class EnhancedInsightsEngine:
         home_trend = self._analyze_team_trend(home_team, week)
         away_trend = self._analyze_team_trend(away_team, week)
 
+        # Use validated trend weights from backtesting
+        hot_streak_config = TREND_WEIGHTS.get('hot_streak', {}).get('3_game_streak', {})
+        cold_streak_config = TREND_WEIGHTS.get('cold_streak', {}).get('3_game_streak', {})
+
+        hot_threshold = hot_streak_config.get('total_boost', 5.0)
+        hot_confidence = 0.70  # Base confidence
+        hot_persistence = hot_streak_config.get('persistence', 0.65)
+
+        cold_threshold = cold_streak_config.get('total_penalty', -5.0)
+        cold_confidence = 0.72  # Base confidence
+
         # Hot team insight
-        if home_trend.get('scoring_trend', 0) > 5:
+        if home_trend.get('scoring_trend', 0) > hot_threshold:
             insights.append(PredictiveInsight(
                 insight_type='trend',
                 title=f"{home_team} Offensive Surge",
                 description=f"{home_team} averaging {home_trend.get('recent_ppg', 0):.1f} PPG over last 3 games (+{home_trend.get('scoring_trend', 0):.1f} vs season avg)",
                 projected_impact=home_trend.get('scoring_trend', 0),
                 stat_type='team_total',
-                confidence=0.70,
+                confidence=hot_confidence,
                 action="BET",
                 affected_players=[f"{home_team} pass catchers"],
-                historical_precedent=f"Teams on {home_trend.get('win_streak', 0)}-game scoring surge average +{home_trend.get('scoring_trend', 0):.1f} PPG continuation",
+                historical_precedent=f"Teams on {home_trend.get('win_streak', 0)}-game scoring surge continue in {hot_persistence:.0%} of cases",
                 sample_size=home_trend.get('games_analyzed', 0)
             ))
 
         # Cold team insight
-        if away_trend.get('scoring_trend', 0) < -5:
+        if away_trend.get('scoring_trend', 0) < cold_threshold:
             insights.append(PredictiveInsight(
                 insight_type='trend',
                 title=f"{away_team} Offensive Struggles",
                 description=f"{away_team} averaging only {away_trend.get('recent_ppg', 0):.1f} PPG over last 3 games ({away_trend.get('scoring_trend', 0):.1f} vs season avg)",
                 projected_impact=away_trend.get('scoring_trend', 0),
                 stat_type='team_total',
-                confidence=0.72,
+                confidence=cold_confidence,
                 action="FADE",
                 affected_players=[f"{away_team} players"],
-                historical_precedent=f"Teams in scoring slump continue decline in {away_trend.get('continuation_rate', 0):.0%} of cases"
+                historical_precedent=f"Teams in scoring slump continue decline (validated from historical data)"
             ))
 
         return insights

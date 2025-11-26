@@ -10,6 +10,9 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
+# Import validated weights from backtesting
+from backend.config import DEFENSE_MATCHUP_ADJUSTMENTS
+
 
 @dataclass
 class PositionalDefenseStats:
@@ -38,7 +41,7 @@ class PositionalDefenseStats:
     confidence: float = 0.5
 
     def get_matchup_factor(self) -> float:
-        """Calculate matchup adjustment factor.
+        """Calculate matchup adjustment factor using validated baselines.
 
         Returns:
             Multiplier for projections (0.8 = tough, 1.0 = average, 1.2 = soft)
@@ -47,14 +50,15 @@ class PositionalDefenseStats:
         if self.yards_per_game_allowed == 0:
             return 1.0
 
-        # League average baselines (approximate)
+        # Use validated league average baselines from backtesting
+        validated_averages = DEFENSE_MATCHUP_ADJUSTMENTS.get('league_averages', {})
         league_avg = {
-            'WR1': 65.0,
-            'WR2': 45.0,
-            'Slot': 40.0,
-            'RB_rush': 55.0,
-            'RB_recv': 25.0,
-            'TE': 45.0
+            'WR1': validated_averages.get('WR1', 65.0),
+            'WR2': validated_averages.get('WR2', 45.0),
+            'Slot': validated_averages.get('Slot', 40.0),
+            'RB_rush': validated_averages.get('RB_rush', 55.0),
+            'RB_recv': validated_averages.get('RB_recv', 25.0),
+            'TE': validated_averages.get('TE', 45.0)
         }
 
         avg = league_avg.get(self.position, 50.0)
@@ -62,8 +66,13 @@ class PositionalDefenseStats:
         # Calculate factor (inverse - more yards allowed = easier matchup)
         factor = self.yards_per_game_allowed / avg
 
-        # Clamp to reasonable range
-        return max(0.7, min(1.3, factor))
+        # Use validated factor ranges from backtesting
+        factor_ranges = DEFENSE_MATCHUP_ADJUSTMENTS.get('factor_ranges', {})
+        min_factor = factor_ranges.get('elite_defense', (0.70, 0.80))[0]
+        max_factor = factor_ranges.get('weak_defense', (1.15, 1.30))[1]
+
+        # Clamp to validated range
+        return max(min_factor, min(max_factor, factor))
 
 
 @dataclass
@@ -461,15 +470,23 @@ class DefenseMatchupAnalyzer:
         Returns:
             (quality_rating, reasoning)
         """
-        if matchup_factor >= 1.20:
+        # Use validated matchup quality thresholds from backtesting
+        quality_thresholds = DEFENSE_MATCHUP_ADJUSTMENTS.get('matchup_quality', {})
+        smash_threshold = quality_thresholds.get('smash', 1.20)
+        great_threshold = quality_thresholds.get('great', 1.10)
+        good_threshold = quality_thresholds.get('good', 1.05)
+        average_threshold = quality_thresholds.get('average', 0.95)
+        tough_threshold = quality_thresholds.get('tough', 0.85)
+
+        if matchup_factor >= smash_threshold:
             return "Smash", f"Elite matchup vs {positional_matchup.team} (allows {positional_matchup.yards_per_game_allowed:.1f} ypg to {positional_matchup.position})"
-        elif matchup_factor >= 1.10:
+        elif matchup_factor >= great_threshold:
             return "Great", f"Favorable matchup vs {positional_matchup.team} (+{(matchup_factor-1)*100:.0f}% boost)"
-        elif matchup_factor >= 1.05:
+        elif matchup_factor >= good_threshold:
             return "Good", f"Slight edge vs {positional_matchup.team}"
-        elif matchup_factor >= 0.95:
+        elif matchup_factor >= average_threshold:
             return "Average", f"Neutral matchup vs {positional_matchup.team}"
-        elif matchup_factor >= 0.85:
+        elif matchup_factor >= tough_threshold:
             return "Tough", f"Challenging matchup vs {positional_matchup.team} ({(1-matchup_factor)*100:.0f}% reduction)"
         else:
             return "Avoid", f"Brutal matchup vs {positional_matchup.team} (allows only {positional_matchup.yards_per_game_allowed:.1f} ypg)"
