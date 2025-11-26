@@ -130,9 +130,46 @@ class OverallAccuracyBacktester:
         Returns:
             GamePrediction object
         """
-        # Calculate team averages from recent games
-        home_avg_points = home_stats['fantasy_points'].sum() / len(home_stats['week'].unique()) * 0.7 if not home_stats.empty else 21.0
-        away_avg_points = away_stats['fantasy_points'].sum() / len(away_stats['week'].unique()) * 0.7 if not away_stats.empty else 21.0
+        # BUG FIX: Use actual team scores from game history, not fantasy points!
+        # Previous code summed all player fantasy points, causing 2x over-prediction
+
+        # Get recent game scores for each team
+        all_games = self.framework.load_historical_games(game.season)
+
+        # Filter for home team's recent games
+        home_recent = [
+            g for g in all_games
+            if (g.home_team == game.home_team or g.away_team == game.home_team) and
+            g.week < game.week and
+            g.week >= max(1, game.week - 4)  # Last 4 games
+        ]
+
+        # Filter for away team's recent games
+        away_recent = [
+            g for g in all_games
+            if (g.home_team == game.away_team or g.away_team == game.away_team) and
+            g.week < game.week and
+            g.week >= max(1, game.week - 4)  # Last 4 games
+        ]
+
+        # Calculate average points scored from recent games
+        if home_recent:
+            home_scores = [
+                g.home_score if g.home_team == game.home_team else g.away_score
+                for g in home_recent
+            ]
+            home_avg_points = np.mean(home_scores)
+        else:
+            home_avg_points = 22.0  # NFL average
+
+        if away_recent:
+            away_scores = [
+                g.home_score if g.home_team == game.away_team else g.away_score
+                for g in away_recent
+            ]
+            away_avg_points = np.mean(away_scores)
+        else:
+            away_avg_points = 20.0  # NFL average for road teams
 
         # Simple home field advantage
         home_avg_points += 2.5
