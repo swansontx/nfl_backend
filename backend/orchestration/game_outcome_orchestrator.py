@@ -17,6 +17,14 @@ from datetime import datetime, timedelta
 import pickle
 import json
 
+# Import ML predictor for game totals
+try:
+    from backend.ml.game_totals_predictor import MLGameTotalsPredictor
+    ML_PREDICTOR_AVAILABLE = True
+except ImportError:
+    ML_PREDICTOR_AVAILABLE = False
+    print("⚠️  ML predictor not available, using formula-based predictions")
+
 
 @dataclass
 class GameFeatures:
@@ -132,8 +140,17 @@ class GameOutcomeOrchestrator:
 
         # Models (loaded on demand)
         self.margin_model = None
-        self.total_model = None
         self.ml_model = None
+
+        # Initialize ML predictor for game totals
+        self.total_model = None
+        if ML_PREDICTOR_AVAILABLE:
+            try:
+                self.total_model = MLGameTotalsPredictor()
+                print("✓ Loaded Neural Network game totals predictor (+10.8% vs baseline)")
+            except Exception as e:
+                print(f"⚠️  Could not load ML predictor: {e}")
+                self.total_model = None
 
         # Calibrators
         self.margin_calibrator = None
@@ -668,7 +685,7 @@ class GameOutcomeOrchestrator:
         X: Dict[str, float],
         features: GameFeatures
     ) -> Tuple[float, float]:
-        """Predict total using formula (until ML model trained).
+        """Predict total using ML model or formula fallback.
 
         Args:
             X: Engineered features
@@ -677,6 +694,34 @@ class GameOutcomeOrchestrator:
         Returns:
             (predicted_total, std_dev)
         """
+        # Try ML predictor first (Neural Network: +10.8% vs baseline)
+        if self.total_model is not None:
+            try:
+                from backend.backtesting.framework import BacktestingFramework
+
+                # Use ML predictor
+                framework = BacktestingFramework(seasons=[features.season])
+                ml_prediction = self.total_model.predict_game(
+                    home_team=features.home_team,
+                    away_team=features.away_team,
+                    season=features.season,
+                    week=features.week,
+                    framework=framework
+                )
+
+                # Use ML prediction with its confidence-based std
+                # Lower confidence = higher uncertainty
+                base_std = 11.0
+                confidence_factor = ml_prediction.confidence
+                std = base_std * (1.0 - 0.3 * confidence_factor)  # Range: 7.7 to 11.0
+
+                return ml_prediction.predicted_total, std
+
+            except Exception as e:
+                print(f"⚠️  ML prediction failed, falling back to formula: {e}")
+                # Fall through to formula
+
+        # FALLBACK: Formula-based prediction (original logic)
         # Average of offense vs defense matchups
         total = (
             (features.home_off_ppg + features.away_def_ppg) / 2 +

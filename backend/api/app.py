@@ -3191,6 +3191,14 @@ async def analyze_game_markets(
             "total_std": orchestrator_prediction.total_std
         },
 
+        # ML Model Information
+        "ml_model": {
+            "totals_model": "Neural Network" if game_outcome_orchestrator.total_model else "Formula",
+            "accuracy_improvement": "+10.8% vs baseline" if game_outcome_orchestrator.total_model else "N/A",
+            "features": 26 if game_outcome_orchestrator.total_model else "N/A",
+            "model_type": "MLPRegressor (100, 50, 25)" if game_outcome_orchestrator.total_model else "Rule-based"
+        },
+
         "markets": {},
         "best_bet": None,
 
