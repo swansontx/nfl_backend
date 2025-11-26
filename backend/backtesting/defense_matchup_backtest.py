@@ -360,9 +360,10 @@ class DefenseMatchupBacktester:
         metrics_original = self.framework.calculate_metrics(predicted_original, actuals)
         metrics_optimized = self.framework.calculate_metrics(predicted_optimized, actuals)
 
+        # Calculate improvement with division by zero protection
         improvement = {
-            'rmse_improvement': ((metrics_original['rmse'] - metrics_optimized['rmse']) / metrics_original['rmse']) * 100,
-            'mae_improvement': ((metrics_original['mae'] - metrics_optimized['mae']) / metrics_original['mae']) * 100,
+            'rmse_improvement': ((metrics_original['rmse'] - metrics_optimized['rmse']) / metrics_original['rmse']) * 100 if metrics_original['rmse'] > 0 else 0.0,
+            'mae_improvement': ((metrics_original['mae'] - metrics_optimized['mae']) / metrics_original['mae']) * 100 if metrics_original['mae'] > 0 else 0.0,
             'correlation_improvement': metrics_optimized['correlation'] - metrics_original['correlation']
         }
 

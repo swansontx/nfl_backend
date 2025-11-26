@@ -197,7 +197,7 @@ class WeatherImpactBacktester:
             'passing_yards': 'sum',
             'rushing_yards': 'sum',
             'points': 'sum'
-        }) if all(['passing_yards', 'rushing_yards', 'points'] in team_history.columns) else None
+        }) if all(col in team_history.columns for col in ['passing_yards', 'rushing_yards', 'points']) else None
 
         if weekly_stats is None or weekly_stats.empty:
             return None

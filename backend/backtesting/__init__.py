@@ -10,6 +10,7 @@ from backend.backtesting.defense_matchup_backtest import DefenseMatchupBackteste
 from backend.backtesting.weather_impact_backtest import WeatherImpactBacktester
 from backend.backtesting.situational_factors_backtest import SituationalFactorsBacktester
 from backend.backtesting.overall_accuracy_backtest import OverallAccuracyBacktester
+from backend.backtesting.player_props_backtest import PlayerPropsBacktester
 from backend.backtesting.run_all_backtests import BacktestingOrchestrator
 
 __all__ = [
@@ -21,5 +22,6 @@ __all__ = [
     'WeatherImpactBacktester',
     'SituationalFactorsBacktester',
     'OverallAccuracyBacktester',
+    'PlayerPropsBacktester',
     'BacktestingOrchestrator',
 ]

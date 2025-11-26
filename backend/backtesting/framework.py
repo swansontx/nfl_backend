@@ -14,6 +14,20 @@ from collections import defaultdict
 import json
 
 
+class NumpyEncoder(json.JSONEncoder):
+    """Custom JSON encoder for numpy types."""
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, (np.bool_, bool)):
+            return bool(obj)
+        return super().default(obj)
+
+
 @dataclass
 class BacktestResult:
     """Results from a backtest analysis."""
@@ -365,7 +379,7 @@ class BacktestingFramework:
         }
 
         with open(output_file, 'w') as f:
-            json.dump(result_dict, f, indent=2)
+            json.dump(result_dict, f, indent=2, cls=NumpyEncoder)
 
         print(f"Saved backtest results to {output_file}")
 

@@ -400,9 +400,15 @@ class InjuryImpactBacktester:
 
             for scenario, beneficiaries in pattern_data.items():
                 for beneficiary, stats in beneficiaries.items():
-                    sample_size = stats.get('sample_size', 0)
-                    confidence = stats.get('confidence', 0.0)
-                    notes.append(f"  {scenario} → {beneficiary}: {stats.get('targets', 0):.2f} targets (n={sample_size}, conf={confidence:.2f})")
+                    # Handle both dict values (player benefits) and float values (team impacts)
+                    if isinstance(stats, dict):
+                        sample_size = stats.get('sample_size', 0)
+                        confidence = stats.get('confidence', 0.0)
+                        targets = stats.get('targets', 0)
+                        notes.append(f"  {scenario} → {beneficiary}: {targets:.2f} targets (n={sample_size}, conf={confidence:.2f})")
+                    else:
+                        # Simple numeric value like team_total_impact
+                        notes.append(f"  {scenario} → {beneficiary}: {stats}")
 
         result = BacktestResult(
             feature_name="Injury Impact Redistribution",

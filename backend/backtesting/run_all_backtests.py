@@ -9,12 +9,13 @@ from typing import List, Dict
 from datetime import datetime
 import json
 
-from backend.backtesting.framework import BacktestingFramework, BacktestResult
+from backend.backtesting.framework import BacktestingFramework, BacktestResult, NumpyEncoder
 from backend.backtesting.injury_impact_backtest import InjuryImpactBacktester
 from backend.backtesting.defense_matchup_backtest import DefenseMatchupBacktester
 from backend.backtesting.weather_impact_backtest import WeatherImpactBacktester
 from backend.backtesting.situational_factors_backtest import SituationalFactorsBacktester
 from backend.backtesting.overall_accuracy_backtest import OverallAccuracyBacktester
+from backend.backtesting.player_props_backtest import PlayerPropsBacktester
 from backend.backtesting.data_collector import HistoricalDataCollector
 
 
@@ -163,6 +164,22 @@ class BacktestingOrchestrator:
             print(f"✗ Overall accuracy backtest failed: {e}")
             results['overall_accuracy'] = BacktestResult(
                 feature_name="Overall Accuracy",
+                seasons_tested=self.seasons,
+                sample_size=0,
+                notes=[f"Error: {str(e)}"]
+            )
+
+        print("\n" + "-" * 80)
+        print("6. PLAYER PROPS ACCURACY")
+        print("-" * 80)
+        try:
+            props_backtester = PlayerPropsBacktester(self.framework)
+            results['player_props'] = props_backtester.run_backtest()
+            print("✓ Player props backtest complete")
+        except Exception as e:
+            print(f"✗ Player props backtest failed: {e}")
+            results['player_props'] = BacktestResult(
+                feature_name="Player Props",
                 seasons_tested=self.seasons,
                 sample_size=0,
                 notes=[f"Error: {str(e)}"]
@@ -333,7 +350,7 @@ class BacktestingOrchestrator:
 
         summary_file = self.output_dir / 'backtest_summary.json'
         with open(summary_file, 'w') as f:
-            json.dump(summary, f, indent=2)
+            json.dump(summary, f, indent=2, cls=NumpyEncoder)
         print(f"  ✓ Summary JSON: {summary_file}")
 
     def run(self, skip_data_check: bool = False):
