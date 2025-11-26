@@ -85,9 +85,13 @@ class HistoricalDataCollector:
 
             print(f"  Fetching rosters...")
             # Get rosters for position classification
-            rosters = nfl.import_rosters([season])
-            data['rosters'] = rosters
-            print(f"    ✓ {len(rosters)} players")
+            try:
+                rosters = nfl.import_rosters([season])
+                data['rosters'] = rosters
+                print(f"    ✓ {len(rosters)} players")
+            except Exception as e:
+                print(f"    ! Roster data not available: {e}")
+                data['rosters'] = pd.DataFrame()
 
             print(f"  Fetching injuries (if available)...")
             # Injuries - may need separate source
@@ -105,7 +109,13 @@ class HistoricalDataCollector:
             return {}
 
         except Exception as e:
-            print(f"  ! Error collecting data: {e}")
+            print(f"  ! Critical error collecting data: {e}")
+            import traceback
+            traceback.print_exc()
+            # Return whatever data we collected
+            if data:
+                print(f"  ! Returning partial data: {list(data.keys())}")
+                return data
             return {}
 
         return data
@@ -183,10 +193,14 @@ class HistoricalDataCollector:
         Returns:
             Processed DataFrame
         """
+        # Rename nfl_data_py specific columns
+        if 'recent_team' in stats_df.columns and 'team' not in stats_df.columns:
+            stats_df = stats_df.rename(columns={'recent_team': 'team'})
+
         # Keep relevant columns
         keep_cols = [
             'player_id', 'player_name', 'player_display_name',
-            'position', 'team', 'week', 'season', 'game_id',
+            'position', 'team', 'week', 'season', 'opponent_team',
             'completions', 'attempts', 'passing_yards', 'passing_tds',
             'carries', 'rushing_yards', 'rushing_tds',
             'receptions', 'targets', 'receiving_yards', 'receiving_tds',
@@ -200,6 +214,16 @@ class HistoricalDataCollector:
             processed['player'] = processed['player_display_name']
         elif 'player_name' in processed.columns:
             processed['player'] = processed['player_name']
+
+        # Create game_id from season, week, team, opponent
+        # Format: YYYY_WW_AWAY_HOME (we'll use team as home for now)
+        if all(col in processed.columns for col in ['season', 'week', 'team', 'opponent_team']):
+            processed['game_id'] = (
+                processed['season'].astype(str) + '_' +
+                processed['week'].astype(str).str.zfill(2) + '_' +
+                processed['opponent_team'].astype(str) + '_' +
+                processed['team'].astype(str)
+            )
 
         # Fill NaN with 0 for numeric columns
         numeric_cols = processed.select_dtypes(include=['float64', 'int64']).columns
@@ -222,6 +246,10 @@ class HistoricalDataCollector:
         """
         if injuries_df.empty:
             return pd.DataFrame()
+
+        # Rename nfl_data_py specific columns
+        if 'full_name' in injuries_df.columns and 'player' not in injuries_df.columns:
+            injuries_df = injuries_df.rename(columns={'full_name': 'player'})
 
         # Keep relevant columns
         keep_cols = [

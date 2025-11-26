@@ -5,7 +5,7 @@ factors on player projections and team totals.
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from pathlib import Path
 import pandas as pd
 from datetime import datetime
