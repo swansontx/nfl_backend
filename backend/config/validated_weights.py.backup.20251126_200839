@@ -129,10 +129,6 @@ INJURY_REDISTRIBUTION = {
 
 # =============================================================================
 # DEFENSE MATCHUP ADJUSTMENT FACTORS
-# ⚠️  WARNING: EXPERIMENTAL - NOT VALIDATED
-# - Backtest exists but produces ZERO results (sample_size=0)
-# - All values are theoretical, not data-driven
-# - DO NOT USE in production without validation
 # =============================================================================
 
 DEFENSE_MATCHUP_ADJUSTMENTS = {
@@ -239,11 +235,6 @@ WEATHER_IMPACT = {
 
 # =============================================================================
 # SITUATIONAL ADJUSTMENTS
-# ⚠️  WARNING: BROKEN - DO NOT USE
-# - Backtest produces garbage results (division games: -44 points)
-# - Calculation logic is broken
-# - All values are theoretical or incorrect
-# - DO NOT USE in production
 # =============================================================================
 
 SITUATIONAL_ADJUSTMENTS = {
