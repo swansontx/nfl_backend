@@ -3078,6 +3078,7 @@ async def analyze_game_markets(
         Complete game market analysis with predictions and recommendations
     """
     from backend.analysis.game_markets import GameMarketAnalyzer
+    from backend.orchestration.game_outcome_orchestrator import game_outcome_orchestrator
     from backend.ingestion.fetch_odds import fetch_odds_api
 
     # Parse game_id if teams not provided
@@ -3148,7 +3149,18 @@ async def analyze_game_markets(
     except Exception as e:
         print(f"Could not fetch market odds: {e}")
 
-    # Analyze game
+    # Use orchestrator for enhanced prediction with comprehensive features
+    orchestrator_prediction = game_outcome_orchestrator.predict_game(
+        game_id=game_id,
+        week=week,
+        market_spread=market_data.get('spread') if market_data else None,
+        market_total=market_data.get('total') if market_data else None
+    )
+
+    # Collect features to access public betting data
+    features = game_outcome_orchestrator.collect_features(game_id, week)
+
+    # Also use GameMarketAnalyzer for detailed market analysis and recommendations
     analysis = analyzer.analyze_game(
         game_id=game_id,
         home_team=home_team,
@@ -3157,7 +3169,7 @@ async def analyze_game_markets(
         market_data=market_data
     )
 
-    # Format response
+    # Format response with enhanced prediction from orchestrator
     response = {
         "game_id": game_id,
         "home_team": home_team,
@@ -3165,18 +3177,88 @@ async def analyze_game_markets(
         "week": week,
 
         "prediction": {
-            "home_score": analysis.prediction.home_score,
-            "away_score": analysis.prediction.away_score,
-            "home_win_prob": analysis.prediction.home_win_prob,
-            "away_win_prob": analysis.prediction.away_win_prob,
-            "predicted_spread": analysis.prediction.predicted_spread,
-            "predicted_total": analysis.prediction.predicted_total,
-            "confidence": analysis.prediction.confidence
+            "home_score": orchestrator_prediction.predicted_home_score,
+            "away_score": orchestrator_prediction.predicted_away_score,
+            "home_win_prob": orchestrator_prediction.home_win_prob,
+            "away_win_prob": round(1 - orchestrator_prediction.home_win_prob, 3),
+            "predicted_spread": orchestrator_prediction.predicted_margin,
+            "predicted_total": orchestrator_prediction.predicted_total,
+            "confidence": orchestrator_prediction.confidence,
+            # Enhanced: Add confidence intervals
+            "margin_ci_95": orchestrator_prediction.margin_ci,
+            "total_ci_95": orchestrator_prediction.total_ci,
+            "margin_std": orchestrator_prediction.margin_std,
+            "total_std": orchestrator_prediction.total_std
         },
 
         "markets": {},
-        "best_bet": None
+        "best_bet": None,
+
+        # Public betting insights
+        "public_betting": {
+            "spread": {
+                "home_bet_pct": features.spread_bet_pct_home,
+                "home_money_pct": features.spread_money_pct_home,
+                "sharp_on_home": features.spread_sharp_on_home,
+                "sharp_on_away": features.spread_sharp_on_away,
+                "contrarian_home": features.spread_contrarian_home,
+                "contrarian_away": features.spread_contrarian_away
+            },
+            "total": {
+                "over_bet_pct": features.total_bet_pct_over,
+                "over_money_pct": features.total_money_pct_over,
+                "sharp_on_over": features.total_sharp_on_over,
+                "sharp_on_under": features.total_sharp_on_under,
+                "contrarian_over": features.total_contrarian_over,
+                "contrarian_under": features.total_contrarian_under
+            },
+            "insights": []
+        }
     }
+
+    # Add public betting insights narratively
+    insights = []
+
+    # Sharp money insights
+    if features.spread_sharp_on_home:
+        insights.append(f"💰 Sharp money detected on {home_team} spread (fewer bets but more money)")
+    if features.spread_sharp_on_away:
+        insights.append(f"💰 Sharp money detected on {away_team} spread (fewer bets but more money)")
+    if features.total_sharp_on_over:
+        insights.append(f"💰 Sharp money detected on OVER (professional money flowing to over)")
+    if features.total_sharp_on_under:
+        insights.append(f"💰 Sharp money detected on UNDER (professional money flowing to under)")
+
+    # Contrarian insights
+    if features.spread_contrarian_away:
+        insights.append(f"📊 Contrarian opportunity: Bet {away_team} (public heavily on {home_team})")
+    if features.spread_contrarian_home:
+        insights.append(f"📊 Contrarian opportunity: Bet {home_team} (public heavily on {away_team})")
+    if features.total_contrarian_over:
+        insights.append(f"📊 Contrarian opportunity: Bet OVER (public heavily on under)")
+    if features.total_contrarian_under:
+        insights.append(f"📊 Contrarian opportunity: Bet UNDER (public heavily on over)")
+
+    # Public betting distribution
+    if features.spread_bet_pct_home and features.spread_money_pct_home:
+        bet_diff = abs(features.spread_bet_pct_home - features.spread_money_pct_home)
+        if bet_diff < 5:
+            insights.append(f"📈 Balanced action on spread: {features.spread_bet_pct_home:.0f}% bets, {features.spread_money_pct_home:.0f}% money on {home_team}")
+        elif features.spread_money_pct_home > features.spread_bet_pct_home:
+            insights.append(f"📈 Spread: {features.spread_bet_pct_home:.0f}% bets but {features.spread_money_pct_home:.0f}% money on {home_team} (bigger bettors on {home_team})")
+        else:
+            insights.append(f"📈 Spread: {features.spread_bet_pct_home:.0f}% bets but only {features.spread_money_pct_home:.0f}% money on {home_team} (smaller bettors on {home_team})")
+
+    if features.total_bet_pct_over and features.total_money_pct_over:
+        bet_diff = abs(features.total_bet_pct_over - features.total_money_pct_over)
+        if bet_diff < 5:
+            insights.append(f"📈 Balanced action on total: {features.total_bet_pct_over:.0f}% bets, {features.total_money_pct_over:.0f}% money on OVER")
+        elif features.total_money_pct_over > features.total_bet_pct_over:
+            insights.append(f"📈 Total: {features.total_bet_pct_over:.0f}% bets but {features.total_money_pct_over:.0f}% money on OVER (bigger bettors on over)")
+        else:
+            insights.append(f"📈 Total: {features.total_bet_pct_over:.0f}% bets but only {features.total_money_pct_over:.0f}% money on OVER (smaller bettors on over)")
+
+    response["public_betting"]["insights"] = insights
 
     # Add market analyses
     if analysis.spread_analysis:
@@ -3389,6 +3471,233 @@ async def analyze_week_game_markets(
         "min_ev_threshold": min_ev,
         "bets": value_bets
     }
+
+
+@app.get('/api/v1/betting/public-betting/{game_id}', tags=['Betting', 'Public Betting'])
+async def get_public_betting(game_id: str):
+    """Get public betting percentages and sharp money indicators for a game.
+
+    Returns:
+        Public betting data including bet %, money %, sharp money indicators,
+        and contrarian opportunities
+    """
+    from backend.ingestion.fetch_public_betting import public_betting_scraper
+
+    # Parse game_id
+    parts = game_id.split('_')
+    if len(parts) < 4:
+        return {"error": "Invalid game_id format. Expected: {season}_{week}_{away}_{home}"}
+
+    away_team = parts[2]
+    home_team = parts[3]
+
+    # Get public betting data
+    # For now using mock data (until HTML scraping implemented)
+    public_data = public_betting_scraper.create_mock_data(
+        game_id=game_id,
+        home_team=home_team,
+        away_team=away_team
+    )
+
+    # Format response
+    response = {
+        "game_id": game_id,
+        "home_team": home_team,
+        "away_team": away_team,
+        "timestamp": public_data.timestamp.isoformat() if public_data.timestamp else None,
+
+        "spread": None,
+        "total": None,
+        "moneyline": None,
+
+        "indicators": {
+            "sharp_money": [],
+            "contrarian_opportunities": []
+        }
+    }
+
+    # Spread data
+    if public_data.spread:
+        response["spread"] = {
+            "line": public_data.spread.line,
+            "home_bet_pct": public_data.spread.home_bet_pct,
+            "home_money_pct": public_data.spread.home_money_pct,
+            "away_bet_pct": public_data.spread.away_bet_pct,
+            "away_money_pct": public_data.spread.away_money_pct,
+            "sharp_on_home": public_data.spread_sharp_on_home,
+            "sharp_on_away": public_data.spread_sharp_on_away,
+            "contrarian_home": public_data.spread_contrarian_home,
+            "contrarian_away": public_data.spread_contrarian_away
+        }
+
+    # Total data
+    if public_data.total:
+        response["total"] = {
+            "line": public_data.total.line,
+            "over_bet_pct": public_data.total.over_bet_pct,
+            "over_money_pct": public_data.total.over_money_pct,
+            "under_bet_pct": public_data.total.under_bet_pct,
+            "under_money_pct": public_data.total.under_money_pct,
+            "sharp_on_over": public_data.total_sharp_on_over,
+            "sharp_on_under": public_data.total_sharp_on_under,
+            "contrarian_over": public_data.total_contrarian_over,
+            "contrarian_under": public_data.total_contrarian_under
+        }
+
+    # Moneyline data
+    if public_data.moneyline:
+        response["moneyline"] = {
+            "home_bet_pct": public_data.moneyline.home_bet_pct,
+            "home_money_pct": public_data.moneyline.home_money_pct,
+            "away_bet_pct": public_data.moneyline.away_bet_pct,
+            "away_money_pct": public_data.moneyline.away_money_pct
+        }
+
+    # Add sharp money indicators
+    if public_data.spread_sharp_on_home:
+        response["indicators"]["sharp_money"].append({
+            "market": "spread",
+            "side": home_team,
+            "description": f"Sharp money detected on {home_team} spread (fewer bets but more money)"
+        })
+    if public_data.spread_sharp_on_away:
+        response["indicators"]["sharp_money"].append({
+            "market": "spread",
+            "side": away_team,
+            "description": f"Sharp money detected on {away_team} spread (fewer bets but more money)"
+        })
+    if public_data.total_sharp_on_over:
+        response["indicators"]["sharp_money"].append({
+            "market": "total",
+            "side": "OVER",
+            "description": "Sharp money detected on OVER (fewer bets but more money)"
+        })
+    if public_data.total_sharp_on_under:
+        response["indicators"]["sharp_money"].append({
+            "market": "total",
+            "side": "UNDER",
+            "description": "Sharp money detected on UNDER (fewer bets but more money)"
+        })
+
+    # Add contrarian opportunities
+    if public_data.spread_contrarian_away:
+        response["indicators"]["contrarian_opportunities"].append({
+            "market": "spread",
+            "play": f"Bet {away_team}",
+            "description": f"Heavy public on {home_team} - fade the public and bet {away_team}"
+        })
+    if public_data.spread_contrarian_home:
+        response["indicators"]["contrarian_opportunities"].append({
+            "market": "spread",
+            "play": f"Bet {home_team}",
+            "description": f"Heavy public on {away_team} - fade the public and bet {home_team}"
+        })
+    if public_data.total_contrarian_over:
+        response["indicators"]["contrarian_opportunities"].append({
+            "market": "total",
+            "play": "Bet OVER",
+            "description": "Heavy public on UNDER - fade the public and bet OVER"
+        })
+    if public_data.total_contrarian_under:
+        response["indicators"]["contrarian_opportunities"].append({
+            "market": "total",
+            "play": "Bet UNDER",
+            "description": "Heavy public on OVER - fade the public and bet UNDER"
+        })
+
+    return response
+
+
+@app.get('/api/v1/betting/public-betting/week/{week}', tags=['Betting', 'Public Betting'])
+async def get_week_public_betting(
+    week: int,
+    season: Optional[int] = None,
+    min_sharp_diff: float = 15.0,
+    min_contrarian_pct: float = 75.0
+):
+    """Get weekly sharp money and contrarian plays across all games.
+
+    Returns:
+        Weekly summary with best sharp money and contrarian opportunities
+    """
+    from backend.orchestration.public_betting_orchestrator import public_betting_orchestrator
+
+    season = season or 2025
+
+    # Analyze the week
+    summary = public_betting_orchestrator.analyze_week(
+        week=week,
+        min_sharp_diff=min_sharp_diff,
+        min_contrarian_pct=min_contrarian_pct
+    )
+
+    # Format response
+    response = {
+        "week": summary.week,
+        "season": summary.season,
+        "total_games": summary.total_games,
+        "games_with_sharp_money": summary.games_with_sharp_money,
+        "games_with_contrarian_opps": summary.games_with_contrarian_opps,
+        "avg_sharp_differential": round(summary.avg_sharp_differential, 1),
+
+        "sharp_money_plays": [
+            {
+                "game": f"{play.away_team} @ {play.home_team}",
+                "game_id": play.game_id,
+                "market": play.market,
+                "side": play.side,
+                "recommended_play": play.recommended_play,
+                "bet_pct": play.bet_pct,
+                "money_pct": play.money_pct,
+                "sharp_differential": round(play.sharp_differential, 1),
+                "confidence": play.confidence,
+                "reasoning": play.reasoning
+            }
+            for play in summary.sharp_money_plays
+        ],
+
+        "contrarian_plays": [
+            {
+                "game": f"{play.away_team} @ {play.home_team}",
+                "game_id": play.game_id,
+                "market": play.market,
+                "side": play.side,
+                "recommended_play": play.recommended_play,
+                "public_pct": round(play.public_pct, 1),
+                "bet_pct": play.bet_pct,
+                "money_pct": play.money_pct,
+                "confidence": play.confidence,
+                "reasoning": play.reasoning
+            }
+            for play in summary.contrarian_plays
+        ],
+
+        "top_plays": {
+            "sharp_money": None,
+            "contrarian": None
+        }
+    }
+
+    # Add top plays
+    if summary.top_sharp_play:
+        response["top_plays"]["sharp_money"] = {
+            "game": f"{summary.top_sharp_play.away_team} @ {summary.top_sharp_play.home_team}",
+            "recommended_play": summary.top_sharp_play.recommended_play,
+            "sharp_differential": round(summary.top_sharp_play.sharp_differential, 1),
+            "confidence": summary.top_sharp_play.confidence,
+            "reasoning": summary.top_sharp_play.reasoning
+        }
+
+    if summary.top_contrarian_play:
+        response["top_plays"]["contrarian"] = {
+            "game": f"{summary.top_contrarian_play.away_team} @ {summary.top_contrarian_play.home_team}",
+            "recommended_play": summary.top_contrarian_play.recommended_play,
+            "public_pct": round(summary.top_contrarian_play.public_pct, 1),
+            "confidence": summary.top_contrarian_play.confidence,
+            "reasoning": summary.top_contrarian_play.reasoning
+        }
+
+    return response
 
 
 @app.get('/api/v1/players/{player_id}/gamelogs', tags=['Players'])
