@@ -153,7 +153,10 @@ class DefenseMatchupBacktester:
             player_stats = self.framework.load_player_stats(season, 'all')
 
             if player_stats.empty:
+                print(f"    No player stats for {season}")
                 continue
+
+            print(f"    Season {season}: {len(player_stats)} player records")
 
             # Group by team and week
             for week in player_stats['week'].unique():
@@ -274,10 +277,18 @@ class DefenseMatchupBacktester:
         if player_history.empty or len(player_history) < 2:
             return None
 
+        # Calculate total yards (receiving + rushing) per game, then average
+        receiving_yards = player_history['receiving_yards'].fillna(0) if 'receiving_yards' in player_history.columns else pd.Series([0] * len(player_history))
+        rushing_yards = player_history['rushing_yards'].fillna(0) if 'rushing_yards' in player_history.columns else pd.Series([0] * len(player_history))
+        total_yards = (receiving_yards + rushing_yards).mean()
+
+        targets = player_history['targets'].fillna(0).mean() if 'targets' in player_history.columns else 0
+        receptions = player_history['receptions'].fillna(0).mean() if 'receptions' in player_history.columns else 0
+
         return {
-            'yards': player_history['receiving_yards'].mean() + player_history['rushing_yards'].mean() if 'receiving_yards' in player_history.columns else 0,
-            'targets': player_history['targets'].mean() if 'targets' in player_history.columns else 0,
-            'receptions': player_history['receptions'].mean() if 'receptions' in player_history.columns else 0
+            'yards': total_yards,
+            'targets': targets,
+            'receptions': receptions
         }
 
     def _get_league_average(
@@ -382,9 +393,13 @@ class DefenseMatchupBacktester:
         print("Running defense matchup backtest...")
 
         # Calculate defense stats from historical data
+        print("  Calculating defense stats...")
         defense_stats = self.calculate_defense_stats()
+        print(f"  Found {len(self.observations)} observations")
+        print(f"  Calculated stats for {len(defense_stats)} defenses")
 
         # Validate matchup factors
+        print("  Validating matchup factors...")
         validation = self.validate_matchup_factors()
 
         # Generate notes

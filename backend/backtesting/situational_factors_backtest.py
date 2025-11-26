@@ -277,41 +277,65 @@ class SituationalFactorsBacktester:
             team: Team abbreviation
             season: Season
             week: Week number
-            all_stats: All player stats
+            all_stats: All player stats (not used, kept for compatibility)
 
         Returns:
             Dictionary with baseline stats
         """
-        if all_stats.empty:
-            return None
+        # FIX: Use actual game scores instead of fantasy points!
+        # Load actual games to get team scores
+        all_games = self.framework.load_historical_games(season)
 
-        # Get team's last 4 weeks
-        team_history = all_stats[
-            (all_stats['team'] == team) &
-            (all_stats['week'] < week) &
-            (all_stats['week'] >= max(1, week - 4))
+        # Filter for this team's recent games
+        recent_games = [
+            g for g in all_games
+            if (g.home_team == team or g.away_team == team) and
+            g.week < week and
+            g.week >= max(1, week - 4) and
+            g.home_score is not None and
+            g.away_score is not None
         ]
 
-        if team_history.empty:
-            return None
+        if len(recent_games) < 2:
+            # Fall back to NFL average
+            return {
+                'points': 22.0,
+                'passing': 250.0,
+                'rushing': 120.0
+            }
 
-        # Calculate per-game averages
-        weekly_stats = team_history.groupby('week').agg({
-            'passing_yards': 'sum',
-            'rushing_yards': 'sum',
-            'fantasy_points': 'sum'
-        }) if all(col in team_history.columns for col in ['passing_yards', 'rushing_yards', 'fantasy_points']) else None
+        # Calculate average points scored
+        scores = [
+            g.home_score if g.home_team == team else g.away_score
+            for g in recent_games
+        ]
+        avg_points = np.mean(scores)
 
-        if weekly_stats is None or weekly_stats.empty:
-            return None
+        # Calculate yards if we have player stats
+        passing_yards = 0.0
+        rushing_yards = 0.0
 
-        # Approximate points from fantasy points (rough conversion)
-        avg_points = weekly_stats['fantasy_points'].mean() * 0.7  # Rough estimate
+        if not all_stats.empty:
+            team_history = all_stats[
+                (all_stats['team'] == team) &
+                (all_stats['week'] < week) &
+                (all_stats['week'] >= max(1, week - 4))
+            ]
+
+            if not team_history.empty:
+                weekly_stats = team_history.groupby('week').agg({
+                    'passing_yards': 'sum',
+                    'rushing_yards': 'sum'
+                }) if all(col in team_history.columns for col in ['passing_yards', 'rushing_yards']) else None
+
+                if weekly_stats is not None and not weekly_stats.empty:
+                    passing_yards = weekly_stats['passing_yards'].mean()
+                    rushing_yards = weekly_stats['rushing_yards'].mean()
 
         return {
-            'points': avg_points,
-            'passing': weekly_stats['passing_yards'].mean(),
-            'rushing': weekly_stats['rushing_yards'].mean()
+            'points': avg_points,  # REAL team points, not fantasy points!
+            'passing': passing_yards,
+            'rushing': rushing_yards
         }
 
     def calculate_primetime_adjustment(self) -> SituationalAdjustment:
