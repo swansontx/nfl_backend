@@ -405,4 +405,4 @@ print("\n✅ All integration tests passed!")
 - Thousands of observations (sample sizes tracked)
 - Transparent methodology (full documentation)
 
-**No more guesswork. Only data-driven predictions.** 📊✅
+**No more guesswork. Only data-driven predictions.**
