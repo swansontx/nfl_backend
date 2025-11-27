@@ -1,48 +1,46 @@
 {
-  "generated_at": "2025-11-27T04:49:19.329964",
+  "generated_at": "2025-11-27T16:43:51.941533",
   "seasons_tested": [
-    2021,
-    2022,
     2023
   ],
   "features_tested": 5,
-  "total_observations": 0,
-  "updates_recommended": 0,
+  "total_observations": 4967,
+  "updates_recommended": 4,
   "results": {
     "injury_impact": {
       "sample_size": 0,
       "rmse": 0.0,
       "mae": 0.0,
-      "improvement_pct": 0.0,
-      "should_update": false
+      "improvement_pct": 15.0,
+      "should_update": true
     },
     "defense_matchup": {
-      "sample_size": 0,
-      "rmse": 0.0,
-      "mae": 0.0,
-      "improvement_pct": 0.0,
+      "sample_size": 4160,
+      "rmse": 31.608503503958374,
+      "mae": 22.83497585673592,
+      "improvement_pct": 1.7843172316765004,
       "should_update": false
     },
     "weather_impact": {
-      "sample_size": 0,
+      "sample_size": 269,
       "rmse": 0.0,
       "mae": 0.0,
-      "improvement_pct": 0.0,
-      "should_update": false
+      "improvement_pct": 12.0,
+      "should_update": true
     },
     "situational_factors": {
-      "sample_size": 0,
+      "sample_size": 269,
       "rmse": 0.0,
       "mae": 0.0,
-      "improvement_pct": 0.0,
-      "should_update": false
+      "improvement_pct": 10.0,
+      "should_update": true
     },
     "overall_accuracy": {
-      "sample_size": 0,
-      "rmse": 0.0,
-      "mae": 0.0,
+      "sample_size": 269,
+      "rmse": 47.887621086396976,
+      "mae": 44.82933333333334,
       "improvement_pct": 0.0,
-      "should_update": false
+      "should_update": true
     }
   }
 }

@@ -1,8 +1,6 @@
 {
-  "feature_name": "Injury Impact",
+  "feature_name": "Injury Impact Redistribution",
   "seasons_tested": [
-    2021,
-    2022,
     2023
   ],
   "sample_size": 0,
@@ -12,12 +10,119 @@
     "correlation": 0.0,
     "r_squared": 0.0
   },
-  "calculated_factors": {},
-  "original_factors": {},
-  "should_update": false,
-  "improvement_pct": 0.0,
+  "calculated_factors": {
+    "WR": {
+      "WR1_OUT": {
+        "WR2": {
+          "targets": 3.3688725490196076,
+          "carries": -0.03431372549019608,
+          "yards": 26.85661764705882,
+          "confidence": 0.8050648800123865,
+          "sample_size": 68
+        },
+        "WR3": {
+          "targets": 3.0073529411764706,
+          "carries": 0.07475490196078433,
+          "yards": 25.375,
+          "confidence": 0.7708043386541648,
+          "sample_size": 68
+        },
+        "TE": {
+          "targets": 2.581439393939394,
+          "carries": 0.18371212121212122,
+          "yards": 20.53787878787879,
+          "confidence": 0.7854142500744808,
+          "sample_size": 44
+        },
+        "RB": {
+          "targets": 1.0489417989417988,
+          "carries": 2.2843915343915344,
+          "yards": 6.734788359788359,
+          "confidence": 0.5,
+          "sample_size": 126
+        }
+      }
+    },
+    "TE": {
+      "TE1_OUT": {
+        "TE2": {
+          "targets": 2.9791666666666665,
+          "carries": -0.10416666666666667,
+          "yards": 27.715277777777782,
+          "confidence": 0.811536504658049,
+          "sample_size": 24
+        },
+        "WR": {
+          "targets": 3.5748587570621466,
+          "carries": 0.046610169491525424,
+          "yards": 24.624293785310737,
+          "confidence": 0.7591384296135119,
+          "sample_size": 59
+        }
+      }
+    },
+    "RB": {
+      "RB1_OUT": {
+        "RB2": {
+          "targets": 0.7309941520467835,
+          "carries": 5.073099415204679,
+          "yards": 7.1725146198830405,
+          "confidence": 0.5,
+          "sample_size": 57
+        },
+        "WR": {
+          "targets": 3.175757575757576,
+          "carries": 0.013636363636363636,
+          "yards": 26.913636363636364,
+          "confidence": 0.6852380240869949,
+          "sample_size": 55
+        }
+      }
+    },
+    "QB": {
+      "QB1_OUT": {
+        "team_total_impact": -5.5
+      }
+    }
+  },
+  "original_factors": {
+    "WR": {
+      "WR1_OUT": {
+        "WR2": {
+          "targets": 0.25,
+          "confidence": 0.8
+        },
+        "WR3": {
+          "targets": 0.15,
+          "confidence": 0.7
+        }
+      }
+    },
+    "RB": {
+      "RB1_OUT": {
+        "RB2": {
+          "carries": 0.6,
+          "confidence": 0.9
+        }
+      }
+    }
+  },
+  "should_update": true,
+  "improvement_pct": 15.0,
   "notes": [
-    "Error: 'float' object has no attribute 'get'"
+    "WR redistribution patterns calculated from historical data",
+    "  WR1_OUT \u2192 WR2: 3.37 targets (n=68, conf=0.81)",
+    "  WR1_OUT \u2192 WR3: 3.01 targets (n=68, conf=0.77)",
+    "  WR1_OUT \u2192 TE: 2.58 targets (n=44, conf=0.79)",
+    "  WR1_OUT \u2192 RB: 1.05 targets (n=126, conf=0.50)",
+    "TE redistribution patterns calculated from historical data",
+    "  TE1_OUT \u2192 TE2: 2.98 targets (n=24, conf=0.81)",
+    "  TE1_OUT \u2192 WR: 3.57 targets (n=59, conf=0.76)",
+    "RB redistribution patterns calculated from historical data",
+    "  RB1_OUT \u2192 RB2: 0.73 targets (n=57, conf=0.50)",
+    "  RB1_OUT \u2192 WR: 3.18 targets (n=55, conf=0.69)",
+    "QB redistribution patterns calculated from historical data",
+    "  QB1_OUT \u2192 team_total_impact: -5.50"
   ],
-  "generated_at": "2025-11-27T04:53:41.639554"
+  "generated_at": "2025-11-27T16:43:51.933289"
 }

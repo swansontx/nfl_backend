@@ -1,30 +1,51 @@
 {
   "feature_name": "Overall Prediction Accuracy",
   "seasons_tested": [
-    2021,
-    2022,
     2023
   ],
-  "sample_size": 806,
+  "sample_size": 269,
   "metrics": {
-    "rmse": 49.78864203637618,
-    "mae": 46.80347787427626,
+    "rmse": 47.887621086396976,
+    "mae": 44.82933333333334,
     "correlation": 0.0,
     "r_squared": 0.0
   },
   "calculated_factors": {
     "game_totals": {
-      "rmse": 49.78864203637618,
-      "mae": 46.80347787427626,
-      "mape": 129.81583852831963,
-      "within_7_pct": 1.6129032258064515,
-      "bias_pct": 104.46165602443087
+      "rmse": 47.887621086396976,
+      "mae": 44.82933333333334,
+      "mape": 133.1650878085389,
+      "within_7_pct": 1.858736059479554,
+      "bias_pct": 101.20181787435527
     },
     "spreads": {
-      "rmse": 17.152524064942206,
-      "mae": 13.655272746071132,
-      "within_7_pct": 32.38213399503722
+      "rmse": 17.71932094480899,
+      "mae": 14.418377942998761,
+      "within_7_pct": 28.624535315985128
     }
   },
   "original_factors": {},
-  "should_update": 
+  "should_update": true,
+  "improvement_pct": 0.0,
+  "notes": [
+    "Backtested 269 game predictions",
+    "Backtested 2889 player predictions",
+    "\nGAME TOTALS:",
+    "  RMSE: 47.89 points",
+    "  MAE: 44.83 points",
+    "  MAPE: 133.2%",
+    "  Hit Rates: 1.1% within 3, 1.9% within 7, 2.6% within 10",
+    "  Bias: +101.2% (over-predicting)",
+    "\nSPREADS:",
+    "  RMSE: 17.72 points",
+    "  MAE: 14.42 points",
+    "  Hit Rates: 10.4% within 3, 28.6% within 7, 39.0% within 10",
+    "  Bias: -36.9% (under-predicting)",
+    "\nPLAYER YARDS:",
+    "  RMSE: 33.25 yards",
+    "  MAE: 24.70 yards",
+    "  Hit Rates: 10.6% within 3, 21.5% within 7, 29.8% within 10",
+    "  Bias: -8.5% (under-predicting)"
+  ],
+  "generated_at": "2025-11-27T16:43:51.938721"
+}

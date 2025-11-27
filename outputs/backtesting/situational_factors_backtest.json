@@ -1,23 +1,79 @@
 {
   "feature_name": "Situational Factors",
   "seasons_tested": [
-    2021,
-    2022,
     2023
   ],
-  "sample_size": 0,
+  "sample_size": 269,
   "metrics": {
     "rmse": 0.0,
     "mae": 0.0,
     "correlation": 0.0,
     "r_squared": 0.0
   },
-  "calculated_factors": {},
-  "original_factors": {},
-  "should_update": false,
-  "improvement_pct": 0.0,
+  "calculated_factors": {
+    "primetime": {
+      "total_points_adjustment": -4.827190389495755,
+      "scoring_margin_adjustment": 0.0,
+      "star_player_boost": 1.0,
+      "target_increase": 0.0,
+      "sample_size": 57,
+      "confidence": 0.8638997309345835
+    },
+    "division_game": {
+      "total_points_adjustment": -43.17308232931727,
+      "scoring_margin_adjustment": 1.1199286033020974,
+      "star_player_boost": 1.0,
+      "target_increase": 0.0,
+      "sample_size": 83,
+      "confidence": 0.0644061462492811
+    },
+    "bye_week": {
+      "total_points_adjustment": -40.40842708333332,
+      "scoring_margin_adjustment": 0.0,
+      "star_player_boost": 1.0,
+      "target_increase": 0.0,
+      "sample_size": 48,
+      "confidence": 0.009633195348324408
+    },
+    "short_week": {
+      "total_points_adjustment": -3.0,
+      "scoring_margin_adjustment": 0.0,
+      "star_player_boost": 1.0,
+      "target_increase": 0.0,
+      "sample_size": 0,
+      "confidence": 0.6
+    }
+  },
+  "original_factors": {
+    "primetime": {
+      "star_player_boost": 1.08,
+      "total_adjustment": 1.5
+    },
+    "division_game": {
+      "total_adjustment": -2.5,
+      "margin_tighter": 0.85
+    },
+    "bye_week": {
+      "total_adjustment": 1.2
+    },
+    "short_week": {
+      "total_adjustment": -3.0
+    }
+  },
+  "should_update": true,
+  "improvement_pct": 10.0,
   "notes": [
-    "Error: unhashable type: 'list'"
+    "Analyzed 269 games across 1 seasons",
+    "  Primetime games: 57",
+    "  Division games: 83",
+    "  Post-bye games: 48",
+    "  Thursday games: 0",
+    "\nPRIMETIME: Primetime games score -45.8 vs baseline (p=0.068)",
+    "  Confidence: 0.86",
+    "\nDIVISION_GAME: Division games: -43.2 points, margins 1.12x (p=0.468)",
+    "  Confidence: 0.06",
+    "\nBYE_WEEK: Post-bye performance: -40.4 points vs baseline (p=0.495)",
+    "  Confidence: 0.01"
   ],
-  "generated_at": "2025-11-27T04:53:41.641295"
+  "generated_at": "2025-11-27T16:43:51.938249"
 }
