@@ -2,11 +2,13 @@
 
 **Date:** 2025-11-25
 **Scope:** HIGH + MEDIUM Priority Enhancements
-**Status:** Production Ready
+**Status:** Infrastructure Complete, Weights Pending Validation
+
+> **IMPORTANT:** This document describes the deep analysis systems that have been implemented. The **infrastructure is complete and functional**, but the **adjustment weights are currently placeholder estimates** based on domain knowledge. Validated weights from historical data analysis are pending completion of the backtesting process.
 
 ## Executive Summary
 
-Implemented **4 major deep analysis systems** that transform surface-level analysis into quantified, actionable intelligence with automatic projection adjustments.
+Implemented **4 major deep analysis systems** that transform surface-level analysis into quantified, actionable intelligence with automatic projection adjustments using configurable weights (currently placeholders, pending validation).
 
 ### Impact Summary
 
@@ -175,12 +177,12 @@ def get_matchup_factor(self) -> float:
 #### Matchup Quality Ratings
 
 ```
-Factor >= 1.20: "Smash" 🔥🔥🔥🔥🔥
-Factor >= 1.10: "Great" 🔥🔥🔥🔥
-Factor >= 1.05: "Good" 🔥🔥🔥
-Factor >= 0.95: "Average" 🔥🔥
-Factor >= 0.85: "Tough" ⚠️
-Factor < 0.85:  "Avoid" ❌
+Factor >= 1.20: "Smash"
+Factor >= 1.10: "Great"
+Factor >= 1.05: "Good"
+Factor >= 0.95: "Average"
+Factor >= 0.85: "Tough"
+Factor < 0.85:  "Avoid"
 ```
 
 ### Example Usage

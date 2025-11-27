@@ -1,8 +1,14 @@
 # Validated Weights Integration Example
 
+**STATUS: PENDING VALIDATION**
+
+> **IMPORTANT:** This document describes the **planned integration** of validated weights from historical backtesting. The backtesting infrastructure is built and ready to run, but **historical data collection and validation have not yet been executed**. All weight values shown are currently **placeholder estimates** based on domain knowledge, not validated coefficients from real data.
+>
+> To complete validation: Run `python -m backend.backtesting.data_collector` followed by `python -m backend.backtesting.run_all_backtests`
+
 ## Complete Integration Demonstration
 
-This document shows how the deep analysis systems now use validated weights from historical backtesting, replacing all static assumptions with data-driven coefficients.
+This document shows how the deep analysis systems will use validated weights from historical backtesting, replacing all static assumptions with data-driven coefficients.
 
 ## Architecture Overview
 
@@ -10,14 +16,14 @@ This document shows how the deep analysis systems now use validated weights from
 ┌─────────────────────────────────────────┐
 │   Historical Backtesting (5 modules)   │
 │  ┌─────────────────────────────────┐   │
-│  │ Analyzes 2020-2023 NFL Data     │   │
-│  │ ~10K observations               │   │
+│  │ Will analyze 2020-2023 NFL Data │   │
+│  │ Target: ~10K observations       │   │
 │  │ Statistical validation (p-vals) │   │
 │  └──────────────┬──────────────────┘   │
 └─────────────────┼──────────────────────┘
                   ▼
 ┌─────────────────────────────────────────┐
-│   Validated Weights Configuration      │
+│   Weights Configuration (Placeholders) │
 │  ┌─────────────────────────────────┐   │
 │  │ INJURY_REDISTRIBUTION           │   │
 │  │ DEFENSE_MATCHUP_ADJUSTMENTS     │   │
@@ -69,7 +75,7 @@ for position, scenarios in INJURY_REDISTRIBUTION.items():
     for scenario, beneficiaries in scenarios.items():
         for beneficiary, stats in beneficiaries.items():
             if 'target_share' in stats:
-                # Uses 0.32 from 156 observations, conf=0.87
+                # Placeholder: 0.32 (will be validated against historical data)
                 target_share = stats.get('target_share', 0.0)
                 confidence = stats.get('confidence', 0.5)
 ```
@@ -112,9 +118,9 @@ wind_threshold = wind_config.get('threshold_mph', 15.0)
 if wind_mph > wind_threshold:
     wind_over_threshold = wind_mph - wind_threshold
 
-    # Uses -2.8 from 347 observations, p=0.003
+    # Placeholder: -2.8 (will be validated from ~300+ games)
     passing_coef = wind_config.get('passing_yards_per_mph', -3.5)
-    # Uses -0.31 from same validation
+    # Placeholder: -0.31 (pending validation)
     points_coef = wind_config.get('total_points_per_mph', -0.4)
 
     passing_yards_adjustment = wind_over_threshold * passing_coef
@@ -155,10 +161,10 @@ return max(0.7, min(1.3, factor))  # Guessed range
 
 **After (Data-Driven):**
 ```python
-# Import validated baselines
+# Import baseline estimates
 from backend.config import DEFENSE_MATCHUP_ADJUSTMENTS
 
-# Uses validated league averages from 4,832 matchups
+# Uses placeholder league averages (will be validated from ~5000 matchups)
 validated_averages = DEFENSE_MATCHUP_ADJUSTMENTS.get('league_averages', {})
 league_avg = {
     'WR1': validated_averages.get('WR1', 65.0),
@@ -300,14 +306,14 @@ insights = insights_engine.generate_insights_for_game(
 #         Action: MONITOR (multiple negative factors)
 #         Confidence: 0.78 (high sample sizes)
 
-# FINAL PREDICTION (ALL VALIDATED COEFFICIENTS):
+# FINAL PREDICTION (PLACEHOLDER COEFFICIENTS):
 # Base: KC 27.5 points
-# Kelce impact: -2.0 (validated)
-# Weather impact: -0.9 (validated)
-# Matchup: -0.5 (validated)
+# Kelce impact: -2.0 (placeholder - pending validation)
+# Weather impact: -0.9 (placeholder - pending validation)
+# Matchup: -0.5 (placeholder - pending validation)
 # Adjusted: 24.1 points
 #
-# Every single coefficient backed by historical data!
+# Note: Coefficients are estimates pending historical validation
 ```
 
 ## Validation Metadata
@@ -326,27 +332,27 @@ print(f"P-value: {metadata.p_value}")
 print(f"Improvement: {metadata.improvement_pct}%")
 ```
 
-## Benefits of Integration
+## Benefits of Integration (When Validation Complete)
 
 ### 1. Data-Driven Predictions
-- **Before:** All coefficients were guesses
-- **After:** Every coefficient validated against 2020-2023 NFL data
+- **Current:** Coefficients are domain-based estimates
+- **After Validation:** Every coefficient validated against 2020-2023 NFL data
 
 ### 2. Statistical Rigor
-- **Before:** No confidence metrics
-- **After:** P-values, confidence intervals, sample sizes for all weights
+- **Current:** No confidence metrics
+- **After Validation:** P-values, confidence intervals, sample sizes for all weights
 
 ### 3. Automatic Updates
-- **Before:** Manual code changes to update coefficients
-- **After:** Run backtesting → weights automatically updated
+- **Current:** Manual code changes to update coefficients
+- **After Validation:** Run backtesting → weights automatically updated
 
 ### 4. Transparency
-- **Before:** Unknown accuracy of assumptions
-- **After:** Full transparency with validation metadata
+- **Current:** Estimates based on domain knowledge
+- **After Validation:** Full transparency with validation metadata
 
 ### 5. Continuous Improvement
-- **Before:** Static forever
-- **After:** Re-run backtests quarterly to refine coefficients
+- **Current:** Static estimates
+- **After Validation:** Re-run backtests quarterly to refine coefficients
 
 ## Testing Integration
 
@@ -393,16 +399,20 @@ print("\n✅ All integration tests passed!")
 
 ## Summary
 
-**Complete Integration Achieved:**
-- ✅ Injury Impact → Uses validated redistribution patterns
-- ✅ Weather Impact → Uses validated coefficients
-- ✅ Defense Matchups → Uses validated league averages and ranges
-- ✅ Insights Engine → Uses validated trend weights
+**Integration Architecture Complete:**
+- Infrastructure: Injury Impact → Ready to use validated redistribution patterns
+- Infrastructure: Weather Impact → Ready to use validated coefficients
+- Infrastructure: Defense Matchups → Ready to use validated league averages and ranges
+- Infrastructure: Insights Engine → Ready to use validated trend weights
 
-**Every prediction now backed by:**
-- Historical data from 2020-2023 NFL seasons
-- Statistical validation (p-values, confidence scores)
-- Thousands of observations (sample sizes tracked)
-- Transparent methodology (full documentation)
+**Current Status:**
+- Backtesting modules: Built and ready to run
+- Historical data: Pending collection
+- Weight validation: Pending backtest execution
+- Current weights: Domain-based estimates
 
-**No more guesswork. Only data-driven predictions.**
+**Next Steps to Complete Validation:**
+1. Run `python -m backend.backtesting.data_collector` to fetch historical data
+2. Run `python -m backend.backtesting.run_all_backtests` to validate weights
+3. Review `outputs/backtesting/BACKTESTING_REPORT.md` for results
+4. Weights will automatically update from validated coefficients

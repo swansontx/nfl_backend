@@ -1,8 +1,12 @@
 # Historical Backtesting System
 
+**STATUS: INFRASTRUCTURE COMPLETE, EXECUTION PENDING**
+
+> **IMPORTANT:** This document describes the design and capabilities of the backtesting system. The infrastructure is **complete and ready to run**, but **data collection and validation execution are pending**. This describes what the system will do once executed, not the current state of validated weights.
+
 ## Overview
 
-The Historical Backtesting System validates all deep analysis features against actual NFL historical data, replacing static assumptions with data-driven adjustment factors calculated from thousands of real games.
+The Historical Backtesting System will validate all deep analysis features against actual NFL historical data, replacing static assumptions with data-driven adjustment factors calculated from thousands of real games.
 
 ## 🎯 Purpose
 
@@ -13,10 +17,10 @@ The Historical Backtesting System validates all deep analysis features against a
   - "WR2 gets 25% of WR1's targets when injured" ← *Assumed*
   - "Defense allows 65 yards to WR1s" ← *Assumed*
 
-- **After:** Calculated coefficients from historical data
-  - "Wind reduces passing yards by **2.8 per MPH** (n=347, p<0.01)" ← *Validated*
-  - "WR2 gets **32% of WR1's targets** (n=156, conf=0.85)" ← *Validated*
-  - "Defense allows **58 yards to WR1s** (rank: 22/32)" ← *Validated*
+- **After Validation:** Calculated coefficients from historical data
+  - "Wind reduces passing yards by **2.8 per MPH** (n=~300, p<0.01)" ← *Target validation*
+  - "WR2 gets **32% of WR1's targets** (n=~150, conf=0.85)" ← *Target validation*
+  - "Defense allows **58 yards to WR1s** (rank: 22/32)" ← *Target validation*
 
 ## 📊 What Gets Backtested
 

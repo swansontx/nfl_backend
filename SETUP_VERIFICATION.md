@@ -1,6 +1,10 @@
 # Setup Verification Checklist
 
-This document verifies that the complete backtesting system is properly installed and configured.
+**STATUS: INFRASTRUCTURE READY, VALIDATION PENDING**
+
+> **IMPORTANT:** This document describes verification steps for the backtesting system infrastructure. The system is built and ready to run, but **historical data has not yet been collected** and **backtests have not been executed**. Use this checklist to verify the infrastructure is properly installed before running the validation process.
+
+This document verifies that the complete backtesting system infrastructure is properly installed and configured.
 
 ## ✅ Installation Verification
 
