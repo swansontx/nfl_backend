@@ -443,7 +443,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Train passing model with advanced metrics (EPA, CPOE, success rate)'
     )
-    parser.add_argument('--season', type=int, default=2024,
+    parser.add_argument('--season', type=int, default=2025,
                        help='Season year')
     parser.add_argument('--features', type=Path,
                        default=Path('outputs/player_pbp_features_by_id.json'),

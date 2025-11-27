@@ -384,7 +384,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Run backtest framework with advanced metric validation'
     )
-    parser.add_argument('--season', type=int, default=2024,
+    parser.add_argument('--season', type=int, default=2025,
                        help='Season year to backtest')
     parser.add_argument('--model', type=Path,
                        default=Path('outputs/models/passing_model.pkl'),

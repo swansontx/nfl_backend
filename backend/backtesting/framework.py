@@ -76,9 +76,11 @@ class BacktestingFramework:
         """Initialize backtesting framework.
 
         Args:
-            seasons: List of seasons to test (e.g., [2020, 2021, 2022, 2023])
+            seasons: List of seasons to test (e.g., [2020, 2021, 2022, 2023, 2024])
+                    Default uses complete seasons only (2020-2024). 2025 can be included
+                    but has partial data (weeks 1-12).
         """
-        self.seasons = seasons or [2020, 2021, 2022, 2023]
+        self.seasons = seasons or [2020, 2021, 2022, 2023, 2024]
         self.data_dir = Path('inputs/historical')
         self.results_dir = Path('outputs/backtesting')
         self.results_dir.mkdir(parents=True, exist_ok=True)
