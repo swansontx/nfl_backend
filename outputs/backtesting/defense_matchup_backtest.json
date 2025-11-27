@@ -1,0 +1,23 @@
+{
+  "feature_name": "Defense Matchup",
+  "seasons_tested": [
+    2021,
+    2022,
+    2023
+  ],
+  "sample_size": 0,
+  "metrics": {
+    "rmse": 0.0,
+    "mae": 0.0,
+    "correlation": 0.0,
+    "r_squared": 0.0
+  },
+  "calculated_factors": {},
+  "original_factors": {},
+  "should_update": false,
+  "improvement_pct": 0.0,
+  "notes": [
+    "Error: 'game_id'"
+  ],
+  "generated_at": "2025-11-27T04:53:41.640232"
+}

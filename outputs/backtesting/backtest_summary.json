@@ -1,0 +1,48 @@
+{
+  "generated_at": "2025-11-27T04:49:19.329964",
+  "seasons_tested": [
+    2021,
+    2022,
+    2023
+  ],
+  "features_tested": 5,
+  "total_observations": 0,
+  "updates_recommended": 0,
+  "results": {
+    "injury_impact": {
+      "sample_size": 0,
+      "rmse": 0.0,
+      "mae": 0.0,
+      "improvement_pct": 0.0,
+      "should_update": false
+    },
+    "defense_matchup": {
+      "sample_size": 0,
+      "rmse": 0.0,
+      "mae": 0.0,
+      "improvement_pct": 0.0,
+      "should_update": false
+    },
+    "weather_impact": {
+      "sample_size": 0,
+      "rmse": 0.0,
+      "mae": 0.0,
+      "improvement_pct": 0.0,
+      "should_update": false
+    },
+    "situational_factors": {
+      "sample_size": 0,
+      "rmse": 0.0,
+      "mae": 0.0,
+      "improvement_pct": 0.0,
+      "should_update": false
+    },
+    "overall_accuracy": {
+      "sample_size": 0,
+      "rmse": 0.0,
+      "mae": 0.0,
+      "improvement_pct": 0.0,
+      "should_update": false
+    }
+  }
+}

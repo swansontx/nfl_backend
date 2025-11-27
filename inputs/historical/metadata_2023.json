@@ -1,0 +1,10 @@
+{
+  "season": 2023,
+  "collected_at": "2025-11-27T04:48:51.437730",
+  "source": "nfl_data_py",
+  "record_counts": {
+    "games": 285,
+    "player_stats": 5653,
+    "injuries": 5599
+  }
+}

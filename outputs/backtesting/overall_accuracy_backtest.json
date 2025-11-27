@@ -1,0 +1,30 @@
+{
+  "feature_name": "Overall Prediction Accuracy",
+  "seasons_tested": [
+    2021,
+    2022,
+    2023
+  ],
+  "sample_size": 806,
+  "metrics": {
+    "rmse": 49.78864203637618,
+    "mae": 46.80347787427626,
+    "correlation": 0.0,
+    "r_squared": 0.0
+  },
+  "calculated_factors": {
+    "game_totals": {
+      "rmse": 49.78864203637618,
+      "mae": 46.80347787427626,
+      "mape": 129.81583852831963,
+      "within_7_pct": 1.6129032258064515,
+      "bias_pct": 104.46165602443087
+    },
+    "spreads": {
+      "rmse": 17.152524064942206,
+      "mae": 13.655272746071132,
+      "within_7_pct": 32.38213399503722
+    }
+  },
+  "original_factors": {},
+  "should_update": 

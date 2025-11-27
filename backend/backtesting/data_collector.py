@@ -85,7 +85,7 @@ class HistoricalDataCollector:
 
             print(f"  Fetching rosters...")
             # Get rosters for position classification
-            rosters = nfl.import_rosters([season])
+            rosters = nfl.import_weekly_rosters([season])
             data['rosters'] = rosters
             print(f"    ✓ {len(rosters)} players")
 
@@ -186,7 +186,7 @@ class HistoricalDataCollector:
         # Keep relevant columns
         keep_cols = [
             'player_id', 'player_name', 'player_display_name',
-            'position', 'team', 'week', 'season', 'game_id',
+            'position', 'recent_team', 'opponent_team', 'week', 'season',
             'completions', 'attempts', 'passing_yards', 'passing_tds',
             'carries', 'rushing_yards', 'rushing_tds',
             'receptions', 'targets', 'receiving_yards', 'receiving_tds',
@@ -196,6 +196,9 @@ class HistoricalDataCollector:
         processed = stats_df[[col for col in keep_cols if col in stats_df.columns]].copy()
 
         # Rename for consistency
+        if 'recent_team' in processed.columns:
+            processed['team'] = processed['recent_team']
+
         if 'player_display_name' in processed.columns:
             processed['player'] = processed['player_display_name']
         elif 'player_name' in processed.columns:
@@ -225,11 +228,16 @@ class HistoricalDataCollector:
 
         # Keep relevant columns
         keep_cols = [
-            'season', 'week', 'team', 'player', 'position',
+            'season', 'week', 'team', 'position',
+            'full_name', 'gsis_id',
             'report_status', 'report_primary_injury', 'practice_status'
         ]
 
         processed = injuries_df[[col for col in keep_cols if col in injuries_df.columns]].copy()
+
+        # Rename full_name to player for consistency
+        if 'full_name' in processed.columns:
+            processed['player'] = processed['full_name']
 
         # Map injury status
         status_mapping = {
@@ -395,7 +403,7 @@ if __name__ == "__main__":
     collector = HistoricalDataCollector()
 
     # Collect data for recent seasons
-    seasons_to_collect = [2021, 2022, 2023]
+    seasons_to_collect = [2020, 2021, 2022, 2023]
 
     print("Historical Data Collector")
     print("=" * 60)

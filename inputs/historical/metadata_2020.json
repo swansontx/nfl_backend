@@ -1,0 +1,10 @@
+{
+  "season": 2020,
+  "collected_at": "2025-11-27T04:48:46.339897",
+  "source": "nfl_data_py",
+  "record_counts": {
+    "games": 269,
+    "player_stats": 5447,
+    "injuries": 5661
+  }
+}

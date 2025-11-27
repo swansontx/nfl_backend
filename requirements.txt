@@ -6,6 +6,7 @@ pydantic
 # Data Processing
 pandas>=2.0.0
 numpy>=1.24.0
+nfl-data-py>=0.3.0
 
 # HTTP Requests (for odds API, injuries, etc.)
 requests>=2.31.0
