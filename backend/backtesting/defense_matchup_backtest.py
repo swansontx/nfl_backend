@@ -157,31 +157,88 @@ class DefenseMatchupBacktester:
                 continue
 
             print(f"    Season {season}: {len(player_stats)} player records")
+            print(f"    Columns: {list(player_stats.columns)}")
+            print(f"    Sample row:")
+            if not player_stats.empty:
+                print(f"      {player_stats.iloc[0].to_dict()}")
 
             # Group by team and week
-            for week in player_stats['week'].unique():
+            total_weeks = len(player_stats['week'].unique())
+            processed_games = 0
+            observations_added = 0
+
+            for week_idx, week in enumerate(player_stats['week'].unique()):
                 week_stats = player_stats[player_stats['week'] == week]
 
-                # Process each game
+                # DEBUG: Check first week
+                if week_idx == 0:
+                    print(f"\n    DEBUG week {week}:")
+                    print(f"      Week stats: {len(week_stats)} records")
+                    print(f"      Unique game_ids: {len(week_stats['game_id'].unique())}")
+                    if not week_stats.empty:
+                        print(f"      First game_id: {week_stats.iloc[0]['game_id']}")
+
+                # Process each game (each team's stats are separate rows)
                 for game_id in week_stats['game_id'].unique():
                     game_stats = week_stats[week_stats['game_id'] == game_id]
+                    processed_games += 1
 
-                    # Get teams involved
+                    # DEBUG: Check first game
+                    if processed_games == 1:
+                        print(f"\n    DEBUG first game ({game_id}):")
+                        print(f"      Game stats: {len(game_stats)} records")
+                        print(f"      Teams in game: {list(game_stats['team'].unique())}")
+                        if 'opponent_team' in game_stats.columns:
+                            print(f"      Opponent teams: {list(game_stats['opponent_team'].unique())}")
+
+                    # In player stats, each game_id has rows for ONE team playing
+                    # The opponent is in opponent_team column
                     teams = game_stats['team'].unique()
-                    if len(teams) != 2:
-                        continue
 
                     # Process each team's offensive performance
                     for team in teams:
-                        opponent = [t for t in teams if t != team][0]
                         team_players = game_stats[game_stats['team'] == team]
+
+                        if team_players.empty:
+                            continue
+
+                        # Get opponent from the opponent_team column
+                        opponent = team_players.iloc[0]['opponent_team'] if 'opponent_team' in team_players.columns else None
+
+                        if not opponent:
+                            continue
+
+                        # DEBUG: Check first team
+                        if processed_games == 1 and team == teams[0]:
+                            print(f"      Team {team} vs {opponent}, players: {len(team_players)}")
+
+                        # DEBUG: Check first time only
+                        if not hasattr(self, '_debug_loop_shown'):
+                            self._debug_loop_shown = True
+                            print(f"\n    DEBUG player loop:")
+                            print(f"      Team: {team}, Opponent: {opponent}")
+                            print(f"      Team players: {len(team_players)}")
+                            if not team_players.empty:
+                                print(f"      First player: {team_players.iloc[0]['player']}, Position: {team_players.iloc[0]['position']}")
 
                         for _, player_row in team_players.iterrows():
                             player = player_row['player']
                             position = player_row['position']
 
+                            # DEBUG: Track iterations
+                            if not hasattr(self, '_player_iterations'):
+                                self._player_iterations = 0
+                            self._player_iterations += 1
+
                             # Classify role
-                            role = self.classify_position_role(player, position, team_players)
+                            try:
+                                role = self.classify_position_role(player, position, team_players)
+                            except Exception as e:
+                                if not hasattr(self, '_debug_classify_error_shown'):
+                                    self._debug_classify_error_shown = True
+                                    print(f"\n    ERROR in classify_position_role: {e}")
+                                    print(f"      Player: {player}, Position: {position}")
+                                continue
 
                             # Get player's baseline
                             baseline = self._get_player_baseline(
@@ -190,6 +247,8 @@ class DefenseMatchupBacktester:
 
                             if baseline is None:
                                 continue
+                            else:
+                                observations_added += 1
 
                             # Record performance vs this defense
                             performance = PositionalPerformance(
@@ -211,6 +270,9 @@ class DefenseMatchupBacktester:
                             # Store observation
                             defense_performances[opponent][role].append(performance)
                             self.observations.append(performance)
+
+            total_iters = getattr(self, '_player_iterations', 0)
+            print(f"    Processed {processed_games} games, {total_iters} player iterations, added {observations_added} observations")
 
         # Calculate defense stats from observations
         defense_stats = {}
@@ -267,14 +329,24 @@ class DefenseMatchupBacktester:
         Returns:
             Dictionary with baseline stats or None
         """
-        # Get player's last 4 weeks before this week
+        # Get player's history from the entire season before this week
+        # Changed from last 4 weeks to entire season for better sample size
         player_history = all_stats[
             (all_stats['player'] == player) &
-            (all_stats['week'] < week) &
-            (all_stats['week'] >= max(1, week - 4))
+            (all_stats['week'] < week)
         ]
 
-        if player_history.empty or len(player_history) < 2:
+        # DEBUG: Check first time only
+        if not hasattr(self, '_debug_baseline_shown'):
+            self._debug_baseline_shown = True
+            print(f"\n    DEBUG _get_player_baseline:")
+            print(f"      Player: {player}, Week: {week}")
+            print(f"      Player history length: {len(player_history)}")
+            if not player_history.empty:
+                print(f"      Sample: {player_history.iloc[0][['week', 'player']].to_dict()}")
+
+        # Require at least 1 game of history (lowered from 2)
+        if player_history.empty or len(player_history) < 1:
             return None
 
         # Calculate total yards (receiving + rushing) per game, then average
