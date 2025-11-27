@@ -379,8 +379,11 @@ if __name__ == '__main__':
     import argparse
     p = argparse.ArgumentParser(description='Extract player features from play-by-play data')
     p.add_argument('--pbp', type=Path,
-                   default=Path('inputs/play_by_play_2024.csv'),
-                   help='Path to play-by-play CSV')
+                   default=None,
+                   help='Path to single play-by-play CSV')
+    p.add_argument('--seasons', type=int, nargs='+',
+                   default=None,
+                   help='Season years to extract (e.g., --seasons 2020 2021 2022 2023 2024 2025)')
     p.add_argument('--out', type=Path,
                    default=Path('outputs/player_pbp_features_by_id.json'),
                    help='Path to output JSON file')
@@ -389,4 +392,46 @@ if __name__ == '__main__':
                    help='Optional player stats CSV for validation')
     args = p.parse_args()
 
-    extract_features(args.pbp, args.out, args.player_stats)
+    # Handle multi-season extraction
+    if args.seasons:
+        print(f"\n{'='*60}")
+        print(f"Multi-Season Feature Extraction")
+        print(f"Seasons: {args.seasons}")
+        print(f"{'='*60}\n")
+
+        all_player_features = defaultdict(list)
+
+        for season in args.seasons:
+            pbp_file = Path(f'inputs/play_by_play_{season}.csv')
+
+            if not pbp_file.exists():
+                print(f"⚠️  Skipping {season}: {pbp_file} not found")
+                continue
+
+            print(f"\n--- Processing {season} ---")
+            season_features = extract_features(pbp_file, Path('/tmp/temp.json'), args.player_stats)
+
+            # Merge into all_player_features
+            for player_id, games in season_features.items():
+                all_player_features[player_id].extend(games)
+
+        # Save merged features
+        print(f"\n{'='*60}")
+        print(f"Saving merged features to {args.out}")
+        print(f"Total players: {len(all_player_features)}")
+        total_games = sum(len(games) for games in all_player_features.values())
+        print(f"Total player-games: {total_games}")
+        print(f"{'='*60}\n")
+
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        with open(args.out, 'w') as f:
+            json.dump(dict(all_player_features), f, indent=2)
+
+    elif args.pbp:
+        # Single season extraction (backwards compatible)
+        extract_features(args.pbp, args.out, args.player_stats)
+
+    else:
+        # Default: extract all available seasons (2020-2025)
+        print("No input specified. Use --pbp for single season or --seasons for multiple seasons")
+        print("Example: python -m backend.features.extract_player_pbp_features --seasons 2020 2021 2022 2023 2024 2025")
