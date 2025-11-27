@@ -1,0 +1,10 @@
+{
+  "season": 2024,
+  "collected_at": "2025-11-27T04:57:26.364977",
+  "source": "nfl_data_py",
+  "record_counts": {
+    "games": 285,
+    "player_stats": 5597,
+    "injuries": 6215
+  }
+}

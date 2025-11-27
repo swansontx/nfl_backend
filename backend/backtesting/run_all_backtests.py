@@ -25,9 +25,9 @@ class BacktestingOrchestrator:
         """Initialize orchestrator.
 
         Args:
-            seasons: Seasons to test (defaults to [2021, 2022, 2023])
+            seasons: Seasons to test (defaults to [2020, 2021, 2022, 2023, 2024])
         """
-        self.seasons = seasons or [2021, 2022, 2023]
+        self.seasons = seasons or [2020, 2021, 2022, 2023, 2024]
         self.framework = BacktestingFramework(seasons=self.seasons)
         self.data_collector = HistoricalDataCollector()
 
@@ -376,6 +376,6 @@ class BacktestingOrchestrator:
 
 
 if __name__ == "__main__":
-    # Run backtesting
-    orchestrator = BacktestingOrchestrator(seasons=[2021, 2022, 2023])
+    # Run backtesting on 2020-2024 seasons
+    orchestrator = BacktestingOrchestrator(seasons=[2020, 2021, 2022, 2023, 2024])
     orchestrator.run(skip_data_check=False)

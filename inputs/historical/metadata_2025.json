@@ -1,0 +1,10 @@
+{
+  "season": 2025,
+  "collected_at": "2025-11-27T04:57:26.706906",
+  "source": "nfl_data_py",
+  "record_counts": {
+    "games": 0,
+    "player_stats": 0,
+    "injuries": 0
+  }
+}

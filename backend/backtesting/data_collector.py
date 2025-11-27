@@ -402,8 +402,9 @@ if __name__ == "__main__":
     # Initialize collector
     collector = HistoricalDataCollector()
 
-    # Collect data for recent seasons
-    seasons_to_collect = [2020, 2021, 2022, 2023]
+    # Collect data for recent seasons (2020-2024)
+    # Note: 2025 data may be incomplete as season is ongoing
+    seasons_to_collect = [2020, 2021, 2022, 2023, 2024]
 
     print("Historical Data Collector")
     print("=" * 60)
