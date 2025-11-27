@@ -112,8 +112,11 @@ class WeatherImpactBacktester:
             player_stats = self.framework.load_player_stats(season, 'all')
 
             for game in games:
-                # Calculate game totals
-                game_stats = player_stats[player_stats['game_id'] == game.game_id] if not player_stats.empty else pd.DataFrame()
+                # Calculate game totals by matching teams and week
+                game_stats = player_stats[
+                    (player_stats['week'] == game.week) &
+                    ((player_stats['team'] == game.home_team) | (player_stats['team'] == game.away_team))
+                ] if not player_stats.empty else pd.DataFrame()
 
                 if game_stats.empty:
                     continue
@@ -193,11 +196,15 @@ class WeatherImpactBacktester:
             return None
 
         # Group by week to get per-game averages
-        weekly_stats = team_history.groupby('week').agg({
-            'passing_yards': 'sum',
-            'rushing_yards': 'sum',
-            'points': 'sum'
-        }) if all(['passing_yards', 'rushing_yards', 'points'] in team_history.columns) else None
+        required_cols = ['passing_yards', 'rushing_yards', 'points']
+        if all(col in team_history.columns for col in required_cols):
+            weekly_stats = team_history.groupby('week').agg({
+                'passing_yards': 'sum',
+                'rushing_yards': 'sum',
+                'points': 'sum'
+            })
+        else:
+            weekly_stats = None
 
         if weekly_stats is None or weekly_stats.empty:
             return None

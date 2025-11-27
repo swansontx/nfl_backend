@@ -14,6 +14,31 @@ from collections import defaultdict
 import json
 
 
+def convert_to_json_serializable(obj):
+    """Convert numpy types to Python native types for JSON serialization.
+
+    Args:
+        obj: Object to convert
+
+    Returns:
+        JSON-serializable version of the object
+    """
+    if isinstance(obj, (np.integer, np.int64, np.int32)):
+        return int(obj)
+    elif isinstance(obj, (np.floating, np.float64, np.float32)):
+        return float(obj)
+    elif isinstance(obj, (np.bool_, bool)):
+        return bool(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {k: convert_to_json_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [convert_to_json_serializable(item) for item in obj]
+    else:
+        return obj
+
+
 @dataclass
 class BacktestResult:
     """Results from a backtest analysis."""
@@ -347,7 +372,7 @@ class BacktestingFramework:
 
         output_file = self.results_dir / filename
 
-        # Convert to dict
+        # Convert to dict and handle numpy types
         result_dict = {
             'feature_name': result.feature_name,
             'seasons_tested': result.seasons_tested,
@@ -358,10 +383,10 @@ class BacktestingFramework:
                 'correlation': result.correlation,
                 'r_squared': result.r_squared
             },
-            'calculated_factors': result.calculated_factors,
-            'original_factors': result.original_factors,
-            'should_update': result.should_update,
-            'improvement_pct': result.improvement_pct,
+            'calculated_factors': convert_to_json_serializable(result.calculated_factors),
+            'original_factors': convert_to_json_serializable(result.original_factors),
+            'should_update': bool(result.should_update),
+            'improvement_pct': float(result.improvement_pct),
             'notes': result.notes,
             'generated_at': datetime.now().isoformat()
         }

@@ -159,55 +159,56 @@ class DefenseMatchupBacktester:
             for week in player_stats['week'].unique():
                 week_stats = player_stats[player_stats['week'] == week]
 
-                # Process each game
-                for game_id in week_stats['game_id'].unique():
-                    game_stats = week_stats[week_stats['game_id'] == game_id]
+                # Process each team matchup (using team and opponent columns)
+                team_matchups = week_stats.groupby(['team', 'opponent_team'])
 
-                    # Get teams involved
-                    teams = game_stats['team'].unique()
-                    if len(teams) != 2:
+                for (team, opponent), game_stats in team_matchups:
+                    # Skip if we don't have opponent info
+                    if pd.isna(opponent) or opponent == '' or opponent is None:
                         continue
 
-                    # Process each team's offensive performance
-                    for team in teams:
-                        opponent = [t for t in teams if t != team][0]
-                        team_players = game_stats[game_stats['team'] == team]
+                    team_players = game_stats[game_stats['team'] == team]
 
-                        for _, player_row in team_players.iterrows():
-                            player = player_row['player']
-                            position = player_row['position']
+                    for _, player_row in team_players.iterrows():
+                        player = player_row['player']
+                        position = player_row['position'] if 'position' in player_row.index else 'UNK'
 
-                            # Classify role
-                            role = self.classify_position_role(player, position, team_players)
+                        # Classify role
+                        role = self.classify_position_role(player, position, team_players)
 
-                            # Get player's baseline
-                            baseline = self._get_player_baseline(
-                                player, season, week, player_stats
-                            )
+                        # Get player's baseline
+                        baseline = self._get_player_baseline(
+                            player, season, week, player_stats
+                        )
 
-                            if baseline is None:
-                                continue
+                        if baseline is None:
+                            continue
 
-                            # Record performance vs this defense
-                            performance = PositionalPerformance(
-                                player=player,
-                                position_role=role,
-                                opponent_defense=opponent,
-                                season=season,
-                                week=week,
-                                avg_yards=baseline['yards'],
-                                avg_targets=baseline['targets'],
-                                actual_yards=player_row.get('receiving_yards', 0) + player_row.get('rushing_yards', 0),
-                                actual_targets=player_row.get('targets', 0) + player_row.get('carries', 0)
-                            )
+                        # Record performance vs this defense
+                        actual_receiving_yards = player_row['receiving_yards'] if 'receiving_yards' in player_row.index else 0
+                        actual_rushing_yards = player_row['rushing_yards'] if 'rushing_yards' in player_row.index else 0
+                        actual_targets = player_row['targets'] if 'targets' in player_row.index else 0
+                        actual_carries = player_row['carries'] if 'carries' in player_row.index else 0
 
-                            performance.yards_vs_expectation = performance.actual_yards - performance.avg_yards
-                            if performance.avg_yards > 0:
-                                performance.performance_multiplier = performance.actual_yards / performance.avg_yards
+                        performance = PositionalPerformance(
+                            player=player,
+                            position_role=role,
+                            opponent_defense=opponent,
+                            season=season,
+                            week=week,
+                            avg_yards=baseline['yards'],
+                            avg_targets=baseline['targets'],
+                            actual_yards=actual_receiving_yards + actual_rushing_yards,
+                            actual_targets=actual_targets + actual_carries
+                        )
 
-                            # Store observation
-                            defense_performances[opponent][role].append(performance)
-                            self.observations.append(performance)
+                        performance.yards_vs_expectation = performance.actual_yards - performance.avg_yards
+                        if performance.avg_yards > 0:
+                            performance.performance_multiplier = performance.actual_yards / performance.avg_yards
+
+                        # Store observation
+                        defense_performances[opponent][role].append(performance)
+                        self.observations.append(performance)
 
         # Calculate defense stats from observations
         defense_stats = {}

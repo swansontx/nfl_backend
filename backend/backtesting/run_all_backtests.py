@@ -313,7 +313,9 @@ class BacktestingOrchestrator:
             f.write(report)
         print(f"  ✓ Master report: {report_file}")
 
-        # Save summary JSON
+        # Save summary JSON (import convert function if needed)
+        from backend.backtesting.framework import convert_to_json_serializable
+
         summary = {
             'generated_at': datetime.now().isoformat(),
             'seasons_tested': self.seasons,
@@ -323,17 +325,17 @@ class BacktestingOrchestrator:
             'results': {
                 name: {
                     'sample_size': result.sample_size,
-                    'rmse': result.rmse,
-                    'mae': result.mae,
-                    'improvement_pct': result.improvement_pct,
-                    'should_update': result.should_update
+                    'rmse': float(result.rmse),
+                    'mae': float(result.mae),
+                    'improvement_pct': float(result.improvement_pct),
+                    'should_update': bool(result.should_update)
                 } for name, result in self.results.items()
             }
         }
 
         summary_file = self.output_dir / 'backtest_summary.json'
         with open(summary_file, 'w') as f:
-            json.dump(summary, f, indent=2)
+            json.dump(convert_to_json_serializable(summary), f, indent=2)
         print(f"  ✓ Summary JSON: {summary_file}")
 
     def run(self, skip_data_check: bool = False):

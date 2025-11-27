@@ -103,10 +103,10 @@ class InjuryImpactBacktester:
                 season=season,
                 week=row['week'],
                 injury_status=row['injury_status'],
-                avg_targets=row.get('avg_targets', 0.0),
-                avg_carries=row.get('avg_carries', 0.0),
-                avg_receiving_yards=row.get('avg_receiving_yards', 0.0),
-                avg_rushing_yards=row.get('avg_rushing_yards', 0.0)
+                avg_targets=row['avg_targets'] if 'avg_targets' in row.index else 0.0,
+                avg_carries=row['avg_carries'] if 'avg_carries' in row.index else 0.0,
+                avg_receiving_yards=row['avg_receiving_yards'] if 'avg_receiving_yards' in row.index else 0.0,
+                avg_rushing_yards=row['avg_rushing_yards'] if 'avg_rushing_yards' in row.index else 0.0
             )
             injuries.append(injury)
 
@@ -197,7 +197,7 @@ class InjuryImpactBacktester:
         # Get teammates' baselines (weeks before injury)
         for _, teammate in teammates.iterrows():
             teammate_name = teammate['player']
-            teammate_position = teammate.get('position', 'UNK')
+            teammate_position = teammate['position'] if 'position' in teammate.index else 'UNK'
 
             # Get teammate's baseline
             teammate_before = player_stats[
@@ -213,14 +213,19 @@ class InjuryImpactBacktester:
             baseline_teammate_carries = teammate_before['carries'].mean() if 'carries' in teammate_before.columns else 0
 
             # Calculate increases
-            actual_targets = teammate.get('targets', 0)
-            actual_carries = teammate.get('carries', 0)
+            actual_targets = teammate['targets'] if 'targets' in teammate.index else 0
+            actual_carries = teammate['carries'] if 'carries' in teammate.index else 0
 
             target_increase = actual_targets - baseline_teammate_targets
             carry_increase = actual_carries - baseline_teammate_carries
 
             # Only record significant increases
             if target_increase > 1 or carry_increase > 1:
+                # Calculate receiving yards increase
+                actual_receiving_yards = teammate['receiving_yards'] if 'receiving_yards' in teammate.index else 0
+                baseline_receiving_yards = teammate_before['receiving_yards'].mean() if 'receiving_yards' in teammate_before.columns else 0
+                receiving_yards_increase = actual_receiving_yards - baseline_receiving_yards
+
                 obs = RedistributionObservation(
                     injured_player=injury.player,
                     injured_position=injury.position,
@@ -229,7 +234,7 @@ class InjuryImpactBacktester:
                     beneficiary_position=teammate_position,
                     target_increase=target_increase,
                     carry_increase=carry_increase,
-                    receiving_yards_increase=teammate.get('receiving_yards', 0) - teammate_before['receiving_yards'].mean() if 'receiving_yards' in teammate_before.columns else 0,
+                    receiving_yards_increase=receiving_yards_increase,
                     season=season,
                     week=injury.week,
                     team=injury.team
@@ -400,9 +405,15 @@ class InjuryImpactBacktester:
 
             for scenario, beneficiaries in pattern_data.items():
                 for beneficiary, stats in beneficiaries.items():
-                    sample_size = stats.get('sample_size', 0)
-                    confidence = stats.get('confidence', 0.0)
-                    notes.append(f"  {scenario} → {beneficiary}: {stats.get('targets', 0):.2f} targets (n={sample_size}, conf={confidence:.2f})")
+                    # Handle both dict stats and scalar values (like team_total_impact)
+                    if isinstance(stats, dict):
+                        sample_size = stats.get('sample_size', 0)
+                        confidence = stats.get('confidence', 0.0)
+                        targets = stats.get('targets', 0)
+                        notes.append(f"  {scenario} → {beneficiary}: {targets:.2f} targets (n={sample_size}, conf={confidence:.2f})")
+                    else:
+                        # Scalar value (like team_total_impact: -5.5)
+                        notes.append(f"  {scenario} → {beneficiary}: {stats:.2f}")
 
         result = BacktestResult(
             feature_name="Injury Impact Redistribution",

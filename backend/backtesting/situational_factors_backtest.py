@@ -296,11 +296,15 @@ class SituationalFactorsBacktester:
             return None
 
         # Calculate per-game averages
-        weekly_stats = team_history.groupby('week').agg({
-            'passing_yards': 'sum',
-            'rushing_yards': 'sum',
-            'fantasy_points': 'sum'
-        }) if all(['passing_yards', 'rushing_yards', 'fantasy_points'] in team_history.columns) else None
+        required_cols = ['passing_yards', 'rushing_yards', 'fantasy_points']
+        if all(col in team_history.columns for col in required_cols):
+            weekly_stats = team_history.groupby('week').agg({
+                'passing_yards': 'sum',
+                'rushing_yards': 'sum',
+                'fantasy_points': 'sum'
+            })
+        else:
+            weekly_stats = None
 
         if weekly_stats is None or weekly_stats.empty:
             return None
