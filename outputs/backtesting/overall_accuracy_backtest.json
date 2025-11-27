@@ -1,51 +1,55 @@
 {
   "feature_name": "Overall Prediction Accuracy",
   "seasons_tested": [
-    2023
+    2020,
+    2021,
+    2022,
+    2023,
+    2024
   ],
-  "sample_size": 269,
+  "sample_size": 1328,
   "metrics": {
-    "rmse": 47.887621086396976,
-    "mae": 44.82933333333334,
+    "rmse": 49.974656336273604,
+    "mae": 46.915793800200795,
     "correlation": 0.0,
     "r_squared": 0.0
   },
   "calculated_factors": {
     "game_totals": {
-      "rmse": 47.887621086396976,
-      "mae": 44.82933333333334,
-      "mape": 133.1650878085389,
-      "within_7_pct": 1.858736059479554,
-      "bias_pct": 101.20181787435527
+      "rmse": 49.974656336273604,
+      "mae": 46.915793800200795,
+      "mape": 124.37954942062748,
+      "within_7_pct": 1.6566265060240966,
+      "bias_pct": 102.01511967452466
     },
     "spreads": {
-      "rmse": 17.71932094480899,
-      "mae": 14.418377942998761,
-      "within_7_pct": 28.624535315985128
+      "rmse": 17.115131554398044,
+      "mae": 13.646686370481929,
+      "within_7_pct": 32.22891566265061
     }
   },
   "original_factors": {},
   "should_update": true,
   "improvement_pct": 0.0,
   "notes": [
-    "Backtested 269 game predictions",
-    "Backtested 2889 player predictions",
+    "Backtested 1328 game predictions",
+    "Backtested 14254 player predictions",
     "\nGAME TOTALS:",
-    "  RMSE: 47.89 points",
-    "  MAE: 44.83 points",
-    "  MAPE: 133.2%",
-    "  Hit Rates: 1.1% within 3, 1.9% within 7, 2.6% within 10",
-    "  Bias: +101.2% (over-predicting)",
+    "  RMSE: 49.97 points",
+    "  MAE: 46.92 points",
+    "  MAPE: 124.4%",
+    "  Hit Rates: 0.7% within 3, 1.7% within 7, 2.0% within 10",
+    "  Bias: +102.0% (over-predicting)",
     "\nSPREADS:",
-    "  RMSE: 17.72 points",
-    "  MAE: 14.42 points",
-    "  Hit Rates: 10.4% within 3, 28.6% within 7, 39.0% within 10",
-    "  Bias: -36.9% (under-predicting)",
+    "  RMSE: 17.12 points",
+    "  MAE: 13.65 points",
+    "  Hit Rates: 13.6% within 3, 32.2% within 7, 44.9% within 10",
+    "  Bias: +21.1% (over-predicting)",
     "\nPLAYER YARDS:",
-    "  RMSE: 33.25 yards",
-    "  MAE: 24.70 yards",
-    "  Hit Rates: 10.6% within 3, 21.5% within 7, 29.8% within 10",
-    "  Bias: -8.5% (under-predicting)"
+    "  RMSE: 33.87 yards",
+    "  MAE: 25.36 yards",
+    "  Hit Rates: 9.4% within 3, 20.3% within 7, 28.4% within 10",
+    "  Bias: -8.8% (under-predicting)"
   ],
-  "generated_at": "2025-11-27T16:43:51.938721"
+  "generated_at": "2025-11-27T16:47:15.441601"
 }

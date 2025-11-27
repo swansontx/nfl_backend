@@ -1,8 +1,8 @@
 # Historical Backtesting Report
 
-**Generated:** 2025-11-27 16:43:51
+**Generated:** 2025-11-27 16:47:15
 
-**Seasons Analyzed:** 2023
+**Seasons Analyzed:** 2020, 2021, 2022, 2023, 2024
 
 
 ---
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-- **Total Observations:** 4,967
+- **Total Observations:** 24,186
 - **Features Tested:** 5
 - **Updates Recommended:** 4/5
 - **Average Improvement:** 9.2%
@@ -21,10 +21,10 @@
 | Feature | Sample Size | RMSE | MAE | R² | Improvement | Update? |
 |---------|------------:|-----:|----:|---:|------------:|:-------:|
 | Injury Impact Redistribution | 0 | 0.00 | 0.00 | 0.000 | +15.0% | ✅ |
-| Defense Matchup Adjustments | 4,160 | 31.61 | 22.83 | 0.359 | +1.8% | ❌ |
-| Weather Impact | 269 | 0.00 | 0.00 | 0.000 | +12.0% | ✅ |
-| Situational Factors | 269 | 0.00 | 0.00 | 0.000 | +10.0% | ✅ |
-| Overall Prediction Accuracy | 269 | 47.89 | 44.83 | 0.000 | +0.0% | ✅ |
+| Defense Matchup Adjustments | 20,202 | 32.56 | 23.79 | 0.324 | +0.7% | ❌ |
+| Weather Impact | 1,328 | 0.00 | 0.00 | 0.000 | +12.0% | ✅ |
+| Situational Factors | 1,328 | 0.00 | 0.00 | 0.000 | +10.0% | ✅ |
+| Overall Prediction Accuracy | 1,328 | 49.97 | 46.92 | 0.000 | +0.0% | ✅ |
 
 ---
 
@@ -37,1798 +37,1883 @@
 ⚠️ Insufficient data for analysis
 
 - WR redistribution patterns calculated from historical data
--   WR1_OUT → WR2: 3.37 targets (n=68, conf=0.81)
--   WR1_OUT → WR3: 3.01 targets (n=68, conf=0.77)
--   WR1_OUT → TE: 2.58 targets (n=44, conf=0.79)
--   WR1_OUT → RB: 1.05 targets (n=126, conf=0.50)
+-   WR1_OUT → WR2: 3.38 targets (n=336, conf=0.74)
+-   WR1_OUT → WR3: 3.12 targets (n=336, conf=0.77)
+-   WR1_OUT → TE: 2.90 targets (n=259, conf=0.79)
+-   WR1_OUT → RB: 0.93 targets (n=636, conf=0.50)
 - TE redistribution patterns calculated from historical data
--   TE1_OUT → TE2: 2.98 targets (n=24, conf=0.81)
--   TE1_OUT → WR: 3.57 targets (n=59, conf=0.76)
+-   TE1_OUT → TE2: 3.15 targets (n=111, conf=0.79)
+-   TE1_OUT → WR: 3.04 targets (n=287, conf=0.74)
 - RB redistribution patterns calculated from historical data
--   RB1_OUT → RB2: 0.73 targets (n=57, conf=0.50)
--   RB1_OUT → WR: 3.18 targets (n=55, conf=0.69)
+-   RB1_OUT → RB2: 0.92 targets (n=358, conf=0.50)
+-   RB1_OUT → WR: 3.13 targets (n=366, conf=0.71)
 - QB redistribution patterns calculated from historical data
 -   QB1_OUT → team_total_impact: -5.50
 
 ### Defense Matchup Adjustments
 
-**Sample Size:** 4,160 observations
+**Sample Size:** 20,202 observations
 
 
 **Accuracy Metrics:**
-- RMSE: 31.61
-- MAE: 22.83
-- Correlation: 0.599
-- R²: 0.359
+- RMSE: 32.56
+- MAE: 23.79
+- Correlation: 0.569
+- R²: 0.324
 
 
 **❌ Current factors are adequate**
 
 
 **Findings:**
-Analyzed 4160 positional matchups
+Analyzed 20202 positional matchups
 Calculated stats for 32 defenses
 
-SF Defense:
-  vs TE: 45.9 YPG allowed (factor: 1.11, n=16)
-  vs Slot: 22.1 YPG allowed (factor: 1.08, n=29)
-  vs RB_rush: 53.8 YPG allowed (factor: 0.90, n=23)
-  vs QB: 19.4 YPG allowed (factor: 1.21, n=16)
-  vs WR1: 69.1 YPG allowed (factor: 0.92, n=17)
-  vs TE2: 12.3 YPG allowed (factor: 0.82, n=16)
-  vs WR2: 42.2 YPG allowed (factor: 0.94, n=17)
-  vs RB_recv: 38.1 YPG allowed (factor: 1.01, n=13)
+DET Defense:
+  vs Slot: 20.1 YPG allowed (factor: 0.95, n=115)
+  vs WR1: 96.7 YPG allowed (factor: 1.29, n=79)
+  vs RB_rush: 59.4 YPG allowed (factor: 0.97, n=127)
+  vs TE2: 16.7 YPG allowed (factor: 1.15, n=51)
+  vs RB_recv: 39.9 YPG allowed (factor: 1.03, n=30)
+  vs QB: 22.4 YPG allowed (factor: 1.28, n=71)
+  vs TE: 38.3 YPG allowed (factor: 0.94, n=72)
+  vs WR2: 55.2 YPG allowed (factor: 1.18, n=73)
+  vs FB: 20.7 YPG allowed (factor: 2.02, n=6)
 
-JAX Defense:
-  vs WR2: 43.0 YPG allowed (factor: 0.95, n=15)
-  vs TE: 43.3 YPG allowed (factor: 1.04, n=15)
-  vs TE2: 11.8 YPG allowed (factor: 0.79, n=9)
-  vs WR1: 80.8 YPG allowed (factor: 1.08, n=13)
-  vs RB_rush: 58.0 YPG allowed (factor: 0.97, n=17)
-  vs QB: 15.5 YPG allowed (factor: 0.96, n=15)
-  vs Slot: 20.5 YPG allowed (factor: 1.00, n=24)
-  vs RB_recv: 57.2 YPG allowed (factor: 1.52, n=13)
-  vs FB: 13.5 YPG allowed (factor: 1.87, n=2)
+CHI Defense:
+  vs QB: 10.5 YPG allowed (factor: 0.60, n=72)
+  vs RB_rush: 71.8 YPG allowed (factor: 1.17, n=113)
+  vs RB_recv: 33.7 YPG allowed (factor: 0.87, n=50)
+  vs Slot: 20.5 YPG allowed (factor: 0.96, n=116)
+  vs TE: 36.5 YPG allowed (factor: 0.89, n=67)
+  vs WR1: 70.9 YPG allowed (factor: 0.95, n=71)
+  vs WR2: 42.3 YPG allowed (factor: 0.91, n=64)
+  vs TE2: 13.9 YPG allowed (factor: 0.96, n=59)
+  vs FB: 11.5 YPG allowed (factor: 1.13, n=8)
 
-CLE Defense:
-  vs WR2: 38.8 YPG allowed (factor: 0.86, n=16)
-  vs RB_rush: 46.0 YPG allowed (factor: 0.77, n=27)
-  vs TE: 33.0 YPG allowed (factor: 0.80, n=15)
-  vs QB: 13.8 YPG allowed (factor: 0.86, n=16)
-  vs Slot: 22.1 YPG allowed (factor: 1.09, n=27)
-  vs WR1: 55.2 YPG allowed (factor: 0.73, n=16)
-  vs TE2: 24.6 YPG allowed (factor: 1.64, n=5)
-  vs RB_recv: 42.6 YPG allowed (factor: 1.13, n=8)
-  vs FB: 3.8 YPG allowed (factor: 0.52, n=4)
+KC Defense:
+  vs RB_rush: 56.1 YPG allowed (factor: 0.91, n=126)
+  vs Slot: 16.8 YPG allowed (factor: 0.79, n=153)
+  vs TE2: 13.1 YPG allowed (factor: 0.90, n=53)
+  vs TE: 38.1 YPG allowed (factor: 0.93, n=83)
+  vs QB: 23.4 YPG allowed (factor: 1.34, n=84)
+  vs WR1: 70.7 YPG allowed (factor: 0.94, n=85)
+  vs RB_recv: 39.5 YPG allowed (factor: 1.02, n=71)
+  vs WR2: 46.8 YPG allowed (factor: 1.00, n=79)
+  vs FB: 13.6 YPG allowed (factor: 1.33, n=10)
 
 Improvement vs baseline:
-  RMSE: +1.3%
-  MAE: +2.2%
-  Correlation: +0.030
+  RMSE: +0.5%
+  MAE: +0.9%
+  Correlation: +0.009
 
 <details>
 <summary><b>Calculated Factors (Click to Expand)</b></summary>
 
 ```json
 {
-  "SF": {
-    "TE": {
-      "adjustment_factor": 1.1066600618886069,
-      "yards_per_game": 45.875,
-      "confidence": 1.0,
-      "games": 16
-    },
+  "DET": {
     "Slot": {
-      "adjustment_factor": 1.0846105661417829,
-      "yards_per_game": 22.103448275862068,
+      "adjustment_factor": 0.945296965416253,
+      "yards_per_game": 20.095652173913045,
       "confidence": 1.0,
-      "games": 29
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.8998568648501962,
-      "yards_per_game": 53.82608695652174,
-      "confidence": 1.0,
-      "games": 23
-    },
-    "QB": {
-      "adjustment_factor": 1.2069304744326188,
-      "yards_per_game": 19.375,
-      "confidence": 1.0,
-      "games": 16
+      "games": 115
     },
     "WR1": {
-      "adjustment_factor": 0.9188367418686065,
-      "yards_per_game": 69.05882352941177,
+      "adjustment_factor": 1.2912245424156161,
+      "yards_per_game": 96.73417721518987,
       "confidence": 1.0,
-      "games": 17
-    },
-    "TE2": {
-      "adjustment_factor": 0.8228372285103367,
-      "yards_per_game": 12.3125,
-      "confidence": 1.0,
-      "games": 16
-    },
-    "WR2": {
-      "adjustment_factor": 0.9366947243782697,
-      "yards_per_game": 42.23529411764706,
-      "confidence": 1.0,
-      "games": 17
-    },
-    "RB_recv": {
-      "adjustment_factor": 1.01095277117342,
-      "yards_per_game": 38.07692307692308,
-      "confidence": 0.8125,
-      "games": 13
-    }
-  },
-  "JAX": {
-    "WR2": {
-      "adjustment_factor": 0.9536543781622774,
-      "yards_per_game": 43.0,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "TE": {
-      "adjustment_factor": 1.0437382454724153,
-      "yards_per_game": 43.266666666666666,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "TE2": {
-      "adjustment_factor": 0.7871020527656689,
-      "yards_per_game": 11.777777777777779,
-      "confidence": 0.5625,
-      "games": 9
-    },
-    "WR1": {
-      "adjustment_factor": 1.075668724083763,
-      "yards_per_game": 80.84615384615384,
-      "confidence": 0.8125,
-      "games": 13
+      "games": 79
     },
     "RB_rush": {
-      "adjustment_factor": 0.9696357493620046,
-      "yards_per_game": 58.0,
+      "adjustment_factor": 0.9683015141742257,
+      "yards_per_game": 59.39370078740158,
       "confidence": 1.0,
-      "games": 17
-    },
-    "QB": {
-      "adjustment_factor": 0.9634679400201895,
-      "yards_per_game": 15.466666666666667,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "Slot": {
-      "adjustment_factor": 1.0038851957418646,
-      "yards_per_game": 20.458333333333332,
-      "confidence": 1.0,
-      "games": 24
-    },
-    "RB_recv": {
-      "adjustment_factor": 1.5174503211754566,
-      "yards_per_game": 57.15384615384615,
-      "confidence": 0.8125,
-      "games": 13
-    },
-    "FB": {
-      "adjustment_factor": 1.8717504332755632,
-      "yards_per_game": 13.5,
-      "confidence": 0.125,
-      "games": 2
-    }
-  },
-  "CLE": {
-    "WR2": {
-      "adjustment_factor": 0.8593978407857732,
-      "yards_per_game": 38.75,
-      "confidence": 1.0,
-      "games": 16
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.7684022764739767,
-      "yards_per_game": 45.96296296296296,
-      "confidence": 1.0,
-      "games": 27
-    },
-    "TE": {
-      "adjustment_factor": 0.7960715431569271,
-      "yards_per_game": 33.0,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "QB": {
-      "adjustment_factor": 0.8565313044360521,
-      "yards_per_game": 13.75,
-      "confidence": 1.0,
-      "games": 16
-    },
-    "Slot": {
-      "adjustment_factor": 1.0868039774675449,
-      "yards_per_game": 22.14814814814815,
-      "confidence": 1.0,
-      "games": 27
-    },
-    "WR1": {
-      "adjustment_factor": 0.734276955504134,
-      "yards_per_game": 55.1875,
-      "confidence": 1.0,
-      "games": 16
+      "games": 127
     },
     "TE2": {
-      "adjustment_factor": 1.6440037215313124,
-      "yards_per_game": 24.6,
-      "confidence": 0.3125,
-      "games": 5
+      "adjustment_factor": 1.1504877817942283,
+      "yards_per_game": 16.666666666666668,
+      "confidence": 1.0,
+      "games": 51
     },
     "RB_recv": {
-      "adjustment_factor": 1.1317054632858008,
-      "yards_per_game": 42.625,
-      "confidence": 0.5,
-      "games": 8
-    },
-    "FB": {
-      "adjustment_factor": 0.5199306759098786,
-      "yards_per_game": 3.75,
-      "confidence": 0.25,
-      "games": 4
-    }
-  },
-  "MIA": {
-    "RB_recv": {
-      "adjustment_factor": 1.076307293754328,
-      "yards_per_game": 40.53846153846154,
-      "confidence": 0.8125,
-      "games": 13
-    },
-    "WR1": {
-      "adjustment_factor": 1.051936974759603,
-      "yards_per_game": 79.0625,
-      "confidence": 1.0,
-      "games": 16
-    },
-    "QB": {
-      "adjustment_factor": 1.1066201238061508,
-      "yards_per_game": 17.764705882352942,
-      "confidence": 1.0,
-      "games": 17
-    },
-    "Slot": {
-      "adjustment_factor": 0.9477470710338092,
-      "yards_per_game": 19.314285714285713,
-      "confidence": 1.0,
-      "games": 35
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.8136024103842107,
-      "yards_per_game": 48.666666666666664,
-      "confidence": 1.0,
-      "games": 21
-    },
-    "TE2": {
-      "adjustment_factor": 0.9935307043400613,
-      "yards_per_game": 14.866666666666667,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "TE": {
-      "adjustment_factor": 0.954381225034725,
-      "yards_per_game": 39.5625,
-      "confidence": 1.0,
-      "games": 16
-    },
-    "WR2": {
-      "adjustment_factor": 0.9462617085641202,
-      "yards_per_game": 42.666666666666664,
-      "confidence": 0.75,
-      "games": 12
-    }
-  },
-  "MIN": {
-    "WR2": {
-      "adjustment_factor": 1.0379308115812693,
-      "yards_per_game": 46.8,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "Slot": {
-      "adjustment_factor": 1.3685006605904035,
-      "yards_per_game": 27.88888888888889,
-      "confidence": 1.0,
-      "games": 27
-    },
-    "TE": {
-      "adjustment_factor": 0.8989979648984286,
-      "yards_per_game": 37.266666666666666,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.7697813590154472,
-      "yards_per_game": 46.04545454545455,
-      "confidence": 1.0,
-      "games": 22
-    },
-    "WR1": {
-      "adjustment_factor": 1.0786026762014669,
-      "yards_per_game": 81.06666666666666,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "QB": {
-      "adjustment_factor": 0.6468907753782771,
-      "yards_per_game": 10.384615384615385,
-      "confidence": 0.8125,
-      "games": 13
-    },
-    "RB_recv": {
-      "adjustment_factor": 0.987187490234908,
-      "yards_per_game": 37.18181818181818,
-      "confidence": 0.6875,
-      "games": 11
-    },
-    "TE2": {
-      "adjustment_factor": 0.8687824544677666,
-      "yards_per_game": 13.0,
-      "confidence": 0.6875,
-      "games": 11
-    }
-  },
-  "DEN": {
-    "WR1": {
-      "adjustment_factor": 1.033365228433149,
-      "yards_per_game": 77.66666666666667,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "TE": {
-      "adjustment_factor": 1.2768160464919545,
-      "yards_per_game": 52.92857142857143,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "WR2": {
-      "adjustment_factor": 0.8253387558514061,
-      "yards_per_game": 37.214285714285715,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "RB_rush": {
-      "adjustment_factor": 1.197526547079572,
-      "yards_per_game": 71.63157894736842,
-      "confidence": 1.0,
-      "games": 19
-    },
-    "QB": {
-      "adjustment_factor": 0.864317952658198,
-      "yards_per_game": 13.875,
-      "confidence": 1.0,
-      "games": 16
-    },
-    "Slot": {
-      "adjustment_factor": 1.0164447137566741,
-      "yards_per_game": 20.714285714285715,
-      "confidence": 1.0,
-      "games": 28
-    },
-    "TE2": {
-      "adjustment_factor": 1.2530516170208172,
-      "yards_per_game": 18.75,
-      "confidence": 0.5,
-      "games": 8
-    },
-    "RB_recv": {
-      "adjustment_factor": 1.2068306726588118,
-      "yards_per_game": 45.45454545454545,
-      "confidence": 0.6875,
-      "games": 11
-    },
-    "FB": {
-      "adjustment_factor": 0.6932409012131715,
-      "yards_per_game": 5.0,
-      "confidence": 0.0625,
-      "games": 1
-    }
-  },
-  "TEN": {
-    "WR2": {
-      "adjustment_factor": 1.1665632625892044,
-      "yards_per_game": 52.6,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.9244975334434284,
-      "yards_per_game": 55.3,
+      "adjustment_factor": 1.0284662366858837,
+      "yards_per_game": 39.93333333333333,
       "confidence": 1.0,
       "games": 30
     },
-    "Slot": {
-      "adjustment_factor": 0.8597019289318518,
-      "yards_per_game": 17.52,
-      "confidence": 1.0,
-      "games": 25
-    },
     "QB": {
-      "adjustment_factor": 0.759198201659228,
-      "yards_per_game": 12.1875,
+      "adjustment_factor": 1.2794123728362459,
+      "yards_per_game": 22.366197183098592,
       "confidence": 1.0,
-      "games": 16
-    },
-    "WR1": {
-      "adjustment_factor": 1.093681825457573,
-      "yards_per_game": 82.2,
-      "confidence": 0.9375,
-      "games": 15
+      "games": 71
     },
     "TE": {
-      "adjustment_factor": 0.7458145012909595,
-      "yards_per_game": 30.916666666666668,
-      "confidence": 0.75,
-      "games": 12
-    },
-    "FB": {
-      "adjustment_factor": 0.5545927209705372,
-      "yards_per_game": 4.0,
-      "confidence": 0.125,
-      "games": 2
-    },
-    "RB_recv": {
-      "adjustment_factor": 0.743407694357828,
-      "yards_per_game": 28.0,
-      "confidence": 0.1875,
-      "games": 3
-    },
-    "TE2": {
-      "adjustment_factor": 1.130024730986046,
-      "yards_per_game": 16.90909090909091,
-      "confidence": 0.6875,
-      "games": 11
-    }
-  },
-  "BAL": {
-    "Slot": {
-      "adjustment_factor": 0.8252638898525975,
-      "yards_per_game": 16.818181818181817,
+      "adjustment_factor": 0.9386809203695954,
+      "yards_per_game": 38.30555555555556,
       "confidence": 1.0,
-      "games": 22
-    },
-    "WR1": {
-      "adjustment_factor": 0.8139609979074539,
-      "yards_per_game": 61.1764705882353,
-      "confidence": 1.0,
-      "games": 17
-    },
-    "TE": {
-      "adjustment_factor": 1.2640651170128174,
-      "yards_per_game": 52.4,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "TE2": {
-      "adjustment_factor": 0.4883688353517031,
-      "yards_per_game": 7.3076923076923075,
-      "confidence": 0.8125,
-      "games": 13
+      "games": 72
     },
     "WR2": {
-      "adjustment_factor": 0.8871203517788627,
-      "yards_per_game": 40.0,
+      "adjustment_factor": 1.1815561031472048,
+      "yards_per_game": 55.178082191780824,
       "confidence": 1.0,
-      "games": 17
-    },
-    "RB_recv": {
-      "adjustment_factor": 1.3850393353214296,
-      "yards_per_game": 52.166666666666664,
-      "confidence": 0.75,
-      "games": 12
-    },
-    "RB_rush": {
-      "adjustment_factor": 1.0164457510553426,
-      "yards_per_game": 60.8,
-      "confidence": 1.0,
-      "games": 20
-    },
-    "QB": {
-      "adjustment_factor": 0.6655535111981572,
-      "yards_per_game": 10.68421052631579,
-      "confidence": 1.0,
-      "games": 19
+      "games": 73
     },
     "FB": {
-      "adjustment_factor": 1.5944540727902945,
-      "yards_per_game": 11.5,
-      "confidence": 0.125,
-      "games": 2
-    }
-  },
-  "NE": {
-    "Slot": {
-      "adjustment_factor": 1.0246917296897913,
-      "yards_per_game": 20.88235294117647,
-      "confidence": 1.0,
-      "games": 34
-    },
-    "QB": {
-      "adjustment_factor": 0.48173397001009477,
-      "yards_per_game": 7.733333333333333,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "WR1": {
-      "adjustment_factor": 0.8737036480743792,
-      "yards_per_game": 65.66666666666667,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.897987787586487,
-      "yards_per_game": 53.714285714285715,
-      "confidence": 1.0,
-      "games": 21
-    },
-    "WR2": {
-      "adjustment_factor": 0.8079131775128928,
-      "yards_per_game": 36.42857142857143,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "TE": {
-      "adjustment_factor": 0.9408118237309138,
-      "yards_per_game": 39.0,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "TE2": {
-      "adjustment_factor": 0.6528720219964874,
-      "yards_per_game": 9.76923076923077,
-      "confidence": 0.8125,
-      "games": 13
-    },
-    "RB_recv": {
-      "adjustment_factor": 0.694391802422147,
-      "yards_per_game": 26.153846153846153,
-      "confidence": 0.8125,
-      "games": 13
-    },
-    "FB": {
-      "adjustment_factor": 0.5545927209705372,
-      "yards_per_game": 4.0,
-      "confidence": 0.0625,
-      "games": 1
+      "adjustment_factor": 2.0249008048059935,
+      "yards_per_game": 20.666666666666668,
+      "confidence": 0.375,
+      "games": 6
     }
   },
   "CHI": {
     "QB": {
-      "adjustment_factor": 0.5024983652691505,
-      "yards_per_game": 8.066666666666666,
-      "confidence": 0.9375,
-      "games": 15
+      "adjustment_factor": 0.6030143905661598,
+      "yards_per_game": 10.541666666666666,
+      "confidence": 1.0,
+      "games": 72
     },
     "RB_rush": {
-      "adjustment_factor": 1.1132126453121596,
-      "yards_per_game": 66.58823529411765,
+      "adjustment_factor": 1.1707935060409145,
+      "yards_per_game": 71.8141592920354,
       "confidence": 1.0,
-      "games": 17
+      "games": 113
     },
-    "WR1": {
-      "adjustment_factor": 0.735330278430112,
-      "yards_per_game": 55.266666666666666,
-      "confidence": 0.9375,
-      "games": 15
+    "RB_recv": {
+      "adjustment_factor": 0.867929353330074,
+      "yards_per_game": 33.7,
+      "confidence": 1.0,
+      "games": 50
     },
     "Slot": {
-      "adjustment_factor": 1.0374746043861225,
-      "yards_per_game": 21.142857142857142,
+      "adjustment_factor": 0.9635064042672113,
+      "yards_per_game": 20.482758620689655,
       "confidence": 1.0,
-      "games": 28
+      "games": 116
+    },
+    "TE": {
+      "adjustment_factor": 0.893521257937995,
+      "yards_per_game": 36.46268656716418,
+      "confidence": 1.0,
+      "games": 67
+    },
+    "WR1": {
+      "adjustment_factor": 0.9458402659110405,
+      "yards_per_game": 70.85915492957747,
+      "confidence": 1.0,
+      "games": 71
     },
     "WR2": {
-      "adjustment_factor": 0.8633581994990718,
-      "yards_per_game": 38.92857142857143,
-      "confidence": 0.875,
-      "games": 14
+      "adjustment_factor": 0.9060589028928441,
+      "yards_per_game": 42.3125,
+      "confidence": 1.0,
+      "games": 64
     },
     "TE2": {
-      "adjustment_factor": 0.7145607169882814,
-      "yards_per_game": 10.692307692307692,
-      "confidence": 0.8125,
-      "games": 13
-    },
-    "RB_recv": {
-      "adjustment_factor": 0.949909831679447,
-      "yards_per_game": 35.77777777777778,
+      "adjustment_factor": 0.9582198236842098,
+      "yards_per_game": 13.88135593220339,
       "confidence": 1.0,
-      "games": 18
-    },
-    "TE": {
-      "adjustment_factor": 0.9797803608085256,
-      "yards_per_game": 40.61538461538461,
-      "confidence": 0.8125,
-      "games": 13
-    }
-  },
-  "GB": {
-    "Slot": {
-      "adjustment_factor": 0.8624951297898145,
-      "yards_per_game": 17.576923076923077,
-      "confidence": 1.0,
-      "games": 26
-    },
-    "QB": {
-      "adjustment_factor": 1.3470901424312456,
-      "yards_per_game": 21.625,
-      "confidence": 1.0,
-      "games": 16
-    },
-    "WR2": {
-      "adjustment_factor": 1.0714750498829075,
-      "yards_per_game": 48.3125,
-      "confidence": 1.0,
-      "games": 16
-    },
-    "RB_rush": {
-      "adjustment_factor": 1.0828612404708906,
-      "yards_per_game": 64.77272727272727,
-      "confidence": 1.0,
-      "games": 22
-    },
-    "WR1": {
-      "adjustment_factor": 1.0831942510614576,
-      "yards_per_game": 81.41176470588235,
-      "confidence": 1.0,
-      "games": 17
-    },
-    "TE": {
-      "adjustment_factor": 1.1196086409105446,
-      "yards_per_game": 46.411764705882355,
-      "confidence": 1.0,
-      "games": 17
-    },
-    "RB_recv": {
-      "adjustment_factor": 1.154936953734483,
-      "yards_per_game": 43.5,
-      "confidence": 0.75,
-      "games": 12
+      "games": 59
     },
     "FB": {
-      "adjustment_factor": -0.2772963604852686,
-      "yards_per_game": -2.0,
-      "confidence": 0.0625,
-      "games": 1
-    },
-    "TE2": {
-      "adjustment_factor": 1.0024412936166538,
-      "yards_per_game": 15.0,
-      "confidence": 0.5625,
-      "games": 9
-    }
-  },
-  "DET": {
-    "QB": {
-      "adjustment_factor": 0.9270691765660799,
-      "yards_per_game": 14.882352941176471,
-      "confidence": 1.0,
-      "games": 17
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.7748084071493472,
-      "yards_per_game": 46.34615384615385,
-      "confidence": 1.0,
-      "games": 26
-    },
-    "Slot": {
-      "adjustment_factor": 1.002424786670375,
-      "yards_per_game": 20.428571428571427,
-      "confidence": 1.0,
-      "games": 28
-    },
-    "WR1": {
-      "adjustment_factor": 1.4184748736503667,
-      "yards_per_game": 106.61111111111111,
-      "confidence": 1.0,
-      "games": 18
-    },
-    "TE2": {
-      "adjustment_factor": 1.397848692765445,
-      "yards_per_game": 20.916666666666668,
-      "confidence": 0.75,
-      "games": 12
-    },
-    "WR2": {
-      "adjustment_factor": 1.2239488603448996,
-      "yards_per_game": 55.1875,
-      "confidence": 1.0,
-      "games": 16
-    },
-    "FB": {
-      "adjustment_factor": 2.5649913344887345,
-      "yards_per_game": 18.5,
-      "confidence": 0.125,
-      "games": 2
-    },
-    "TE": {
-      "adjustment_factor": 0.7790432748541052,
-      "yards_per_game": 32.294117647058826,
-      "confidence": 1.0,
-      "games": 17
-    },
-    "RB_recv": {
-      "adjustment_factor": 1.3806142895216806,
-      "yards_per_game": 52.0,
+      "adjustment_factor": 1.1267593188033351,
+      "yards_per_game": 11.5,
       "confidence": 0.5,
       "games": 8
     }
   },
-  "PIT": {
-    "WR2": {
-      "adjustment_factor": 0.7192011423350065,
-      "yards_per_game": 32.42857142857143,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "TE": {
-      "adjustment_factor": 1.1209330617785418,
-      "yards_per_game": 46.46666666666667,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "FB": {
-      "adjustment_factor": 0.0,
-      "yards_per_game": 0.0,
-      "confidence": 0.0625,
-      "games": 1
-    },
+  "KC": {
     "RB_rush": {
-      "adjustment_factor": 1.112827835287278,
-      "yards_per_game": 66.56521739130434,
+      "adjustment_factor": 0.9140087843539314,
+      "yards_per_game": 56.06349206349206,
       "confidence": 1.0,
-      "games": 23
-    },
-    "WR1": {
-      "adjustment_factor": 1.1450728966355521,
-      "yards_per_game": 86.0625,
-      "confidence": 1.0,
-      "games": 16
+      "games": 126
     },
     "Slot": {
-      "adjustment_factor": 1.1825808497293169,
-      "yards_per_game": 24.1,
+      "adjustment_factor": 0.7913767198447466,
+      "yards_per_game": 16.823529411764707,
       "confidence": 1.0,
-      "games": 20
-    },
-    "QB": {
-      "adjustment_factor": 1.2302904190990567,
-      "yards_per_game": 19.75,
-      "confidence": 0.75,
-      "games": 12
-    },
-    "RB_recv": {
-      "adjustment_factor": 0.6637568699623465,
-      "yards_per_game": 25.0,
-      "confidence": 0.5625,
-      "games": 9
+      "games": 153
     },
     "TE2": {
-      "adjustment_factor": 0.771108687397426,
-      "yards_per_game": 11.538461538461538,
-      "confidence": 0.8125,
-      "games": 13
+      "adjustment_factor": 0.9025902257925286,
+      "yards_per_game": 13.075471698113208,
+      "confidence": 1.0,
+      "games": 53
+    },
+    "TE": {
+      "adjustment_factor": 0.9344409172607329,
+      "yards_per_game": 38.13253012048193,
+      "confidence": 1.0,
+      "games": 83
+    },
+    "QB": {
+      "adjustment_factor": 1.3360973848569233,
+      "yards_per_game": 23.357142857142858,
+      "confidence": 1.0,
+      "games": 84
+    },
+    "WR1": {
+      "adjustment_factor": 0.9442654690180624,
+      "yards_per_game": 70.74117647058823,
+      "confidence": 1.0,
+      "games": 85
+    },
+    "RB_recv": {
+      "adjustment_factor": 1.0160363266090764,
+      "yards_per_game": 39.45070422535211,
+      "confidence": 1.0,
+      "games": 71
+    },
+    "WR2": {
+      "adjustment_factor": 1.0015556782346715,
+      "yards_per_game": 46.77215189873418,
+      "confidence": 1.0,
+      "games": 79
+    },
+    "FB": {
+      "adjustment_factor": 1.3325153683239441,
+      "yards_per_game": 13.6,
+      "confidence": 0.625,
+      "games": 10
     }
   },
   "LA": {
-    "TE2": {
-      "adjustment_factor": 1.6540281344674788,
-      "yards_per_game": 24.75,
-      "confidence": 0.75,
-      "games": 12
-    },
-    "WR2": {
-      "adjustment_factor": 0.9299978354481743,
-      "yards_per_game": 41.93333333333333,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.8573872759136937,
-      "yards_per_game": 51.285714285714285,
-      "confidence": 1.0,
-      "games": 21
-    },
     "WR1": {
-      "adjustment_factor": 1.2932588009060353,
-      "yards_per_game": 97.2,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "TE": {
-      "adjustment_factor": 0.987335485343981,
-      "yards_per_game": 40.92857142857143,
-      "confidence": 0.875,
-      "games": 14
+      "adjustment_factor": 1.0314800765111454,
+      "yards_per_game": 77.275,
+      "confidence": 1.0,
+      "games": 80
     },
     "Slot": {
-      "adjustment_factor": 1.1376911202252227,
-      "yards_per_game": 23.185185185185187,
+      "adjustment_factor": 1.0799406586492746,
+      "yards_per_game": 22.95798319327731,
       "confidence": 1.0,
-      "games": 27
+      "games": 119
+    },
+    "WR2": {
+      "adjustment_factor": 0.9674210596274782,
+      "yards_per_game": 45.178082191780824,
+      "confidence": 1.0,
+      "games": 73
     },
     "QB": {
-      "adjustment_factor": 1.2715138508633586,
-      "yards_per_game": 20.41176470588235,
+      "adjustment_factor": 0.9111119855175542,
+      "yards_per_game": 15.927710843373495,
       "confidence": 1.0,
-      "games": 17
+      "games": 83
+    },
+    "RB_rush": {
+      "adjustment_factor": 1.0198843881038764,
+      "yards_per_game": 62.55769230769231,
+      "confidence": 1.0,
+      "games": 104
     },
     "RB_recv": {
-      "adjustment_factor": 0.8177484637936109,
-      "yards_per_game": 30.8,
-      "confidence": 0.625,
-      "games": 10
+      "adjustment_factor": 0.9381344312563222,
+      "yards_per_game": 36.425925925925924,
+      "confidence": 1.0,
+      "games": 54
+    },
+    "TE": {
+      "adjustment_factor": 0.9989800507185308,
+      "yards_per_game": 40.76623376623377,
+      "confidence": 1.0,
+      "games": 77
+    },
+    "TE2": {
+      "adjustment_factor": 1.1889939034706065,
+      "yards_per_game": 17.224489795918366,
+      "confidence": 1.0,
+      "games": 49
+    },
+    "FB": {
+      "adjustment_factor": 1.284614489070469,
+      "yards_per_game": 13.11111111111111,
+      "confidence": 0.5625,
+      "games": 9
+    }
+  },
+  "LAC": {
+    "QB": {
+      "adjustment_factor": 0.947474150160847,
+      "yards_per_game": 16.56338028169014,
+      "confidence": 1.0,
+      "games": 71
+    },
+    "WR1": {
+      "adjustment_factor": 0.9182039075153093,
+      "yards_per_game": 68.78873239436619,
+      "confidence": 1.0,
+      "games": 71
+    },
+    "WR2": {
+      "adjustment_factor": 1.1010376491424758,
+      "yards_per_game": 51.417910447761194,
+      "confidence": 1.0,
+      "games": 67
+    },
+    "Slot": {
+      "adjustment_factor": 1.049250544153131,
+      "yards_per_game": 22.305555555555557,
+      "confidence": 1.0,
+      "games": 108
+    },
+    "RB_recv": {
+      "adjustment_factor": 0.8348776420509365,
+      "yards_per_game": 32.416666666666664,
+      "confidence": 1.0,
+      "games": 48
+    },
+    "TE2": {
+      "adjustment_factor": 0.9497474998673733,
+      "yards_per_game": 13.758620689655173,
+      "confidence": 1.0,
+      "games": 58
+    },
+    "TE": {
+      "adjustment_factor": 1.0859044677928396,
+      "yards_per_game": 44.3134328358209,
+      "confidence": 1.0,
+      "games": 67
+    },
+    "RB_rush": {
+      "adjustment_factor": 1.0881237982206502,
+      "yards_per_game": 66.7433628318584,
+      "confidence": 1.0,
+      "games": 113
+    },
+    "FB": {
+      "adjustment_factor": 0.6769463101110946,
+      "yards_per_game": 6.909090909090909,
+      "confidence": 0.6875,
+      "games": 11
     }
   },
   "ATL": {
     "TE": {
-      "adjustment_factor": 1.2688897930319505,
-      "yards_per_game": 52.6,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "WR1": {
-      "adjustment_factor": 0.9872407718850599,
-      "yards_per_game": 74.2,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "WR2": {
-      "adjustment_factor": 0.8235433932347108,
-      "yards_per_game": 37.13333333333333,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.9598836656758925,
-      "yards_per_game": 57.416666666666664,
+      "adjustment_factor": 1.075663536469768,
+      "yards_per_game": 43.8955223880597,
       "confidence": 1.0,
-      "games": 24
-    },
-    "QB": {
-      "adjustment_factor": 1.1212773439890136,
-      "yards_per_game": 18.0,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "Slot": {
-      "adjustment_factor": 0.8709879702363225,
-      "yards_per_game": 17.75,
-      "confidence": 1.0,
-      "games": 16
+      "games": 67
     },
     "TE2": {
-      "adjustment_factor": 1.5905401858717574,
-      "yards_per_game": 23.8,
-      "confidence": 0.625,
-      "games": 10
+      "adjustment_factor": 1.2885463156095358,
+      "yards_per_game": 18.666666666666668,
+      "confidence": 1.0,
+      "games": 51
+    },
+    "RB_rush": {
+      "adjustment_factor": 0.9320193457818474,
+      "yards_per_game": 57.16822429906542,
+      "confidence": 1.0,
+      "games": 107
+    },
+    "WR1": {
+      "adjustment_factor": 1.0669004072800956,
+      "yards_per_game": 79.92857142857143,
+      "confidence": 1.0,
+      "games": 70
     },
     "RB_recv": {
-      "adjustment_factor": 0.6425166501235514,
-      "yards_per_game": 24.2,
-      "confidence": 0.3125,
-      "games": 5
-    }
-  },
-  "NYJ": {
-    "TE": {
-      "adjustment_factor": 0.8523594300468108,
-      "yards_per_game": 35.333333333333336,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.9338941224532981,
-      "yards_per_game": 55.86206896551724,
+      "adjustment_factor": 1.2453770345177981,
+      "yards_per_game": 48.355555555555554,
       "confidence": 1.0,
-      "games": 29
+      "games": 45
     },
     "QB": {
-      "adjustment_factor": 0.8904261261089226,
-      "yards_per_game": 14.294117647058824,
+      "adjustment_factor": 1.0943172305170386,
+      "yards_per_game": 19.130434782608695,
       "confidence": 1.0,
-      "games": 17
-    },
-    "WR2": {
-      "adjustment_factor": 0.9365943713972993,
-      "yards_per_game": 42.23076923076923,
-      "confidence": 0.8125,
-      "games": 13
+      "games": 69
     },
     "Slot": {
-      "adjustment_factor": 0.4626575938478655,
-      "yards_per_game": 9.428571428571429,
+      "adjustment_factor": 1.0394161843304988,
+      "yards_per_game": 22.096491228070175,
       "confidence": 1.0,
-      "games": 21
-    },
-    "TE2": {
-      "adjustment_factor": 0.7898022313343332,
-      "yards_per_game": 11.818181818181818,
-      "confidence": 0.6875,
-      "games": 11
-    },
-    "WR1": {
-      "adjustment_factor": 0.6288892248575988,
-      "yards_per_game": 47.266666666666666,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "FB": {
-      "adjustment_factor": 1.802426343154246,
-      "yards_per_game": 13.0,
-      "confidence": 0.125,
-      "games": 2
-    },
-    "RB_recv": {
-      "adjustment_factor": 1.255448708328781,
-      "yards_per_game": 47.285714285714285,
-      "confidence": 0.4375,
-      "games": 7
-    }
-  },
-  "IND": {
-    "QB": {
-      "adjustment_factor": 1.2314883649793869,
-      "yards_per_game": 19.76923076923077,
-      "confidence": 0.8125,
-      "games": 13
-    },
-    "TE": {
-      "adjustment_factor": 0.9267398520084428,
-      "yards_per_game": 38.416666666666664,
-      "confidence": 0.75,
-      "games": 12
-    },
-    "Slot": {
-      "adjustment_factor": 1.223472303731022,
-      "yards_per_game": 24.933333333333334,
-      "confidence": 0.9375,
-      "games": 15
+      "games": 114
     },
     "WR2": {
-      "adjustment_factor": 0.7318742902175617,
-      "yards_per_game": 33.0,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "RB_rush": {
-      "adjustment_factor": 1.1563184942104365,
-      "yards_per_game": 69.16666666666667,
+      "adjustment_factor": 1.0817064168102564,
+      "yards_per_game": 50.515151515151516,
       "confidence": 1.0,
-      "games": 24
-    },
-    "WR1": {
-      "adjustment_factor": 1.0606090695261134,
-      "yards_per_game": 79.71428571428571,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "TE2": {
-      "adjustment_factor": 1.6317516612759977,
-      "yards_per_game": 24.416666666666668,
-      "confidence": 0.75,
-      "games": 12
-    },
-    "RB_recv": {
-      "adjustment_factor": 1.1848060128827884,
-      "yards_per_game": 44.625,
-      "confidence": 0.5,
-      "games": 8
+      "games": 66
     },
     "FB": {
-      "adjustment_factor": 1.2478336221837087,
-      "yards_per_game": 9.0,
-      "confidence": 0.0625,
-      "games": 1
-    }
-  },
-  "LV": {
-    "WR2": {
-      "adjustment_factor": 0.7397950076441586,
-      "yards_per_game": 33.357142857142854,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "TE": {
-      "adjustment_factor": 0.981636005431269,
-      "yards_per_game": 40.69230769230769,
-      "confidence": 0.8125,
-      "games": 13
-    },
-    "TE2": {
-      "adjustment_factor": 0.850556249129282,
-      "yards_per_game": 12.727272727272727,
-      "confidence": 0.6875,
-      "games": 11
-    },
-    "QB": {
-      "adjustment_factor": 1.2345376817656815,
-      "yards_per_game": 19.818181818181817,
-      "confidence": 0.6875,
-      "games": 11
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.977994678235815,
-      "yards_per_game": 58.5,
-      "confidence": 1.0,
-      "games": 20
-    },
-    "WR1": {
-      "adjustment_factor": 1.0326829139871712,
-      "yards_per_game": 77.61538461538461,
-      "confidence": 0.8125,
-      "games": 13
-    },
-    "Slot": {
-      "adjustment_factor": 0.943648938500891,
-      "yards_per_game": 19.23076923076923,
-      "confidence": 1.0,
-      "games": 26
-    },
-    "FB": {
-      "adjustment_factor": 1.386481802426343,
+      "adjustment_factor": 0.9797907120029,
       "yards_per_game": 10.0,
-      "confidence": 0.125,
-      "games": 2
-    },
-    "RB_recv": {
-      "adjustment_factor": 0.8737454070049797,
-      "yards_per_game": 32.90909090909091,
-      "confidence": 0.6875,
-      "games": 11
-    }
-  },
-  "LAC": {
-    "WR1": {
-      "adjustment_factor": 0.9170306153939598,
-      "yards_per_game": 68.92307692307692,
-      "confidence": 0.8125,
-      "games": 13
-    },
-    "RB_recv": {
-      "adjustment_factor": 0.7788080607558199,
-      "yards_per_game": 29.333333333333332,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "TE": {
-      "adjustment_factor": 1.1189537075142821,
-      "yards_per_game": 46.38461538461539,
-      "confidence": 0.8125,
-      "games": 13
-    },
-    "WR2": {
-      "adjustment_factor": 1.2815720796233927,
-      "yards_per_game": 57.785714285714285,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "Slot": {
-      "adjustment_factor": 1.3494179820562744,
-      "yards_per_game": 27.5,
-      "confidence": 1.0,
-      "games": 22
-    },
-    "RB_rush": {
-      "adjustment_factor": 1.052428949635936,
-      "yards_per_game": 62.95238095238095,
-      "confidence": 1.0,
-      "games": 21
-    },
-    "QB": {
-      "adjustment_factor": 0.8201936127327044,
-      "yards_per_game": 13.166666666666666,
-      "confidence": 0.75,
-      "games": 12
-    },
-    "TE2": {
-      "adjustment_factor": 0.7518309702124903,
-      "yards_per_game": 11.25,
-      "confidence": 0.75,
-      "games": 12
-    },
-    "FB": {
-      "adjustment_factor": 0.0,
-      "yards_per_game": 0.0,
-      "confidence": 0.0625,
-      "games": 1
-    }
-  },
-  "BUF": {
-    "RB_recv": {
-      "adjustment_factor": 1.2857918795270598,
-      "yards_per_game": 48.42857142857143,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "Slot": {
-      "adjustment_factor": 0.7589453862716501,
-      "yards_per_game": 15.466666666666667,
-      "confidence": 1.0,
-      "games": 30
-    },
-    "WR1": {
-      "adjustment_factor": 0.7991394725248842,
-      "yards_per_game": 60.0625,
-      "confidence": 1.0,
-      "games": 16
-    },
-    "TE": {
-      "adjustment_factor": 1.0067490626590634,
-      "yards_per_game": 41.733333333333334,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "FB": {
-      "adjustment_factor": 3.188908145580589,
-      "yards_per_game": 23.0,
-      "confidence": 0.0625,
-      "games": 1
-    },
-    "QB": {
-      "adjustment_factor": 1.3301427315948102,
-      "yards_per_game": 21.352941176470587,
-      "confidence": 1.0,
-      "games": 17
-    },
-    "WR2": {
-      "adjustment_factor": 1.078894898413411,
-      "yards_per_game": 48.64705882352941,
-      "confidence": 1.0,
-      "games": 17
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.932219591545901,
-      "yards_per_game": 55.76190476190476,
-      "confidence": 1.0,
-      "games": 21
-    },
-    "TE2": {
-      "adjustment_factor": 1.2697589719144282,
-      "yards_per_game": 19.0,
-      "confidence": 0.625,
-      "games": 10
-    }
-  },
-  "CAR": {
-    "QB": {
-      "adjustment_factor": 0.23085121788009105,
-      "yards_per_game": 3.7058823529411766,
-      "confidence": 1.0,
-      "games": 17
-    },
-    "RB_rush": {
-      "adjustment_factor": 1.0518876094802987,
-      "yards_per_game": 62.92,
-      "confidence": 1.0,
-      "games": 25
-    },
-    "TE": {
-      "adjustment_factor": 0.7700925184385192,
-      "yards_per_game": 31.923076923076923,
-      "confidence": 0.8125,
-      "games": 13
-    },
-    "WR1": {
-      "adjustment_factor": 0.9104511546648897,
-      "yards_per_game": 68.42857142857143,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "WR2": {
-      "adjustment_factor": 0.7461315815854364,
-      "yards_per_game": 33.642857142857146,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "Slot": {
-      "adjustment_factor": 0.8171179243123368,
-      "yards_per_game": 16.652173913043477,
-      "confidence": 1.0,
-      "games": 23
-    },
-    "TE2": {
-      "adjustment_factor": 1.5593531234036835,
-      "yards_per_game": 23.333333333333332,
-      "confidence": 0.375,
-      "games": 6
-    },
-    "RB_recv": {
-      "adjustment_factor": 0.28067433358407795,
-      "yards_per_game": 10.571428571428571,
       "confidence": 0.4375,
       "games": 7
     }
   },
-  "DAL": {
-    "WR2": {
-      "adjustment_factor": 0.9397931226657327,
-      "yards_per_game": 42.375,
+  "PHI": {
+    "Slot": {
+      "adjustment_factor": 0.8838544925906823,
+      "yards_per_game": 18.789473684210527,
       "confidence": 1.0,
-      "games": 16
+      "games": 133
     },
     "RB_recv": {
-      "adjustment_factor": 0.557555770768371,
-      "yards_per_game": 21.0,
-      "confidence": 0.3125,
-      "games": 5
-    },
-    "TE": {
-      "adjustment_factor": 0.799287993836349,
-      "yards_per_game": 33.13333333333333,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "Slot": {
-      "adjustment_factor": 1.2349219108514995,
-      "yards_per_game": 25.166666666666668,
+      "adjustment_factor": 0.9462232771913032,
+      "yards_per_game": 36.74,
       "confidence": 1.0,
-      "games": 24
+      "games": 50
     },
     "WR1": {
-      "adjustment_factor": 0.9668395699503283,
-      "yards_per_game": 72.66666666666667,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "TE2": {
-      "adjustment_factor": 0.5903265395742517,
-      "yards_per_game": 8.833333333333334,
-      "confidence": 0.375,
-      "games": 6
+      "adjustment_factor": 0.9655178544286358,
+      "yards_per_game": 72.33333333333333,
+      "confidence": 1.0,
+      "games": 78
     },
     "RB_rush": {
-      "adjustment_factor": 0.9188629962025637,
-      "yards_per_game": 54.96296296296296,
+      "adjustment_factor": 0.9083156379055207,
+      "yards_per_game": 55.714285714285715,
       "confidence": 1.0,
-      "games": 27
+      "games": 126
+    },
+    "TE2": {
+      "adjustment_factor": 1.1539609524562486,
+      "yards_per_game": 16.71698113207547,
+      "confidence": 1.0,
+      "games": 53
     },
     "QB": {
-      "adjustment_factor": 0.9270691765660799,
-      "yards_per_game": 14.882352941176471,
+      "adjustment_factor": 1.1328973723467968,
+      "yards_per_game": 19.804878048780488,
       "confidence": 1.0,
-      "games": 17
+      "games": 82
     },
     "FB": {
-      "adjustment_factor": 2.634315424610052,
-      "yards_per_game": 19.0,
-      "confidence": 0.125,
-      "games": 2
-    }
-  },
-  "TB": {
-    "QB": {
-      "adjustment_factor": 0.762175449508872,
-      "yards_per_game": 12.235294117647058,
-      "confidence": 1.0,
-      "games": 17
+      "adjustment_factor": 0.76983555943085,
+      "yards_per_game": 7.857142857142857,
+      "confidence": 0.4375,
+      "games": 7
     },
     "WR2": {
-      "adjustment_factor": 0.9980103957512205,
-      "yards_per_game": 45.0,
-      "confidence": 0.9375,
-      "games": 15
+      "adjustment_factor": 0.9142138791335537,
+      "yards_per_game": 42.693333333333335,
+      "confidence": 1.0,
+      "games": 75
     },
     "TE": {
-      "adjustment_factor": 1.2845699900941323,
-      "yards_per_game": 53.25,
+      "adjustment_factor": 0.9651503025849277,
+      "yards_per_game": 39.385714285714286,
       "confidence": 1.0,
-      "games": 16
-    },
-    "Slot": {
-      "adjustment_factor": 1.1397563451748036,
-      "yards_per_game": 23.227272727272727,
-      "confidence": 1.0,
-      "games": 22
-    },
-    "WR1": {
-      "adjustment_factor": 1.1630250412408427,
-      "yards_per_game": 87.41176470588235,
-      "confidence": 1.0,
-      "games": 17
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.839928232354602,
-      "yards_per_game": 50.241379310344826,
-      "confidence": 1.0,
-      "games": 29
-    },
-    "TE2": {
-      "adjustment_factor": 1.2363442621272063,
-      "yards_per_game": 18.5,
-      "confidence": 0.625,
-      "games": 10
-    },
-    "RB_recv": {
-      "adjustment_factor": 1.0301506621815617,
-      "yards_per_game": 38.8,
-      "confidence": 0.3125,
-      "games": 5
-    }
-  },
-  "SEA": {
-    "TE": {
-      "adjustment_factor": 1.0911190381731308,
-      "yards_per_game": 45.23076923076923,
-      "confidence": 0.8125,
-      "games": 13
-    },
-    "Slot": {
-      "adjustment_factor": 0.5574323009512464,
-      "yards_per_game": 11.36,
-      "confidence": 1.0,
-      "games": 25
-    },
-    "RB_rush": {
-      "adjustment_factor": 1.3541464775572822,
-      "yards_per_game": 81.0,
-      "confidence": 1.0,
-      "games": 20
-    },
-    "WR2": {
-      "adjustment_factor": 0.9348883707208014,
-      "yards_per_game": 42.15384615384615,
-      "confidence": 0.8125,
-      "games": 13
-    },
-    "QB": {
-      "adjustment_factor": 1.7681681193672907,
-      "yards_per_game": 28.384615384615383,
-      "confidence": 0.8125,
-      "games": 13
-    },
-    "RB_recv": {
-      "adjustment_factor": 1.1336967338956878,
-      "yards_per_game": 42.7,
-      "confidence": 0.625,
-      "games": 10
-    },
-    "TE2": {
-      "adjustment_factor": 0.801953034893323,
-      "yards_per_game": 12.0,
-      "confidence": 0.5625,
-      "games": 9
-    },
-    "WR1": {
-      "adjustment_factor": 1.1603975572503447,
-      "yards_per_game": 87.21428571428571,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "FB": {
-      "adjustment_factor": 0.0,
-      "yards_per_game": 0.0,
-      "confidence": 0.0625,
-      "games": 1
-    }
-  },
-  "KC": {
-    "WR2": {
-      "adjustment_factor": 0.9119075380785662,
-      "yards_per_game": 41.11764705882353,
-      "confidence": 1.0,
-      "games": 17
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.9337233142004489,
-      "yards_per_game": 55.851851851851855,
-      "confidence": 1.0,
-      "games": 27
-    },
-    "TE": {
-      "adjustment_factor": 0.689024043982416,
-      "yards_per_game": 28.5625,
-      "confidence": 1.0,
-      "games": 16
-    },
-    "Slot": {
-      "adjustment_factor": 0.8524115668469763,
-      "yards_per_game": 17.37142857142857,
-      "confidence": 1.0,
-      "games": 35
-    },
-    "RB_recv": {
-      "adjustment_factor": 0.8997593126156251,
-      "yards_per_game": 33.888888888888886,
-      "confidence": 1.0,
-      "games": 18
-    },
-    "QB": {
-      "adjustment_factor": 1.6163442414812388,
-      "yards_per_game": 25.94736842105263,
-      "confidence": 1.0,
-      "games": 19
-    },
-    "WR1": {
-      "adjustment_factor": 0.7478884553647638,
-      "yards_per_game": 56.21052631578947,
-      "confidence": 1.0,
-      "games": 19
-    },
-    "TE2": {
-      "adjustment_factor": 0.6014647761699923,
-      "yards_per_game": 9.0,
-      "confidence": 0.5625,
-      "games": 9
-    },
-    "FB": {
-      "adjustment_factor": 0.2772963604852686,
-      "yards_per_game": 2.0,
-      "confidence": 0.0625,
-      "games": 1
+      "games": 70
     }
   },
   "WAS": {
-    "TE": {
-      "adjustment_factor": 0.9356425279961286,
-      "yards_per_game": 38.785714285714285,
-      "confidence": 0.875,
-      "games": 14
-    },
     "WR1": {
-      "adjustment_factor": 1.4014738720380904,
-      "yards_per_game": 105.33333333333333,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "RB_rush": {
-      "adjustment_factor": 1.0154281423228788,
-      "yards_per_game": 60.73913043478261,
+      "adjustment_factor": 1.051083066625431,
+      "yards_per_game": 78.74358974358974,
       "confidence": 1.0,
-      "games": 23
-    },
-    "QB": {
-      "adjustment_factor": 0.9382911107685843,
-      "yards_per_game": 15.0625,
-      "confidence": 1.0,
-      "games": 16
+      "games": 78
     },
     "WR2": {
-      "adjustment_factor": 1.330680527668294,
-      "yards_per_game": 60.0,
-      "confidence": 0.875,
-      "games": 14
+      "adjustment_factor": 0.8961404903462539,
+      "yards_per_game": 41.84931506849315,
+      "confidence": 1.0,
+      "games": 73
     },
-    "RB_recv": {
-      "adjustment_factor": 2.051956952283597,
-      "yards_per_game": 77.28571428571429,
-      "confidence": 0.4375,
-      "games": 7
+    "TE": {
+      "adjustment_factor": 0.9556983409709295,
+      "yards_per_game": 39.0,
+      "confidence": 1.0,
+      "games": 71
+    },
+    "RB_rush": {
+      "adjustment_factor": 0.9186443107111354,
+      "yards_per_game": 56.34782608695652,
+      "confidence": 1.0,
+      "games": 115
     },
     "Slot": {
-      "adjustment_factor": 0.7687593352320593,
-      "yards_per_game": 15.666666666666666,
+      "adjustment_factor": 1.222189183536453,
+      "yards_per_game": 25.98198198198198,
       "confidence": 1.0,
-      "games": 24
+      "games": 111
+    },
+    "QB": {
+      "adjustment_factor": 1.0972565123345432,
+      "yards_per_game": 19.181818181818183,
+      "confidence": 1.0,
+      "games": 77
+    },
+    "TE2": {
+      "adjustment_factor": 0.8032496512890612,
+      "yards_per_game": 11.636363636363637,
+      "confidence": 1.0,
+      "games": 44
+    },
+    "RB_recv": {
+      "adjustment_factor": 1.1732642099087713,
+      "yards_per_game": 45.55555555555556,
+      "confidence": 1.0,
+      "games": 45
     },
     "FB": {
-      "adjustment_factor": 1.386481802426343,
-      "yards_per_game": 10.0,
-      "confidence": 0.125,
-      "games": 2
+      "adjustment_factor": 1.0614399380031418,
+      "yards_per_game": 10.833333333333334,
+      "confidence": 0.375,
+      "games": 6
+    }
+  },
+  "SEA": {
+    "WR1": {
+      "adjustment_factor": 0.9803491578760803,
+      "yards_per_game": 73.44444444444444,
+      "confidence": 1.0,
+      "games": 72
+    },
+    "RB_recv": {
+      "adjustment_factor": 1.117982913987349,
+      "yards_per_game": 43.40909090909091,
+      "confidence": 1.0,
+      "games": 44
+    },
+    "QB": {
+      "adjustment_factor": 1.1364879446475917,
+      "yards_per_game": 19.86764705882353,
+      "confidence": 1.0,
+      "games": 68
+    },
+    "TE": {
+      "adjustment_factor": 1.2560712849668434,
+      "yards_per_game": 51.25757575757576,
+      "confidence": 1.0,
+      "games": 66
+    },
+    "WR2": {
+      "adjustment_factor": 0.9859259961492773,
+      "yards_per_game": 46.04225352112676,
+      "confidence": 1.0,
+      "games": 71
+    },
+    "Slot": {
+      "adjustment_factor": 0.8724154586711171,
+      "yards_per_game": 18.546296296296298,
+      "confidence": 1.0,
+      "games": 108
+    },
+    "RB_rush": {
+      "adjustment_factor": 1.153444409417203,
+      "yards_per_game": 70.75,
+      "confidence": 1.0,
+      "games": 112
     },
     "TE2": {
-      "adjustment_factor": 0.8888312803400997,
-      "yards_per_game": 13.3,
+      "adjustment_factor": 0.952249887085069,
+      "yards_per_game": 13.794871794871796,
+      "confidence": 1.0,
+      "games": 39
+    },
+    "FB": {
+      "adjustment_factor": 1.322717461203915,
+      "yards_per_game": 13.5,
       "confidence": 0.625,
       "games": 10
     }
   },
-  "HOU": {
-    "Slot": {
-      "adjustment_factor": 1.2127236929648595,
-      "yards_per_game": 24.714285714285715,
-      "confidence": 1.0,
-      "games": 21
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.9415497483460017,
-      "yards_per_game": 56.32,
-      "confidence": 1.0,
-      "games": 25
-    },
-    "TE": {
-      "adjustment_factor": 1.05539787918532,
-      "yards_per_game": 43.75,
-      "confidence": 1.0,
-      "games": 16
-    },
+  "TB": {
     "RB_recv": {
-      "adjustment_factor": 0.7411951714579537,
-      "yards_per_game": 27.916666666666668,
-      "confidence": 0.75,
-      "games": 12
-    },
-    "WR1": {
-      "adjustment_factor": 1.012853150400946,
-      "yards_per_game": 76.125,
+      "adjustment_factor": 0.9235988690309984,
+      "yards_per_game": 35.86153846153846,
       "confidence": 1.0,
-      "games": 16
-    },
-    "WR2": {
-      "adjustment_factor": 1.0298912833932734,
-      "yards_per_game": 46.4375,
-      "confidence": 1.0,
-      "games": 16
-    },
-    "QB": {
-      "adjustment_factor": 0.9783694472061001,
-      "yards_per_game": 15.705882352941176,
-      "confidence": 1.0,
-      "games": 17
-    },
-    "TE2": {
-      "adjustment_factor": 1.5245461340419943,
-      "yards_per_game": 22.8125,
-      "confidence": 1.0,
-      "games": 16
-    }
-  },
-  "NYG": {
-    "QB": {
-      "adjustment_factor": 0.6273813710414718,
-      "yards_per_game": 10.071428571428571,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "WR1": {
-      "adjustment_factor": 1.0216440409861758,
-      "yards_per_game": 76.78571428571429,
-      "confidence": 0.875,
-      "games": 14
+      "games": 65
     },
     "Slot": {
-      "adjustment_factor": 0.8905249982593595,
-      "yards_per_game": 18.14814814814815,
+      "adjustment_factor": 0.9886699382304488,
+      "yards_per_game": 21.01769911504425,
       "confidence": 1.0,
-      "games": 27
+      "games": 113
     },
     "TE": {
-      "adjustment_factor": 0.9132422464787258,
-      "yards_per_game": 37.857142857142854,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "TE2": {
-      "adjustment_factor": 0.6415624279146583,
-      "yards_per_game": 9.6,
-      "confidence": 0.625,
-      "games": 10
-    },
-    "RB_recv": {
-      "adjustment_factor": 1.3393138620573568,
-      "yards_per_game": 50.44444444444444,
-      "confidence": 0.5625,
-      "games": 9
-    },
-    "RB_rush": {
-      "adjustment_factor": 1.0554056282411024,
-      "yards_per_game": 63.130434782608695,
+      "adjustment_factor": 1.1517390262982998,
+      "yards_per_game": 47.0,
       "confidence": 1.0,
-      "games": 23
+      "games": 75
+    },
+    "WR1": {
+      "adjustment_factor": 1.0817289228885463,
+      "yards_per_game": 81.03947368421052,
+      "confidence": 1.0,
+      "games": 76
     },
     "WR2": {
-      "adjustment_factor": 1.4914710914282128,
-      "yards_per_game": 67.25,
-      "confidence": 0.75,
-      "games": 12
+      "adjustment_factor": 1.0132870259353473,
+      "yards_per_game": 47.32,
+      "confidence": 1.0,
+      "games": 75
+    },
+    "QB": {
+      "adjustment_factor": 0.9557077586915712,
+      "yards_per_game": 16.70731707317073,
+      "confidence": 1.0,
+      "games": 82
+    },
+    "RB_rush": {
+      "adjustment_factor": 0.8284939606350356,
+      "yards_per_game": 50.81818181818182,
+      "confidence": 1.0,
+      "games": 110
+    },
+    "TE2": {
+      "adjustment_factor": 1.1351479447036386,
+      "yards_per_game": 16.444444444444443,
+      "confidence": 1.0,
+      "games": 54
+    },
+    "FB": {
+      "adjustment_factor": 1.1879962383035163,
+      "yards_per_game": 12.125,
+      "confidence": 0.5,
+      "games": 8
     }
   },
   "ARI": {
     "RB_rush": {
-      "adjustment_factor": 1.3576293645880364,
-      "yards_per_game": 81.20833333333333,
+      "adjustment_factor": 1.0661926271055757,
+      "yards_per_game": 65.39814814814815,
       "confidence": 1.0,
-      "games": 24
-    },
-    "TE": {
-      "adjustment_factor": 0.8667185848656587,
-      "yards_per_game": 35.92857142857143,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "QB": {
-      "adjustment_factor": 1.0044776206568247,
-      "yards_per_game": 16.125,
-      "confidence": 1.0,
-      "games": 16
-    },
-    "Slot": {
-      "adjustment_factor": 1.3739528544572974,
-      "yards_per_game": 28.0,
-      "confidence": 1.0,
-      "games": 19
-    },
-    "WR1": {
-      "adjustment_factor": 0.8822325786490998,
-      "yards_per_game": 66.3076923076923,
-      "confidence": 0.8125,
-      "games": 13
+      "games": 108
     },
     "WR2": {
-      "adjustment_factor": 0.847882336219413,
-      "yards_per_game": 38.23076923076923,
-      "confidence": 0.8125,
-      "games": 13
+      "adjustment_factor": 0.9957279523667296,
+      "yards_per_game": 46.5,
+      "confidence": 1.0,
+      "games": 68
     },
-    "TE2": {
-      "adjustment_factor": 0.9547059939206227,
-      "yards_per_game": 14.285714285714286,
-      "confidence": 0.4375,
-      "games": 7
+    "QB": {
+      "adjustment_factor": 1.0795013121688046,
+      "yards_per_game": 18.87142857142857,
+      "confidence": 1.0,
+      "games": 70
+    },
+    "Slot": {
+      "adjustment_factor": 1.1557051631299156,
+      "yards_per_game": 24.568627450980394,
+      "confidence": 1.0,
+      "games": 102
+    },
+    "TE": {
+      "adjustment_factor": 0.8845169016556345,
+      "yards_per_game": 36.095238095238095,
+      "confidence": 1.0,
+      "games": 63
     },
     "RB_recv": {
-      "adjustment_factor": 0.5044552211713833,
-      "yards_per_game": 19.0,
+      "adjustment_factor": 1.1668805960087048,
+      "yards_per_game": 45.30769230769231,
+      "confidence": 1.0,
+      "games": 39
+    },
+    "TE2": {
+      "adjustment_factor": 0.9538589609057602,
+      "yards_per_game": 13.818181818181818,
+      "confidence": 1.0,
+      "games": 44
+    },
+    "WR1": {
+      "adjustment_factor": 0.8628640469959665,
+      "yards_per_game": 64.64285714285714,
+      "confidence": 1.0,
+      "games": 70
+    },
+    "FB": {
+      "adjustment_factor": 2.05756049520609,
+      "yards_per_game": 21.0,
       "confidence": 0.5,
       "games": 8
     },
-    "FB": {
-      "adjustment_factor": 0.0,
-      "yards_per_game": 0.0,
+    "CB": {
+      "adjustment_factor": 0.8888888888888888,
+      "yards_per_game": 12.0,
       "confidence": 0.0625,
       "games": 1
     }
   },
   "NO": {
-    "Slot": {
-      "adjustment_factor": 0.9068815798600416,
-      "yards_per_game": 18.48148148148148,
-      "confidence": 1.0,
-      "games": 27
-    },
-    "WR1": {
-      "adjustment_factor": 0.8266921827465191,
-      "yards_per_game": 62.13333333333333,
-      "confidence": 0.9375,
-      "games": 15
-    },
     "QB": {
-      "adjustment_factor": 1.441049030978473,
-      "yards_per_game": 23.133333333333333,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "RB_rush": {
-      "adjustment_factor": 1.0129501989808403,
-      "yards_per_game": 60.59090909090909,
+      "adjustment_factor": 1.1664762935981223,
+      "yards_per_game": 20.39189189189189,
       "confidence": 1.0,
-      "games": 22
-    },
-    "WR2": {
-      "adjustment_factor": 1.222958770666575,
-      "yards_per_game": 55.142857142857146,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "TE": {
-      "adjustment_factor": 1.0993368929309943,
-      "yards_per_game": 45.57142857142857,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "TE2": {
-      "adjustment_factor": 0.6925958028624153,
-      "yards_per_game": 10.363636363636363,
-      "confidence": 0.6875,
-      "games": 11
+      "games": 74
     },
     "RB_recv": {
-      "adjustment_factor": 0.9372247003868331,
-      "yards_per_game": 35.3,
+      "adjustment_factor": 0.8617053297775091,
+      "yards_per_game": 33.458333333333336,
+      "confidence": 1.0,
+      "games": 48
+    },
+    "RB_rush": {
+      "adjustment_factor": 0.9399531351640861,
+      "yards_per_game": 57.65486725663717,
+      "confidence": 1.0,
+      "games": 113
+    },
+    "WR2": {
+      "adjustment_factor": 1.041826468680004,
+      "yards_per_game": 48.65277777777778,
+      "confidence": 1.0,
+      "games": 72
+    },
+    "WR1": {
+      "adjustment_factor": 0.95357154425453,
+      "yards_per_game": 71.43835616438356,
+      "confidence": 1.0,
+      "games": 73
+    },
+    "TE2": {
+      "adjustment_factor": 0.9417564270972754,
+      "yards_per_game": 13.642857142857142,
+      "confidence": 1.0,
+      "games": 42
+    },
+    "Slot": {
+      "adjustment_factor": 0.97851050231346,
+      "yards_per_game": 20.801724137931036,
+      "confidence": 1.0,
+      "games": 116
+    },
+    "TE": {
+      "adjustment_factor": 0.8693978218865982,
+      "yards_per_game": 35.47826086956522,
+      "confidence": 1.0,
+      "games": 69
+    },
+    "FB": {
+      "adjustment_factor": 0.3674215170010875,
+      "yards_per_game": 3.75,
+      "confidence": 0.25,
+      "games": 4
+    }
+  },
+  "PIT": {
+    "Slot": {
+      "adjustment_factor": 0.9926284724470673,
+      "yards_per_game": 21.10185185185185,
+      "confidence": 1.0,
+      "games": 108
+    },
+    "TE2": {
+      "adjustment_factor": 0.9506662196931255,
+      "yards_per_game": 13.771929824561404,
+      "confidence": 1.0,
+      "games": 57
+    },
+    "WR2": {
+      "adjustment_factor": 0.9351583257711498,
+      "yards_per_game": 43.67142857142857,
+      "confidence": 1.0,
+      "games": 70
+    },
+    "RB_rush": {
+      "adjustment_factor": 1.0330363357743817,
+      "yards_per_game": 63.36440677966102,
+      "confidence": 1.0,
+      "games": 118
+    },
+    "WR1": {
+      "adjustment_factor": 1.0044970265876942,
+      "yards_per_game": 75.25352112676056,
+      "confidence": 1.0,
+      "games": 71
+    },
+    "QB": {
+      "adjustment_factor": 1.043159281704042,
+      "yards_per_game": 18.23611111111111,
+      "confidence": 1.0,
+      "games": 72
+    },
+    "TE": {
+      "adjustment_factor": 1.0183613457452139,
+      "yards_per_game": 41.55714285714286,
+      "confidence": 1.0,
+      "games": 70
+    },
+    "RB_recv": {
+      "adjustment_factor": 1.0179836707026169,
+      "yards_per_game": 39.526315789473685,
+      "confidence": 1.0,
+      "games": 38
+    },
+    "FB": {
+      "adjustment_factor": 0.6298654577161501,
+      "yards_per_game": 6.428571428571429,
+      "confidence": 0.4375,
+      "games": 7
+    }
+  },
+  "NYJ": {
+    "QB": {
+      "adjustment_factor": 1.0354562279665012,
+      "yards_per_game": 18.10144927536232,
+      "confidence": 1.0,
+      "games": 69
+    },
+    "Slot": {
+      "adjustment_factor": 0.9459291218385839,
+      "yards_per_game": 20.10909090909091,
+      "confidence": 1.0,
+      "games": 110
+    },
+    "TE": {
+      "adjustment_factor": 1.1420090658133015,
+      "yards_per_game": 46.60294117647059,
+      "confidence": 1.0,
+      "games": 68
+    },
+    "WR1": {
+      "adjustment_factor": 0.8577652106865501,
+      "yards_per_game": 64.26086956521739,
+      "confidence": 1.0,
+      "games": 69
+    },
+    "RB_recv": {
+      "adjustment_factor": 1.0016292175896673,
+      "yards_per_game": 38.891304347826086,
+      "confidence": 1.0,
+      "games": 46
+    },
+    "RB_rush": {
+      "adjustment_factor": 1.0164983593945245,
+      "yards_per_game": 62.35,
+      "confidence": 1.0,
+      "games": 120
+    },
+    "WR2": {
+      "adjustment_factor": 0.9365259109230404,
+      "yards_per_game": 43.73529411764706,
+      "confidence": 1.0,
+      "games": 68
+    },
+    "TE2": {
+      "adjustment_factor": 0.9761169773660405,
+      "yards_per_game": 14.140625,
+      "confidence": 1.0,
+      "games": 64
+    },
+    "FB": {
+      "adjustment_factor": 0.5062252012014984,
+      "yards_per_game": 5.166666666666667,
+      "confidence": 0.375,
+      "games": 6
+    }
+  },
+  "MIA": {
+    "RB_recv": {
+      "adjustment_factor": 0.9811664269960919,
+      "yards_per_game": 38.096774193548384,
+      "confidence": 1.0,
+      "games": 62
+    },
+    "TE2": {
+      "adjustment_factor": 0.831921682214654,
+      "yards_per_game": 12.051724137931034,
+      "confidence": 1.0,
+      "games": 58
+    },
+    "TE": {
+      "adjustment_factor": 1.1051793635330494,
+      "yards_per_game": 45.1,
+      "confidence": 1.0,
+      "games": 70
+    },
+    "WR1": {
+      "adjustment_factor": 1.0029167898785432,
+      "yards_per_game": 75.13513513513513,
+      "confidence": 1.0,
+      "games": 74
+    },
+    "WR2": {
+      "adjustment_factor": 0.9896763098324766,
+      "yards_per_game": 46.21739130434783,
+      "confidence": 1.0,
+      "games": 69
+    },
+    "QB": {
+      "adjustment_factor": 1.0396013689911867,
+      "yards_per_game": 18.17391304347826,
+      "confidence": 1.0,
+      "games": 69
+    },
+    "Slot": {
+      "adjustment_factor": 1.1068844422293265,
+      "yards_per_game": 23.53076923076923,
+      "confidence": 1.0,
+      "games": 130
+    },
+    "RB_rush": {
+      "adjustment_factor": 0.8598721372172262,
+      "yards_per_game": 52.74285714285714,
+      "confidence": 1.0,
+      "games": 105
+    },
+    "FB": {
+      "adjustment_factor": 1.0124504024029968,
+      "yards_per_game": 10.333333333333334,
+      "confidence": 0.375,
+      "games": 6
+    }
+  },
+  "BAL": {
+    "TE": {
+      "adjustment_factor": 0.9849683044052244,
+      "yards_per_game": 40.19444444444444,
+      "confidence": 1.0,
+      "games": 72
+    },
+    "WR1": {
+      "adjustment_factor": 0.9612374276108925,
+      "yards_per_game": 72.0126582278481,
+      "confidence": 1.0,
+      "games": 79
+    },
+    "Slot": {
+      "adjustment_factor": 0.9371225088852099,
+      "yards_per_game": 19.921875,
+      "confidence": 1.0,
+      "games": 128
+    },
+    "WR2": {
+      "adjustment_factor": 1.0735303515122303,
+      "yards_per_game": 50.13333333333333,
+      "confidence": 1.0,
+      "games": 75
+    },
+    "QB": {
+      "adjustment_factor": 0.6496620311689627,
+      "yards_per_game": 11.357142857142858,
+      "confidence": 1.0,
+      "games": 84
+    },
+    "RB_recv": {
+      "adjustment_factor": 0.9604943445824173,
+      "yards_per_game": 37.294117647058826,
+      "confidence": 1.0,
+      "games": 51
+    },
+    "RB_rush": {
+      "adjustment_factor": 0.9259083586735997,
+      "yards_per_game": 56.79338842975206,
+      "confidence": 1.0,
+      "games": 121
+    },
+    "TE2": {
+      "adjustment_factor": 0.8794839931938101,
+      "yards_per_game": 12.74074074074074,
+      "confidence": 1.0,
+      "games": 54
+    },
+    "FB": {
+      "adjustment_factor": 1.17574885440348,
+      "yards_per_game": 12.0,
+      "confidence": 0.375,
+      "games": 6
+    }
+  },
+  "BUF": {
+    "WR2": {
+      "adjustment_factor": 0.9104805204845093,
+      "yards_per_game": 42.51898734177215,
+      "confidence": 1.0,
+      "games": 79
+    },
+    "RB_rush": {
+      "adjustment_factor": 1.027528200865483,
+      "yards_per_game": 63.02654867256637,
+      "confidence": 1.0,
+      "games": 113
+    },
+    "QB": {
+      "adjustment_factor": 1.0787802666292166,
+      "yards_per_game": 18.858823529411765,
+      "confidence": 1.0,
+      "games": 85
+    },
+    "TE": {
+      "adjustment_factor": 0.9408091749966988,
+      "yards_per_game": 38.392405063291136,
+      "confidence": 1.0,
+      "games": 79
+    },
+    "WR1": {
+      "adjustment_factor": 0.9709940280092306,
+      "yards_per_game": 72.74358974358974,
+      "confidence": 1.0,
+      "games": 78
+    },
+    "Slot": {
+      "adjustment_factor": 0.8951723572417033,
+      "yards_per_game": 19.030075187969924,
+      "confidence": 1.0,
+      "games": 133
+    },
+    "TE2": {
+      "adjustment_factor": 1.0693481171834773,
+      "yards_per_game": 15.491228070175438,
+      "confidence": 1.0,
+      "games": 57
+    },
+    "RB_recv": {
+      "adjustment_factor": 1.1344681482696448,
+      "yards_per_game": 44.049180327868854,
+      "confidence": 1.0,
+      "games": 61
+    },
+    "FB": {
+      "adjustment_factor": 1.0091844333629871,
+      "yards_per_game": 10.3,
       "confidence": 0.625,
       "games": 10
     }
   },
-  "CIN": {
-    "QB": {
-      "adjustment_factor": 1.1524239368775973,
-      "yards_per_game": 18.5,
-      "confidence": 0.75,
-      "games": 12
-    },
+  "CAR": {
     "WR1": {
-      "adjustment_factor": 1.1718019558473998,
-      "yards_per_game": 88.07142857142857,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "Slot": {
-      "adjustment_factor": 1.0966021229674705,
-      "yards_per_game": 22.347826086956523,
+      "adjustment_factor": 1.0192974504076302,
+      "yards_per_game": 76.3623188405797,
       "confidence": 1.0,
-      "games": 23
-    },
-    "RB_rush": {
-      "adjustment_factor": 1.3719092014141292,
-      "yards_per_game": 82.0625,
-      "confidence": 1.0,
-      "games": 16
-    },
-    "WR2": {
-      "adjustment_factor": 1.3576109669187237,
-      "yards_per_game": 61.214285714285715,
-      "confidence": 0.875,
-      "games": 14
+      "games": 69
     },
     "TE": {
-      "adjustment_factor": 1.192384216157129,
-      "yards_per_game": 49.42857142857143,
-      "confidence": 0.875,
-      "games": 14
+      "adjustment_factor": 0.9723902109172816,
+      "yards_per_game": 39.68115942028985,
+      "confidence": 1.0,
+      "games": 69
+    },
+    "Slot": {
+      "adjustment_factor": 1.0687283739959428,
+      "yards_per_game": 22.7196261682243,
+      "confidence": 1.0,
+      "games": 107
     },
     "RB_recv": {
-      "adjustment_factor": 0.955809892745779,
-      "yards_per_game": 36.0,
-      "confidence": 0.8125,
-      "games": 13
+      "adjustment_factor": 0.9253887098843109,
+      "yards_per_game": 35.93103448275862,
+      "confidence": 1.0,
+      "games": 29
+    },
+    "RB_rush": {
+      "adjustment_factor": 1.0675322009641868,
+      "yards_per_game": 65.48031496062993,
+      "confidence": 1.0,
+      "games": 127
+    },
+    "WR2": {
+      "adjustment_factor": 0.906944268938166,
+      "yards_per_game": 42.353846153846156,
+      "confidence": 1.0,
+      "games": 65
+    },
+    "QB": {
+      "adjustment_factor": 0.8047063098977106,
+      "yards_per_game": 14.067567567567568,
+      "confidence": 1.0,
+      "games": 74
     },
     "TE2": {
-      "adjustment_factor": 0.708391847489102,
-      "yards_per_game": 10.6,
-      "confidence": 0.625,
-      "games": 10
+      "adjustment_factor": 0.9664097367071518,
+      "yards_per_game": 14.0,
+      "confidence": 1.0,
+      "games": 47
     },
     "FB": {
-      "adjustment_factor": 0.0,
-      "yards_per_game": 0.0,
+      "adjustment_factor": 1.2492331578036975,
+      "yards_per_game": 12.75,
+      "confidence": 0.5,
+      "games": 8
+    }
+  },
+  "NE": {
+    "QB": {
+      "adjustment_factor": 0.9191651482602488,
+      "yards_per_game": 16.068493150684933,
+      "confidence": 1.0,
+      "games": 73
+    },
+    "WR2": {
+      "adjustment_factor": 0.9478821535802907,
+      "yards_per_game": 44.265625,
+      "confidence": 1.0,
+      "games": 64
+    },
+    "TE": {
+      "adjustment_factor": 0.8734051428391044,
+      "yards_per_game": 35.64179104477612,
+      "confidence": 1.0,
+      "games": 67
+    },
+    "RB_rush": {
+      "adjustment_factor": 0.973366024281274,
+      "yards_per_game": 59.70434782608696,
+      "confidence": 1.0,
+      "games": 115
+    },
+    "RB_recv": {
+      "adjustment_factor": 0.8931907607349078,
+      "yards_per_game": 34.680851063829785,
+      "confidence": 1.0,
+      "games": 47
+    },
+    "WR1": {
+      "adjustment_factor": 0.8925478414672089,
+      "yards_per_game": 66.86666666666666,
+      "confidence": 1.0,
+      "games": 75
+    },
+    "Slot": {
+      "adjustment_factor": 0.9780374001228126,
+      "yards_per_game": 20.791666666666668,
+      "confidence": 1.0,
+      "games": 120
+    },
+    "TE2": {
+      "adjustment_factor": 0.8567025089432022,
+      "yards_per_game": 12.410714285714286,
+      "confidence": 1.0,
+      "games": 56
+    },
+    "FB": {
+      "adjustment_factor": 0.9797907120029,
+      "yards_per_game": 10.0,
+      "confidence": 0.5625,
+      "games": 9
+    }
+  },
+  "JAX": {
+    "QB": {
+      "adjustment_factor": 1.1547368060928582,
+      "yards_per_game": 20.186666666666667,
+      "confidence": 1.0,
+      "games": 75
+    },
+    "WR1": {
+      "adjustment_factor": 1.1179578602971523,
+      "yards_per_game": 83.7536231884058,
+      "confidence": 1.0,
+      "games": 69
+    },
+    "RB_rush": {
+      "adjustment_factor": 1.1446571874438167,
+      "yards_per_game": 70.21100917431193,
+      "confidence": 1.0,
+      "games": 109
+    },
+    "Slot": {
+      "adjustment_factor": 0.9085074154600278,
+      "yards_per_game": 19.3135593220339,
+      "confidence": 1.0,
+      "games": 118
+    },
+    "WR2": {
+      "adjustment_factor": 0.9674210596274782,
+      "yards_per_game": 45.178082191780824,
+      "confidence": 1.0,
+      "games": 73
+    },
+    "TE": {
+      "adjustment_factor": 1.0357712969497146,
+      "yards_per_game": 42.267605633802816,
+      "confidence": 1.0,
+      "games": 71
+    },
+    "TE2": {
+      "adjustment_factor": 1.232665480493816,
+      "yards_per_game": 17.857142857142858,
+      "confidence": 1.0,
+      "games": 56
+    },
+    "RB_recv": {
+      "adjustment_factor": 1.010371993148454,
+      "yards_per_game": 39.23076923076923,
+      "confidence": 1.0,
+      "games": 52
+    },
+    "FB": {
+      "adjustment_factor": 1.0015638389362977,
+      "yards_per_game": 10.222222222222221,
+      "confidence": 0.5625,
+      "games": 9
+    }
+  },
+  "TEN": {
+    "TE": {
+      "adjustment_factor": 0.895678638397876,
+      "yards_per_game": 36.55072463768116,
+      "confidence": 1.0,
+      "games": 69
+    },
+    "QB": {
+      "adjustment_factor": 0.8822454385540776,
+      "yards_per_game": 15.423076923076923,
+      "confidence": 1.0,
+      "games": 78
+    },
+    "WR2": {
+      "adjustment_factor": 1.123316749130567,
+      "yards_per_game": 52.458333333333336,
+      "confidence": 1.0,
+      "games": 72
+    },
+    "RB_rush": {
+      "adjustment_factor": 0.8890910536664498,
+      "yards_per_game": 54.53508771929825,
+      "confidence": 1.0,
+      "games": 114
+    },
+    "WR1": {
+      "adjustment_factor": 1.1063943480195733,
+      "yards_per_game": 82.88732394366197,
+      "confidence": 1.0,
+      "games": 71
+    },
+    "Slot": {
+      "adjustment_factor": 0.8742179837940676,
+      "yards_per_game": 18.584615384615386,
+      "confidence": 1.0,
+      "games": 130
+    },
+    "RB_recv": {
+      "adjustment_factor": 1.0061846225886142,
+      "yards_per_game": 39.06818181818182,
+      "confidence": 1.0,
+      "games": 44
+    },
+    "TE2": {
+      "adjustment_factor": 1.0090823744318833,
+      "yards_per_game": 14.618181818181819,
+      "confidence": 1.0,
+      "games": 55
+    },
+    "FB": {
+      "adjustment_factor": 1.7309635912051236,
+      "yards_per_game": 17.666666666666668,
+      "confidence": 0.1875,
+      "games": 3
+    }
+  },
+  "LV": {
+    "WR1": {
+      "adjustment_factor": 0.9503157683950052,
+      "yards_per_game": 71.19444444444444,
+      "confidence": 1.0,
+      "games": 72
+    },
+    "QB": {
+      "adjustment_factor": 0.9087096586916812,
+      "yards_per_game": 15.885714285714286,
+      "confidence": 1.0,
+      "games": 70
+    },
+    "RB_recv": {
+      "adjustment_factor": 1.0508878712281864,
+      "yards_per_game": 40.80392156862745,
+      "confidence": 1.0,
+      "games": 51
+    },
+    "TE2": {
+      "adjustment_factor": 0.9753579750099958,
+      "yards_per_game": 14.12962962962963,
+      "confidence": 1.0,
+      "games": 54
+    },
+    "RB_rush": {
+      "adjustment_factor": 0.9982514269052389,
+      "yards_per_game": 61.23076923076923,
+      "confidence": 1.0,
+      "games": 104
+    },
+    "TE": {
+      "adjustment_factor": 1.1393036096917128,
+      "yards_per_game": 46.492537313432834,
+      "confidence": 1.0,
+      "games": 67
+    },
+    "Slot": {
+      "adjustment_factor": 1.1363843476165914,
+      "yards_per_game": 24.157894736842106,
+      "confidence": 1.0,
+      "games": 114
+    },
+    "WR2": {
+      "adjustment_factor": 0.8978376467577117,
+      "yards_per_game": 41.92857142857143,
+      "confidence": 1.0,
+      "games": 70
+    },
+    "FB": {
+      "adjustment_factor": 0.6001218111017763,
+      "yards_per_game": 6.125,
+      "confidence": 0.5,
+      "games": 8
+    }
+  },
+  "GB": {
+    "QB": {
+      "adjustment_factor": 1.074318344641774,
+      "yards_per_game": 18.78082191780822,
+      "confidence": 1.0,
+      "games": 73
+    },
+    "TE": {
+      "adjustment_factor": 1.0540638256862473,
+      "yards_per_game": 43.014084507042256,
+      "confidence": 1.0,
+      "games": 71
+    },
+    "WR2": {
+      "adjustment_factor": 0.9666236823672175,
+      "yards_per_game": 45.140845070422536,
+      "confidence": 1.0,
+      "games": 71
+    },
+    "RB_rush": {
+      "adjustment_factor": 1.0619658971666042,
+      "yards_per_game": 65.13888888888889,
+      "confidence": 1.0,
+      "games": 108
+    },
+    "TE2": {
+      "adjustment_factor": 0.7176167538941499,
+      "yards_per_game": 10.395833333333334,
+      "confidence": 1.0,
+      "games": 48
+    },
+    "RB_recv": {
+      "adjustment_factor": 1.0516453588816426,
+      "yards_per_game": 40.833333333333336,
+      "confidence": 1.0,
+      "games": 54
+    },
+    "WR1": {
+      "adjustment_factor": 0.9226257248586265,
+      "yards_per_game": 69.12,
+      "confidence": 1.0,
+      "games": 75
+    },
+    "Slot": {
+      "adjustment_factor": 0.9838168719389639,
+      "yards_per_game": 20.914529914529915,
+      "confidence": 1.0,
+      "games": 117
+    },
+    "FB": {
+      "adjustment_factor": 0.8622158265625521,
+      "yards_per_game": 8.8,
+      "confidence": 0.625,
+      "games": 10
+    }
+  },
+  "SF": {
+    "RB_recv": {
+      "adjustment_factor": 1.0765414530919017,
+      "yards_per_game": 41.8,
+      "confidence": 1.0,
+      "games": 55
+    },
+    "Slot": {
+      "adjustment_factor": 0.9548724223312555,
+      "yards_per_game": 20.299212598425196,
+      "confidence": 1.0,
+      "games": 127
+    },
+    "TE": {
+      "adjustment_factor": 0.825112029198586,
+      "yards_per_game": 33.671052631578945,
+      "confidence": 1.0,
+      "games": 76
+    },
+    "TE2": {
+      "adjustment_factor": 0.8798093836775499,
+      "yards_per_game": 12.745454545454546,
+      "confidence": 1.0,
+      "games": 55
+    },
+    "WR2": {
+      "adjustment_factor": 0.9057634243425327,
+      "yards_per_game": 42.298701298701296,
+      "confidence": 1.0,
+      "games": 77
+    },
+    "QB": {
+      "adjustment_factor": 0.9682645029663509,
+      "yards_per_game": 16.926829268292682,
+      "confidence": 1.0,
+      "games": 82
+    },
+    "RB_rush": {
+      "adjustment_factor": 0.8355339361502706,
+      "yards_per_game": 51.25,
+      "confidence": 1.0,
+      "games": 116
+    },
+    "WR1": {
+      "adjustment_factor": 1.045144618651669,
+      "yards_per_game": 78.2987012987013,
+      "confidence": 1.0,
+      "games": 77
+    },
+    "FB": {
+      "adjustment_factor": 1.0124504024029968,
+      "yards_per_game": 10.333333333333334,
+      "confidence": 0.1875,
+      "games": 3
+    }
+  },
+  "IND": {
+    "RB_rush": {
+      "adjustment_factor": 0.9911708424523824,
+      "yards_per_game": 60.796460176991154,
+      "confidence": 1.0,
+      "games": 113
+    },
+    "WR2": {
+      "adjustment_factor": 0.9980555071875963,
+      "yards_per_game": 46.608695652173914,
+      "confidence": 1.0,
+      "games": 69
+    },
+    "TE": {
+      "adjustment_factor": 1.0480636638655558,
+      "yards_per_game": 42.76923076923077,
+      "confidence": 1.0,
+      "games": 65
+    },
+    "QB": {
+      "adjustment_factor": 1.1408362216222443,
+      "yards_per_game": 19.943661971830984,
+      "confidence": 1.0,
+      "games": 71
+    },
+    "Slot": {
+      "adjustment_factor": 0.9582022528497808,
+      "yards_per_game": 20.37,
+      "confidence": 1.0,
+      "games": 100
+    },
+    "TE2": {
+      "adjustment_factor": 1.0658586805571613,
+      "yards_per_game": 15.440677966101696,
+      "confidence": 1.0,
+      "games": 59
+    },
+    "RB_recv": {
+      "adjustment_factor": 0.8308651531040058,
+      "yards_per_game": 32.26086956521739,
+      "confidence": 1.0,
+      "games": 46
+    },
+    "WR1": {
+      "adjustment_factor": 1.0431968062346262,
+      "yards_per_game": 78.15277777777777,
+      "confidence": 1.0,
+      "games": 72
+    },
+    "FB": {
+      "adjustment_factor": 0.7729460061356211,
+      "yards_per_game": 7.888888888888889,
+      "confidence": 0.5625,
+      "games": 9
+    }
+  },
+  "CIN": {
+    "WR2": {
+      "adjustment_factor": 1.0952293692555628,
+      "yards_per_game": 51.14666666666667,
+      "confidence": 1.0,
+      "games": 75
+    },
+    "TE": {
+      "adjustment_factor": 1.2595614032283533,
+      "yards_per_game": 51.4,
+      "confidence": 1.0,
+      "games": 75
+    },
+    "QB": {
+      "adjustment_factor": 0.9942775243660044,
+      "yards_per_game": 17.38157894736842,
+      "confidence": 1.0,
+      "games": 76
+    },
+    "WR1": {
+      "adjustment_factor": 1.0092605688820726,
+      "yards_per_game": 75.6103896103896,
+      "confidence": 1.0,
+      "games": 77
+    },
+    "TE2": {
+      "adjustment_factor": 1.0128259679036775,
+      "yards_per_game": 14.672413793103448,
+      "confidence": 1.0,
+      "games": 58
+    },
+    "RB_rush": {
+      "adjustment_factor": 1.0377664959510768,
+      "yards_per_game": 63.654545454545456,
+      "confidence": 1.0,
+      "games": 110
+    },
+    "Slot": {
+      "adjustment_factor": 0.8796858666949134,
+      "yards_per_game": 18.700854700854702,
+      "confidence": 1.0,
+      "games": 117
+    },
+    "FB": {
+      "adjustment_factor": 0.2799402034294,
+      "yards_per_game": 2.857142857142857,
+      "confidence": 0.4375,
+      "games": 7
+    },
+    "RB_recv": {
+      "adjustment_factor": 0.9773644933390512,
+      "yards_per_game": 37.94915254237288,
+      "confidence": 1.0,
+      "games": 59
+    },
+    "CB": {
+      "adjustment_factor": 1.1111111111111112,
+      "yards_per_game": 15.0,
       "confidence": 0.0625,
       "games": 1
     }
   },
-  "PHI": {
-    "TE": {
-      "adjustment_factor": 1.1337988644962294,
-      "yards_per_game": 47.0,
-      "confidence": 0.875,
-      "games": 14
-    },
-    "Slot": {
-      "adjustment_factor": 1.0994689694708508,
-      "yards_per_game": 22.40625,
+  "HOU": {
+    "QB": {
+      "adjustment_factor": 0.7050263111836762,
+      "yards_per_game": 12.325,
       "confidence": 1.0,
-      "games": 32
-    },
-    "WR1": {
-      "adjustment_factor": 0.9597434997121607,
-      "yards_per_game": 72.13333333333334,
-      "confidence": 0.9375,
-      "games": 15
-    },
-    "RB_rush": {
-      "adjustment_factor": 0.9350059011705044,
-      "yards_per_game": 55.92857142857143,
-      "confidence": 1.0,
-      "games": 28
+      "games": 80
     },
     "TE2": {
-      "adjustment_factor": 0.7351236153188795,
-      "yards_per_game": 11.0,
-      "confidence": 0.625,
-      "games": 10
-    },
-    "QB": {
-      "adjustment_factor": 1.0956272086690035,
-      "yards_per_game": 17.58823529411765,
+      "adjustment_factor": 1.075029318458901,
+      "yards_per_game": 15.573529411764707,
       "confidence": 1.0,
-      "games": 17
+      "games": 68
+    },
+    "TE": {
+      "adjustment_factor": 0.9798630782248242,
+      "yards_per_game": 39.986111111111114,
+      "confidence": 1.0,
+      "games": 72
+    },
+    "RB_rush": {
+      "adjustment_factor": 1.1352886830884388,
+      "yards_per_game": 69.63636363636364,
+      "confidence": 1.0,
+      "games": 121
     },
     "WR2": {
-      "adjustment_factor": 1.3676438756590799,
-      "yards_per_game": 61.666666666666664,
-      "confidence": 0.9375,
-      "games": 15
+      "adjustment_factor": 1.0474772545506637,
+      "yards_per_game": 48.916666666666664,
+      "confidence": 1.0,
+      "games": 72
+    },
+    "WR1": {
+      "adjustment_factor": 1.0238409531206136,
+      "yards_per_game": 76.70270270270271,
+      "confidence": 1.0,
+      "games": 74
+    },
+    "Slot": {
+      "adjustment_factor": 0.8664576967306165,
+      "yards_per_game": 18.419642857142858,
+      "confidence": 1.0,
+      "games": 112
+    },
+    "FB": {
+      "adjustment_factor": 0.48989535600145,
+      "yards_per_game": 5.0,
+      "confidence": 0.25,
+      "games": 4
     },
     "RB_recv": {
-      "adjustment_factor": 0.8268514151530945,
-      "yards_per_game": 31.142857142857142,
+      "adjustment_factor": 1.0769619360342284,
+      "yards_per_game": 41.816326530612244,
+      "confidence": 1.0,
+      "games": 49
+    }
+  },
+  "DAL": {
+    "TE": {
+      "adjustment_factor": 0.8350293585251052,
+      "yards_per_game": 34.07575757575758,
+      "confidence": 1.0,
+      "games": 66
+    },
+    "QB": {
+      "adjustment_factor": 1.1244894938704093,
+      "yards_per_game": 19.657894736842106,
+      "confidence": 1.0,
+      "games": 76
+    },
+    "RB_rush": {
+      "adjustment_factor": 0.9603425198909429,
+      "yards_per_game": 58.90551181102362,
+      "confidence": 1.0,
+      "games": 127
+    },
+    "WR1": {
+      "adjustment_factor": 1.0575721473125717,
+      "yards_per_game": 79.22972972972973,
+      "confidence": 1.0,
+      "games": 74
+    },
+    "Slot": {
+      "adjustment_factor": 1.1867602351138669,
+      "yards_per_game": 25.228813559322035,
+      "confidence": 1.0,
+      "games": 118
+    },
+    "TE2": {
+      "adjustment_factor": 0.990489713535403,
+      "yards_per_game": 14.348837209302326,
+      "confidence": 1.0,
+      "games": 43
+    },
+    "RB_recv": {
+      "adjustment_factor": 0.7919533416884206,
+      "yards_per_game": 30.75,
+      "confidence": 1.0,
+      "games": 40
+    },
+    "WR2": {
+      "adjustment_factor": 1.0130476985337664,
+      "yards_per_game": 47.30882352941177,
+      "confidence": 1.0,
+      "games": 68
+    },
+    "FB": {
+      "adjustment_factor": 1.2084085448035768,
+      "yards_per_game": 12.333333333333334,
+      "confidence": 0.5625,
+      "games": 9
+    }
+  },
+  "NYG": {
+    "FB": {
+      "adjustment_factor": 1.07776978320319,
+      "yards_per_game": 11.0,
+      "confidence": 0.375,
+      "games": 6
+    },
+    "TE": {
+      "adjustment_factor": 0.8989865712869403,
+      "yards_per_game": 36.68571428571428,
+      "confidence": 1.0,
+      "games": 70
+    },
+    "RB_rush": {
+      "adjustment_factor": 1.1060367072633621,
+      "yards_per_game": 67.84210526315789,
+      "confidence": 1.0,
+      "games": 114
+    },
+    "Slot": {
+      "adjustment_factor": 0.9997966643149405,
+      "yards_per_game": 21.25423728813559,
+      "confidence": 1.0,
+      "games": 118
+    },
+    "WR2": {
+      "adjustment_factor": 1.0779180205412129,
+      "yards_per_game": 50.338235294117645,
+      "confidence": 1.0,
+      "games": 68
+    },
+    "WR1": {
+      "adjustment_factor": 0.9736428293607142,
+      "yards_per_game": 72.94202898550725,
+      "confidence": 1.0,
+      "games": 69
+    },
+    "RB_recv": {
+      "adjustment_factor": 1.051255137969256,
+      "yards_per_game": 40.81818181818182,
+      "confidence": 1.0,
+      "games": 44
+    },
+    "QB": {
+      "adjustment_factor": 1.0439537670671069,
+      "yards_per_game": 18.25,
+      "confidence": 1.0,
+      "games": 68
+    },
+    "TE2": {
+      "adjustment_factor": 1.004308157754491,
+      "yards_per_game": 14.549019607843137,
+      "confidence": 1.0,
+      "games": 51
+    }
+  },
+  "DEN": {
+    "QB": {
+      "adjustment_factor": 0.9074111182313452,
+      "yards_per_game": 15.863013698630137,
+      "confidence": 1.0,
+      "games": 73
+    },
+    "RB_recv": {
+      "adjustment_factor": 1.0235225414027527,
+      "yards_per_game": 39.741379310344826,
+      "confidence": 1.0,
+      "games": 58
+    },
+    "TE": {
+      "adjustment_factor": 1.082246992320314,
+      "yards_per_game": 44.16417910447761,
+      "confidence": 1.0,
+      "games": 67
+    },
+    "Slot": {
+      "adjustment_factor": 1.0329172542379201,
+      "yards_per_game": 21.958333333333332,
+      "confidence": 1.0,
+      "games": 120
+    },
+    "RB_rush": {
+      "adjustment_factor": 1.1306879973350614,
+      "yards_per_game": 69.35416666666667,
+      "confidence": 1.0,
+      "games": 96
+    },
+    "TE2": {
+      "adjustment_factor": 1.1031899507649099,
+      "yards_per_game": 15.981481481481481,
+      "confidence": 1.0,
+      "games": 54
+    },
+    "WR2": {
+      "adjustment_factor": 0.9099187646374478,
+      "yards_per_game": 42.492753623188406,
+      "confidence": 1.0,
+      "games": 69
+    },
+    "WR1": {
+      "adjustment_factor": 0.9106838099926616,
+      "yards_per_game": 68.22535211267606,
+      "confidence": 1.0,
+      "games": 71
+    },
+    "FB": {
+      "adjustment_factor": 0.5038923661729201,
+      "yards_per_game": 5.142857142857143,
       "confidence": 0.4375,
       "games": 7
+    }
+  },
+  "MIN": {
+    "QB": {
+      "adjustment_factor": 0.9134870476001322,
+      "yards_per_game": 15.96923076923077,
+      "confidence": 1.0,
+      "games": 65
+    },
+    "WR1": {
+      "adjustment_factor": 1.1375609744189918,
+      "yards_per_game": 85.22222222222223,
+      "confidence": 1.0,
+      "games": 72
+    },
+    "RB_rush": {
+      "adjustment_factor": 0.9695204592446384,
+      "yards_per_game": 59.468468468468465,
+      "confidence": 1.0,
+      "games": 111
+    },
+    "TE": {
+      "adjustment_factor": 0.9149669147964928,
+      "yards_per_game": 37.33783783783784,
+      "confidence": 1.0,
+      "games": 74
+    },
+    "WR2": {
+      "adjustment_factor": 1.1816635218454783,
+      "yards_per_game": 55.183098591549296,
+      "confidence": 1.0,
+      "games": 71
+    },
+    "RB_recv": {
+      "adjustment_factor": 1.063609366003961,
+      "yards_per_game": 41.297872340425535,
+      "confidence": 1.0,
+      "games": 47
+    },
+    "TE2": {
+      "adjustment_factor": 0.9677372226092221,
+      "yards_per_game": 14.01923076923077,
+      "confidence": 1.0,
+      "games": 52
+    },
+    "Slot": {
+      "adjustment_factor": 1.2013834730776642,
+      "yards_per_game": 25.53968253968254,
+      "confidence": 1.0,
+      "games": 126
+    },
+    "FB": {
+      "adjustment_factor": 1.018982340483016,
+      "yards_per_game": 10.4,
+      "confidence": 0.3125,
+      "games": 5
+    }
+  },
+  "CLE": {
+    "WR2": {
+      "adjustment_factor": 1.0290718377148014,
+      "yards_per_game": 48.05714285714286,
+      "confidence": 1.0,
+      "games": 70
+    },
+    "TE": {
+      "adjustment_factor": 0.9844651806657067,
+      "yards_per_game": 40.17391304347826,
+      "confidence": 1.0,
+      "games": 69
+    },
+    "RB_recv": {
+      "adjustment_factor": 0.9540392324051385,
+      "yards_per_game": 37.04347826086956,
+      "confidence": 1.0,
+      "games": 46
+    },
+    "RB_rush": {
+      "adjustment_factor": 0.9277697586570416,
+      "yards_per_game": 56.90756302521008,
+      "confidence": 1.0,
+      "games": 119
+    },
+    "QB": {
+      "adjustment_factor": 0.8719584222522744,
+      "yards_per_game": 15.243243243243244,
+      "confidence": 1.0,
+      "games": 74
+    },
+    "WR1": {
+      "adjustment_factor": 0.8995185540875079,
+      "yards_per_game": 67.38888888888889,
+      "confidence": 1.0,
+      "games": 72
+    },
+    "TE2": {
+      "adjustment_factor": 1.0565704118518422,
+      "yards_per_game": 15.306122448979592,
+      "confidence": 1.0,
+      "games": 49
+    },
+    "Slot": {
+      "adjustment_factor": 1.1223626239455542,
+      "yards_per_game": 23.85981308411215,
+      "confidence": 1.0,
+      "games": 107
+    },
+    "FB": {
+      "adjustment_factor": 0.68585349840203,
+      "yards_per_game": 7.0,
+      "confidence": 0.8125,
+      "games": 13
     }
   }
 }
@@ -1838,14 +1923,24 @@ Improvement vs baseline:
 
 ### Weather Impact
 
-**Sample Size:** 269 observations
+**Sample Size:** 1,328 observations
 
 
 **✅ RECOMMENDATION: Update factors (+12.0% improvement)**
 
 
 **Findings:**
-Analyzed 269 games with weather data
+Analyzed 1328 games with weather data
+
+WIND: Per MPH above 15: -2.1 passing yards, -0.80 points
+  Sample size: 72
+  Confidence: 0.50
+  P-value: 0.499
+
+COLD: Per degree below 32°F: -2.9 passing yards, -0.39 points
+  Sample size: 53
+  Confidence: 0.89
+  P-value: 0.113
 
 <details>
 <summary><b>Calculated Factors (Click to Expand)</b></summary>
@@ -1853,18 +1948,18 @@ Analyzed 269 games with weather data
 ```json
 {
   "wind": {
-    "passing_yards_coefficient": 0.0,
-    "rushing_yards_coefficient": 0.0,
-    "points_coefficient": 0.0,
-    "sample_size": 0,
-    "confidence": 0.0
+    "passing_yards_coefficient": -2.078766580598255,
+    "rushing_yards_coefficient": 1.7668392695681356,
+    "points_coefficient": -0.7974579833891067,
+    "sample_size": 72,
+    "confidence": 0.5007314764790948
   },
   "cold": {
-    "passing_yards_coefficient": 0.0,
+    "passing_yards_coefficient": -2.9081424484998992,
     "rushing_yards_coefficient": 0.0,
-    "points_coefficient": 0.0,
-    "sample_size": 0,
-    "confidence": 0.0
+    "points_coefficient": -0.38563373579912896,
+    "sample_size": 53,
+    "confidence": 0.886995141737121
   }
 }
 ```
@@ -1873,27 +1968,27 @@ Analyzed 269 games with weather data
 
 ### Situational Factors
 
-**Sample Size:** 269 observations
+**Sample Size:** 1,328 observations
 
 
 **✅ RECOMMENDATION: Update factors (+10.0% improvement)**
 
 
 **Findings:**
-Analyzed 269 games across 1 seasons
-  Primetime games: 57
-  Division games: 83
-  Post-bye games: 48
+Analyzed 1328 games across 5 seasons
+  Primetime games: 272
+  Division games: 432
+  Post-bye games: 242
   Thursday games: 0
 
-PRIMETIME: Primetime games score -45.8 vs baseline (p=0.068)
-  Confidence: 0.86
+PRIMETIME: Primetime games score -47.6 vs baseline (p=0.000)
+  Confidence: 1.00
 
-DIVISION_GAME: Division games: -43.2 points, margins 1.12x (p=0.468)
-  Confidence: 0.06
+DIVISION_GAME: Division games: -43.7 points, margins 1.01x (p=0.368)
+  Confidence: 0.26
 
-BYE_WEEK: Post-bye performance: -40.4 points vs baseline (p=0.495)
-  Confidence: 0.01
+BYE_WEEK: Post-bye performance: -45.3 points vs baseline (p=0.358)
+  Confidence: 0.28
 
 <details>
 <summary><b>Calculated Factors (Click to Expand)</b></summary>
@@ -1901,28 +1996,28 @@ BYE_WEEK: Post-bye performance: -40.4 points vs baseline (p=0.495)
 ```json
 {
   "primetime": {
-    "total_points_adjustment": -4.827190389495755,
+    "total_points_adjustment": -4.159805861928106,
     "scoring_margin_adjustment": 0.0,
     "star_player_boost": 1.0,
     "target_increase": 0.0,
-    "sample_size": 57,
-    "confidence": 0.8638997309345835
+    "sample_size": 272,
+    "confidence": 0.9991011107600083
   },
   "division_game": {
-    "total_points_adjustment": -43.17308232931727,
-    "scoring_margin_adjustment": 1.1199286033020974,
+    "total_points_adjustment": -43.70419675925925,
+    "scoring_margin_adjustment": 1.0092229849135927,
     "star_player_boost": 1.0,
     "target_increase": 0.0,
-    "sample_size": 83,
-    "confidence": 0.0644061462492811
+    "sample_size": 432,
+    "confidence": 0.2648619584370506
   },
   "bye_week": {
-    "total_points_adjustment": -40.40842708333332,
+    "total_points_adjustment": -45.260716942148754,
     "scoring_margin_adjustment": 0.0,
     "star_player_boost": 1.0,
     "target_increase": 0.0,
-    "sample_size": 48,
-    "confidence": 0.009633195348324408
+    "sample_size": 242,
+    "confidence": 0.2848856488107101
   },
   "short_week": {
     "total_points_adjustment": -3.0,
@@ -1939,12 +2034,12 @@ BYE_WEEK: Post-bye performance: -40.4 points vs baseline (p=0.495)
 
 ### Overall Prediction Accuracy
 
-**Sample Size:** 269 observations
+**Sample Size:** 1,328 observations
 
 
 **Accuracy Metrics:**
-- RMSE: 47.89
-- MAE: 44.83
+- RMSE: 49.97
+- MAE: 46.92
 - Correlation: 0.000
 - R²: 0.000
 
@@ -1953,27 +2048,27 @@ BYE_WEEK: Post-bye performance: -40.4 points vs baseline (p=0.495)
 
 
 **Findings:**
-Backtested 269 game predictions
-Backtested 2889 player predictions
+Backtested 1328 game predictions
+Backtested 14254 player predictions
 
 GAME TOTALS:
-  RMSE: 47.89 points
-  MAE: 44.83 points
-  MAPE: 133.2%
-  Hit Rates: 1.1% within 3, 1.9% within 7, 2.6% within 10
-  Bias: +101.2% (over-predicting)
+  RMSE: 49.97 points
+  MAE: 46.92 points
+  MAPE: 124.4%
+  Hit Rates: 0.7% within 3, 1.7% within 7, 2.0% within 10
+  Bias: +102.0% (over-predicting)
 
 SPREADS:
-  RMSE: 17.72 points
-  MAE: 14.42 points
-  Hit Rates: 10.4% within 3, 28.6% within 7, 39.0% within 10
-  Bias: -36.9% (under-predicting)
+  RMSE: 17.12 points
+  MAE: 13.65 points
+  Hit Rates: 13.6% within 3, 32.2% within 7, 44.9% within 10
+  Bias: +21.1% (over-predicting)
 
 PLAYER YARDS:
-  RMSE: 33.25 yards
-  MAE: 24.70 yards
-  Hit Rates: 10.6% within 3, 21.5% within 7, 29.8% within 10
-  Bias: -8.5% (under-predicting)
+  RMSE: 33.87 yards
+  MAE: 25.36 yards
+  Hit Rates: 9.4% within 3, 20.3% within 7, 28.4% within 10
+  Bias: -8.8% (under-predicting)
 
 <details>
 <summary><b>Calculated Factors (Click to Expand)</b></summary>
@@ -1981,16 +2076,16 @@ PLAYER YARDS:
 ```json
 {
   "game_totals": {
-    "rmse": 47.887621086396976,
-    "mae": 44.82933333333334,
-    "mape": 133.1650878085389,
-    "within_7_pct": 1.858736059479554,
-    "bias_pct": 101.20181787435527
+    "rmse": 49.974656336273604,
+    "mae": 46.915793800200795,
+    "mape": 124.37954942062748,
+    "within_7_pct": 1.6566265060240966,
+    "bias_pct": 102.01511967452466
   },
   "spreads": {
-    "rmse": 17.71932094480899,
-    "mae": 14.418377942998761,
-    "within_7_pct": 28.624535315985128
+    "rmse": 17.115131554398044,
+    "mae": 13.646686370481929,
+    "within_7_pct": 32.22891566265061
   }
 }
 ```
@@ -2015,19 +2110,19 @@ PLAYER YARDS:
 **2. Weather Impact** (+12.0% improvement)
 - Update configuration files with calculated factors
 - Expected accuracy improvement: 12.0%
-- Sample size: 269 observations
+- Sample size: 1,328 observations
 
 
 **3. Situational Factors** (+10.0% improvement)
 - Update configuration files with calculated factors
 - Expected accuracy improvement: 10.0%
-- Sample size: 269 observations
+- Sample size: 1,328 observations
 
 
 **4. Overall Prediction Accuracy** (+0.0% improvement)
 - Update configuration files with calculated factors
 - Expected accuracy improvement: 0.0%
-- Sample size: 269 observations
+- Sample size: 1,328 observations
 
 
 ## Next Steps

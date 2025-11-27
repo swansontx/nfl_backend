@@ -1,9 +1,13 @@
 {
   "feature_name": "Weather Impact",
   "seasons_tested": [
-    2023
+    2020,
+    2021,
+    2022,
+    2023,
+    2024
   ],
-  "sample_size": 269,
+  "sample_size": 1328,
   "metrics": {
     "rmse": 0.0,
     "mae": 0.0,
@@ -12,18 +16,18 @@
   },
   "calculated_factors": {
     "wind": {
-      "passing_yards_coefficient": 0.0,
-      "rushing_yards_coefficient": 0.0,
-      "points_coefficient": 0.0,
-      "sample_size": 0,
-      "confidence": 0.0
+      "passing_yards_coefficient": -2.078766580598255,
+      "rushing_yards_coefficient": 1.7668392695681356,
+      "points_coefficient": -0.7974579833891067,
+      "sample_size": 72,
+      "confidence": 0.5007314764790948
     },
     "cold": {
-      "passing_yards_coefficient": 0.0,
+      "passing_yards_coefficient": -2.9081424484998992,
       "rushing_yards_coefficient": 0.0,
-      "points_coefficient": 0.0,
-      "sample_size": 0,
-      "confidence": 0.0
+      "points_coefficient": -0.38563373579912896,
+      "sample_size": 53,
+      "confidence": 0.886995141737121
     }
   },
   "original_factors": {
@@ -47,7 +51,15 @@
   "should_update": true,
   "improvement_pct": 12.0,
   "notes": [
-    "Analyzed 269 games with weather data"
+    "Analyzed 1328 games with weather data",
+    "\nWIND: Per MPH above 15: -2.1 passing yards, -0.80 points",
+    "  Sample size: 72",
+    "  Confidence: 0.50",
+    "  P-value: 0.499",
+    "\nCOLD: Per degree below 32\u00b0F: -2.9 passing yards, -0.39 points",
+    "  Sample size: 53",
+    "  Confidence: 0.89",
+    "  P-value: 0.113"
   ],
-  "generated_at": "2025-11-27T16:43:51.937735"
+  "generated_at": "2025-11-27T16:47:15.440693"
 }
