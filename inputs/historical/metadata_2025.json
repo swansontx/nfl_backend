@@ -1,10 +1,10 @@
 {
   "season": 2025,
-  "collected_at": "2025-11-27T04:57:26.706906",
+  "collected_at": "2025-11-27T05:06:44.814088",
   "source": "nfl_data_py",
   "record_counts": {
-    "games": 0,
-    "player_stats": 0,
+    "games": 272,
+    "player_stats": 4559,
     "injuries": 0
   }
 }

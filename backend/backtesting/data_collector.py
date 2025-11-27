@@ -78,10 +78,17 @@ class HistoricalDataCollector:
             print(f"    ✓ {len(data['games'])} games")
 
             print(f"  Fetching player stats...")
-            # Get weekly player stats
-            weekly_stats = nfl.import_weekly_data([season])
-            data['player_stats'] = self._process_player_stats(weekly_stats)
-            print(f"    ✓ {len(data['player_stats'])} player-week records")
+            # Try weekly data first, fallback to pbp aggregation
+            try:
+                weekly_stats = nfl.import_weekly_data([season])
+                data['player_stats'] = self._process_player_stats(weekly_stats)
+                print(f"    ✓ {len(data['player_stats'])} player-week records (from weekly_data)")
+            except Exception as e:
+                print(f"    ! Weekly data not available: {e}")
+                print(f"    Aggregating from play-by-play data...")
+                pbp = nfl.import_pbp_data([season])
+                data['player_stats'] = self._aggregate_stats_from_pbp(pbp)
+                print(f"    ✓ {len(data['player_stats'])} player-week records (from pbp)")
 
             print(f"  Fetching rosters...")
             # Get rosters for position classification
@@ -173,6 +180,106 @@ class HistoricalDataCollector:
         processed['is_playoff'] = games_df.get('game_type', '') == 'REG'
 
         return processed
+
+    def _aggregate_stats_from_pbp(self, pbp_df: pd.DataFrame) -> pd.DataFrame:
+        """Aggregate player stats from play-by-play data.
+
+        Used when weekly aggregated data isn't available (e.g., current season).
+
+        Args:
+            pbp_df: Play-by-play DataFrame
+
+        Returns:
+            Aggregated player stats DataFrame
+        """
+        all_stats = []
+        season = pbp_df['season'].iloc[0] if len(pbp_df) > 0 else 2025
+
+        # Aggregate passing stats
+        passing = pbp_df[pbp_df['pass'] == 1].groupby(['passer_player_id', 'passer_player_name', 'posteam', 'week']).agg({
+            'complete_pass': 'sum',
+            'pass_attempt': 'sum',
+            'passing_yards': 'sum',
+            'pass_touchdown': 'sum',
+            'interception': 'sum'
+        }).reset_index()
+
+        passing = passing.rename(columns={
+            'passer_player_id': 'player_id',
+            'passer_player_name': 'player',
+            'posteam': 'recent_team',
+            'complete_pass': 'completions',
+            'pass_attempt': 'attempts',
+            'pass_touchdown': 'passing_tds'
+        })
+        passing['position'] = 'QB'
+        passing['season'] = season
+
+        # Aggregate rushing stats
+        rushing = pbp_df[pbp_df['rush'] == 1].groupby(['rusher_player_id', 'rusher_player_name', 'posteam', 'week']).agg({
+            'rush_attempt': 'sum',
+            'rushing_yards': 'sum',
+            'rush_touchdown': 'sum'
+        }).reset_index()
+
+        rushing = rushing.rename(columns={
+            'rusher_player_id': 'player_id',
+            'rusher_player_name': 'player',
+            'posteam': 'recent_team',
+            'rush_attempt': 'carries',
+            'rush_touchdown': 'rushing_tds'
+        })
+        rushing['position'] = 'RB'  # Simplified
+        rushing['season'] = season
+
+        # Aggregate receiving stats
+        receiving = pbp_df[pbp_df['pass'] == 1].groupby(['receiver_player_id', 'receiver_player_name', 'posteam', 'week']).agg({
+            'complete_pass': 'sum',
+            'pass_attempt': 'sum',
+            'receiving_yards': 'sum',
+            'pass_touchdown': 'sum'
+        }).reset_index()
+
+        receiving = receiving.rename(columns={
+            'receiver_player_id': 'player_id',
+            'receiver_player_name': 'player',
+            'posteam': 'recent_team',
+            'complete_pass': 'receptions',
+            'pass_attempt': 'targets',
+            'pass_touchdown': 'receiving_tds'
+        })
+        receiving['position'] = 'WR'  # Simplified
+        receiving['season'] = season
+
+        # Combine all stats
+        all_stats = pd.concat([passing, rushing, receiving], ignore_index=True)
+
+        # Add missing columns with defaults
+        for col in ['completions', 'attempts', 'passing_yards', 'passing_tds', 'carries', 'rushing_yards', 'rushing_tds', 'receptions', 'targets', 'receiving_yards', 'receiving_tds']:
+            if col not in all_stats.columns:
+                all_stats[col] = 0
+
+        all_stats = all_stats.fillna(0)
+
+        # Add team column and other required fields
+        all_stats['team'] = all_stats['recent_team']
+        all_stats['player_name'] = all_stats['player']
+        all_stats['player_display_name'] = all_stats['player']
+
+        # Calculate fantasy points (PPR)
+        all_stats['fantasy_points_ppr'] = (
+            all_stats.get('passing_yards', 0) * 0.04 +
+            all_stats.get('passing_tds', 0) * 4 +
+            all_stats.get('rushing_yards', 0) * 0.1 +
+            all_stats.get('rushing_tds', 0) * 6 +
+            all_stats.get('receptions', 0) * 1 +
+            all_stats.get('receiving_yards', 0) * 0.1 +
+            all_stats.get('receiving_tds', 0) * 6
+        )
+        all_stats['fantasy_points'] = all_stats['fantasy_points_ppr'] - all_stats.get('receptions', 0)
+        all_stats['points'] = all_stats['fantasy_points']
+
+        return all_stats
 
     def _process_player_stats(self, stats_df: pd.DataFrame) -> pd.DataFrame:
         """Process player stats DataFrame.
@@ -402,9 +509,9 @@ if __name__ == "__main__":
     # Initialize collector
     collector = HistoricalDataCollector()
 
-    # Collect data for recent seasons (2020-2024)
-    # Note: 2025 data may be incomplete as season is ongoing
-    seasons_to_collect = [2020, 2021, 2022, 2023, 2024]
+    # Collect data for recent seasons (2020-2025)
+    # Note: 2025 uses play-by-play aggregation (weekly data not yet published)
+    seasons_to_collect = [2020, 2021, 2022, 2023, 2024, 2025]
 
     print("Historical Data Collector")
     print("=" * 60)
