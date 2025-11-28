@@ -72,6 +72,58 @@ class GameMetricsEngine:
         # Cache metrics
         self._metrics_cache = {}
 
+    def _blend_metrics(
+        self,
+        full_season: Dict,
+        recent: Dict,
+        full_weight: float = 0.70,
+        recent_weight: float = 0.30
+    ) -> Dict:
+        """
+        Blend full-season and recent metrics with specified weights.
+
+        Args:
+            full_season: Full season metrics
+            recent: Recent weeks metrics
+            full_weight: Weight for full season (default 0.70)
+            recent_weight: Weight for recent (default 0.30)
+
+        Returns:
+            Blended metrics dictionary
+        """
+        blended = {}
+
+        # Metrics to blend (continuous values)
+        continuous_metrics = [
+            'plays_per_game', 'opp_plays_per_game', 'time_of_possession_pct',
+            'turnover_rate', 'takeaway_rate',
+            'success_rate_offense', 'success_rate_defense',
+            'epa_per_play_offense', 'epa_per_play_defense',
+            'red_zone_td_pct', 'third_down_pct', 'explosive_play_rate'
+        ]
+
+        for metric in continuous_metrics:
+            full_val = full_season.get(metric, 0.0)
+            recent_val = recent.get(metric, full_val)  # Fallback to full season if recent missing
+
+            # Weighted blend
+            blended[metric] = (full_val * full_weight) + (recent_val * recent_weight)
+
+        # Turnover margin needs special handling (integer, regression to mean)
+        full_margin = full_season.get('turnover_margin', 0)
+        recent_margin = recent.get('turnover_margin', full_margin)
+
+        # Blend turnover margins
+        blended_margin = (full_margin * full_weight) + (recent_margin * recent_weight)
+
+        # REGRESSION TO MEAN for turnovers (high variance stat)
+        # Regress 40% toward league average (0)
+        blended_margin = blended_margin * 0.6 + 0 * 0.4
+
+        blended['turnover_margin'] = int(round(blended_margin))
+
+        return blended
+
     def get_enhanced_team_strength(
         self,
         team: str,
@@ -79,10 +131,14 @@ class GameMetricsEngine:
         base_defensive_rating: float,
         recent_form: float = 0.0,
         is_home: bool = False,
-        weeks: Optional[List[int]] = None
+        weeks: Optional[List[int]] = None,
+        blend_with_full_season: bool = True
     ) -> EnhancedTeamStrength:
         """
         Get enhanced team strength with advanced metrics.
+
+        IMPROVED: Now blends full-season metrics (70%) with recent metrics (30%)
+        to reduce small-sample noise while capturing recent trends.
 
         Args:
             team: Team abbreviation
@@ -90,7 +146,8 @@ class GameMetricsEngine:
             base_defensive_rating: Base points allowed rating
             recent_form: Recent form adjustment
             is_home: Whether team is home
-            weeks: Optional weeks to include for metrics (for recency)
+            weeks: Optional weeks to include for recent metrics
+            blend_with_full_season: Whether to blend with full season (default True)
 
         Returns:
             EnhancedTeamStrength with all metrics
@@ -99,18 +156,45 @@ class GameMetricsEngine:
         net_rating = base_offensive_rating - base_defensive_rating
 
         # Get advanced metrics if available
+        metrics = {}
         if self.calculator:
-            cache_key = f"{team}_{weeks}"
-            if cache_key not in self._metrics_cache:
-                try:
-                    self._metrics_cache[cache_key] = self.calculator.calculate_team_metrics(team, weeks)
-                except Exception as e:
-                    print(f"Error calculating metrics for {team}: {e}")
-                    self._metrics_cache[cache_key] = {}
+            if blend_with_full_season and weeks:
+                # Calculate both full-season and recent metrics
+                full_cache_key = f"{team}_full"
+                recent_cache_key = f"{team}_{weeks}"
 
-            metrics = self._metrics_cache[cache_key]
-        else:
-            metrics = {}
+                # Get full season metrics
+                if full_cache_key not in self._metrics_cache:
+                    try:
+                        self._metrics_cache[full_cache_key] = self.calculator.calculate_team_metrics(team, None)
+                    except Exception as e:
+                        print(f"Error calculating full-season metrics for {team}: {e}")
+                        self._metrics_cache[full_cache_key] = {}
+
+                # Get recent metrics
+                if recent_cache_key not in self._metrics_cache:
+                    try:
+                        self._metrics_cache[recent_cache_key] = self.calculator.calculate_team_metrics(team, weeks)
+                    except Exception as e:
+                        print(f"Error calculating recent metrics for {team}: {e}")
+                        self._metrics_cache[recent_cache_key] = {}
+
+                # Blend metrics (70% full season, 30% recent)
+                full_metrics = self._metrics_cache[full_cache_key]
+                recent_metrics = self._metrics_cache[recent_cache_key]
+                metrics = self._blend_metrics(full_metrics, recent_metrics, 0.70, 0.30)
+
+            else:
+                # Use only the specified weeks (or full season if weeks=None)
+                cache_key = f"{team}_{weeks}"
+                if cache_key not in self._metrics_cache:
+                    try:
+                        self._metrics_cache[cache_key] = self.calculator.calculate_team_metrics(team, weeks)
+                    except Exception as e:
+                        print(f"Error calculating metrics for {team}: {e}")
+                        self._metrics_cache[cache_key] = {}
+
+                metrics = self._metrics_cache[cache_key]
 
         # Build enhanced strength object
         return EnhancedTeamStrength(
@@ -124,7 +208,7 @@ class GameMetricsEngine:
             opp_plays_per_game=metrics.get('opp_plays_per_game', 65.0),
             time_of_possession_pct=metrics.get('time_of_possession_pct', 0.50),
 
-            # Turnover metrics
+            # Turnover metrics (with regression to mean applied if blended)
             turnover_margin=metrics.get('turnover_margin', 0),
             turnover_rate=metrics.get('turnover_rate', 0.0),
             takeaway_rate=metrics.get('takeaway_rate', 0.0),
