@@ -282,10 +282,10 @@ class GameMarketAnalyzer:
                 enhanced_home, enhanced_away, base_total
             )
 
-            # Calculate turnover adjustment to spread
+            # Calculate turnover adjustment to spread (pass sample size for calibration)
             base_spread = base_home_score - base_away_score
             to_adjusted_spread, _ = self.metrics_engine.calculate_turnover_adjusted_spread(
-                enhanced_home, enhanced_away, base_spread
+                enhanced_home, enhanced_away, base_spread, sample_weeks=recent_weeks
             )
 
             # Get efficiency adjustments

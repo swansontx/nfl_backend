@@ -189,7 +189,8 @@ class GameMetricsEngine:
         self,
         home_strength: EnhancedTeamStrength,
         away_strength: EnhancedTeamStrength,
-        base_spread: float
+        base_spread: float,
+        sample_weeks: int = 4
     ) -> Tuple[float, str]:
         """
         Adjust predicted spread based on turnover margin.
@@ -198,6 +199,7 @@ class GameMetricsEngine:
             home_strength: Home team enhanced strength
             away_strength: Away team enhanced strength
             base_spread: Base predicted spread (from ratings model)
+            sample_weeks: Number of weeks in sample (affects multiplier)
 
         Returns:
             (adjusted_spread, reasoning)
@@ -207,9 +209,18 @@ class GameMetricsEngine:
         away_to_margin = away_strength.turnover_margin
         to_diff = home_to_margin - away_to_margin
 
-        # Each turnover margin point ≈ 3-4 points in score differential
-        # Being conservative: 2.5 points per turnover margin
-        turnover_adjustment = to_diff * 2.5
+        # CALIBRATED: Reduce multiplier based on sample size
+        # Small samples (≤4 weeks): 0.8 points per margin (conservative due to variance)
+        # Medium samples (5-8 weeks): 1.2 points per margin
+        # Large samples (9+ weeks): 1.5 points per margin
+        if sample_weeks <= 4:
+            multiplier = 0.8  # Very conservative for small samples
+        elif sample_weeks <= 8:
+            multiplier = 1.2  # Moderate for medium samples
+        else:
+            multiplier = 1.5  # More confident for large samples
+
+        turnover_adjustment = to_diff * multiplier
 
         adjusted_spread = base_spread + turnover_adjustment
 
@@ -256,9 +267,10 @@ class GameMetricsEngine:
 
         epa_diff = home_epa_edge - away_epa_edge
 
-        # EPA difference translates directly to point differential
-        # Multiply by average plays per game (~65) to get game-level impact
-        epa_spread_adj = epa_diff * 65.0
+        # CALIBRATED: Add 50% damping factor to prevent overcorrection
+        # EPA difference translates to point differential, but multiplying by full
+        # 65 plays creates extreme predictions. Apply 50% damping for stability.
+        epa_spread_adj = epa_diff * 65.0 * 0.5  # 50% damping
         adjustments['spread_adj'] += epa_spread_adj
 
         if abs(epa_spread_adj) >= 1.0:
@@ -284,8 +296,9 @@ class GameMetricsEngine:
             away_strength.success_rate_offense - home_strength.success_rate_defense
         )
 
-        # Each 5% success rate advantage ≈ 1 point
-        success_adj = (success_diff / 0.05) * 1.0
+        # CALIBRATED: Add 30% damping to success rate for stability
+        # Each 5% success rate advantage ≈ 1 point, but damped to prevent stacking
+        success_adj = (success_diff / 0.05) * 1.0 * 0.7  # 30% damping
         adjustments['spread_adj'] += success_adj
 
         if abs(success_adj) >= 1.0:
@@ -307,6 +320,24 @@ class GameMetricsEngine:
         if abs(explosive_total_adj) >= 1.5:
             adjustments['reasoning'].append(
                 f"Explosive plays: {explosive_total_adj:+.1f} total adjustment"
+            )
+
+        # CALIBRATED: Cap adjustments to prevent extreme predictions
+        # Spread adjustments capped at ±12 points (reasonable max for efficiency edge)
+        # Total adjustments capped at ±8 points (reasonable max for pace/explosiveness)
+        original_spread_adj = adjustments['spread_adj']
+        original_total_adj = adjustments['total_adj']
+
+        adjustments['spread_adj'] = max(-12.0, min(12.0, adjustments['spread_adj']))
+        adjustments['total_adj'] = max(-8.0, min(8.0, adjustments['total_adj']))
+
+        if abs(original_spread_adj - adjustments['spread_adj']) > 0.1:
+            adjustments['reasoning'].append(
+                f"Spread adjustment capped at {adjustments['spread_adj']:+.1f}"
+            )
+        if abs(original_total_adj - adjustments['total_adj']) > 0.1:
+            adjustments['reasoning'].append(
+                f"Total adjustment capped at {adjustments['total_adj']:+.1f}"
             )
 
         return adjustments
@@ -419,9 +450,9 @@ def enhance_game_prediction(
         home_strength, away_strength, base_total
     )
 
-    # Turnover adjustment to spread
+    # Turnover adjustment to spread (pass sample size for calibration)
     adjusted_spread, to_reasoning = engine.calculate_turnover_adjusted_spread(
-        home_strength, away_strength, base_spread
+        home_strength, away_strength, base_spread, sample_weeks=recent_weeks
     )
 
     # Efficiency adjustments
