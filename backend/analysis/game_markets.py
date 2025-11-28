@@ -293,9 +293,14 @@ class GameMarketAnalyzer:
                 enhanced_home, enhanced_away
             )
 
-            # Apply all adjustments
-            predicted_spread = to_adjusted_spread + efficiency_adjs['spread_adj']
-            predicted_total = pace_adjusted_total + efficiency_adjs['total_adj']
+            # Get contextual adjustments (weather, rest, primetime)
+            # Construct game_id from available data
+            game_id = f"{self.season}_{week:02d}_{away_team}_{home_team}"
+            contextual_adjs = self.metrics_engine.calculate_contextual_adjustments(game_id)
+
+            # Apply all adjustments (efficiency + contextual)
+            predicted_spread = to_adjusted_spread + efficiency_adjs['spread_adj'] + contextual_adjs['spread_adj']
+            predicted_total = pace_adjusted_total + efficiency_adjs['total_adj'] + contextual_adjs['total_adj']
 
             # Recalculate scores from adjusted spread and total
             home_score = (predicted_total + predicted_spread) / 2.0
