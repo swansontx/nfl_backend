@@ -24,6 +24,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import joblib
+from backend.features.team_metrics_features import TeamMetricsFeatureEngine
 
 
 @dataclass
@@ -111,6 +112,7 @@ class PicksPipeline:
         max_risk_per_game: float = 0.05,
         max_total_risk: float = 0.20,
         odds_api_key: Optional[str] = None,
+        season: int = 2025,
     ):
         self.models_dir = Path(models_dir)
         self.inputs_dir = Path(inputs_dir)
@@ -120,9 +122,16 @@ class PicksPipeline:
         self.max_risk_per_game = max_risk_per_game
         self.max_total_risk = max_total_risk
         self.odds_api_key = odds_api_key or os.getenv("ODDS_API_KEY")
+        self.season = season
 
         # Load models
         self.models = self._load_models()
+
+        # Initialize team metrics feature engine
+        self.team_metrics_engine = TeamMetricsFeatureEngine(
+            season=season,
+            inputs_dir=str(self.inputs_dir)
+        )
 
     def _load_models(self) -> Dict:
         """Load all trained models."""
@@ -146,16 +155,20 @@ class PicksPipeline:
             df = pd.read_csv(enhanced_file)
             # Filter to weeks before current for features
             df = df[df['week'] < week].copy()
-            return df
+        else:
+            # Fallback to basic stats
+            basic_file = self.inputs_dir / "player_stats_2025.csv"
+            if basic_file.exists():
+                df = pd.read_csv(basic_file)
+                df = df[df['week'] < week].copy()
+            else:
+                return pd.DataFrame()
 
-        # Fallback to basic stats
-        basic_file = self.inputs_dir / "player_stats_2025.csv"
-        if basic_file.exists():
-            df = pd.read_csv(basic_file)
-            df = df[df['week'] < week].copy()
-            return df
+        # Enrich with team-level efficiency metrics
+        print("Enriching player features with team efficiency metrics...")
+        df = self.team_metrics_engine.enrich_player_dataframe(df, recency_weeks=4)
 
-        return pd.DataFrame()
+        return df
 
     def _get_latest_player_features(self, player_id: str, df: pd.DataFrame) -> Dict:
         """Get most recent features for a player."""
@@ -206,12 +219,16 @@ class PicksPipeline:
         # Get model
         model = self.models[model_name]
 
-        # Prepare features (simplified - in production use proper feature engineering)
+        # Prepare base features
         feature_cols = [
             'games_played', 'is_home', 'spread_line', 'total_line',
             f"{prop_type.replace('_', '')}_season_avg",
             f"{prop_type.replace('_', '')}_l3_avg",
         ]
+
+        # Add team efficiency metrics
+        team_metric_cols = self._get_relevant_team_metrics(prop_type, features.get('position', 'UNK'))
+        feature_cols.extend(team_metric_cols)
 
         X = []
         for col in feature_cols:
@@ -226,6 +243,73 @@ class PicksPipeline:
         except Exception as e:
             print(f"Prediction error for {player_id} {prop_type}: {e}")
             return 0.0, 10.0
+
+    def _get_relevant_team_metrics(self, prop_type: str, position: str) -> List[str]:
+        """
+        Get most relevant team metrics for a prop type.
+
+        Args:
+            prop_type: Type of prop (pass_yds, rush_yds, etc.)
+            position: Player position
+
+        Returns:
+            List of team metric column names
+        """
+        # Passing props
+        if 'pass' in prop_type:
+            return [
+                'team_success_rate',
+                'team_completion_pct',
+                'team_yards_per_attempt',
+                'opp_def_success_rate',
+                'pass_efficiency_edge',
+                'team_plays_per_game',
+                'defense_matchup_factor',
+                'defense_yards_allowed_vs_pos',
+            ]
+
+        # Rushing props
+        elif 'rush' in prop_type or 'carries' in prop_type:
+            return [
+                'team_yards_per_carry',
+                'team_success_rate',
+                'rush_efficiency_edge',
+                'team_plays_per_game',
+                'opp_def_success_rate',
+                'defense_matchup_factor',
+                'defense_yards_allowed_vs_pos',
+            ]
+
+        # Receiving props
+        elif 'rec' in prop_type or 'targets' in prop_type or 'receptions' in prop_type:
+            return [
+                'team_completion_pct',
+                'team_yards_per_attempt',
+                'pass_efficiency_edge',
+                'team_explosive_play_rate',
+                'opp_def_explosive_allowed_rate',
+                'team_plays_per_game',
+                'defense_matchup_factor',
+                'defense_yards_allowed_vs_pos',
+            ]
+
+        # TD props
+        elif 'td' in prop_type:
+            return [
+                'team_red_zone_td_pct',
+                'red_zone_matchup',
+                'team_success_rate',
+                'opp_def_success_rate',
+                'defense_matchup_factor',
+            ]
+
+        # Default
+        return [
+            'team_success_rate',
+            'team_epa_per_play',
+            'team_plays_per_game',
+            'defense_matchup_factor',
+        ]
 
     def _calculate_hit_probability(
         self,

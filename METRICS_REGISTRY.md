@@ -2,7 +2,8 @@
 
 **Central catalog of all available metrics and where they're used across the system.**
 
-Last Updated: 2025-11-27
+Last Updated: 2025-11-28
+**Recent:** ✅ Team efficiency metrics and defense matchups integrated into player props pipeline
 
 ---
 
@@ -330,13 +331,25 @@ Last Updated: 2025-11-27
 
 ## 📈 Integration Opportunities
 
-### High-Priority (Easy Wins)
+### ✅ Completed Integrations (Nov 28, 2025)
 
-**1. Add Efficiency Metrics to Player Props**
-- **What:** Success Rate, Red Zone stats to player models
-- **Why:** Better situational awareness
-- **How:** Import from `advanced_team_metrics.py`
-- **Impact:** Could improve QB/RB/WR prop accuracy
+**1. Team Efficiency Metrics to Player Props** ✅
+- **Status:** COMPLETED
+- **What:** Success rate, EPA, red zone %, 3rd down %, passing/rushing efficiency
+- **Implementation:** `TeamMetricsFeatureEngine` in `backend/features/team_metrics_features.py`
+- **Features Added:** 23 new team-level metrics enriching player predictions
+- **Prop Coverage:** Passing (8 metrics), Rushing (7 metrics), Receiving (8 metrics), TD (5 metrics)
+- **Impact:** Contextual team performance now included in all player prop predictions
+
+**4. Defense Matchups to Player Props** ✅
+- **Status:** COMPLETED
+- **What:** Position-specific defense rankings and matchup difficulty factors
+- **Implementation:** Integrated `DefenseMatchupAnalyzer` into `TeamMetricsFeatureEngine`
+- **Features Added:** `defense_matchup_factor`, `defense_matchup_rank`, `defense_yards_allowed_vs_pos`
+- **Position Coverage:** QB, RB, WR, TE with position-specific defensive ratings
+- **Impact:** Player projections now adjusted for opponent defensive strength
+
+### High-Priority (Easy Wins)
 
 **2. Add Pace Metrics to Game Totals**
 - **What:** Plays per game, time of possession
@@ -351,12 +364,6 @@ Last Updated: 2025-11-27
 - **Impact:** Better spread predictions
 
 ### Medium-Priority (Moderate Effort)
-
-**4. Integrate Defense Matchups to Player Props**
-- **What:** Use positional defense rankings
-- **Why:** Adjust player projections for matchup difficulty
-- **How:** Join player with opponent defense metrics
-- **Impact:** More accurate game-specific props
 
 **5. Add Red Zone Metrics to TD Props**
 - **What:** Team red zone TD%, player red zone targets
@@ -396,10 +403,12 @@ Last Updated: 2025-11-27
 
 1. **✅ COMPLETE:** Advanced metrics calculator created
 2. **✅ COMPLETE:** Team matchup analyzer created
-3. **⏳ TODO:** Integrate efficiency metrics into player prop models
-4. **⏳ TODO:** Add pace/turnover metrics to game predictions
-5. **⏳ TODO:** Create unified metrics API
-6. **⏳ TODO:** Build metrics dashboard/visualization
+3. **✅ COMPLETE:** Team metrics feature engineering module created (Nov 28, 2025)
+4. **✅ COMPLETE:** Integrated efficiency + defense metrics into player props (Nov 28, 2025)
+5. **⏳ TODO:** Train models with new team metrics features
+6. **⏳ TODO:** Add pace/turnover metrics to game predictions
+7. **⏳ TODO:** Create unified metrics API
+8. **⏳ TODO:** Build metrics dashboard/visualization
 
 ---
 
@@ -459,6 +468,81 @@ if opponent_metrics['success_rate_defense'] < 0.45:  # Good defense
     qb_projection *= 0.95  # Reduce 5%
 elif opponent_metrics['success_rate_defense'] > 0.52:  # Weak defense
     qb_projection *= 1.05  # Increase 5%
+```
+
+### ✨ NEW: Enrich Player Features with Team Metrics (Nov 28, 2025)
+
+```python
+from backend.features.team_metrics_features import TeamMetricsFeatureEngine
+import pandas as pd
+
+# Initialize feature engine
+engine = TeamMetricsFeatureEngine(season=2025, inputs_dir="inputs")
+
+# Enrich entire DataFrame with team metrics
+player_stats = pd.read_csv("inputs/player_stats_2025.csv")
+enriched_df = engine.enrich_player_dataframe(player_stats, recency_weeks=4)
+
+# New columns automatically added:
+# - team_success_rate, team_epa_per_play, team_red_zone_td_pct
+# - opp_def_success_rate, opp_def_epa_allowed
+# - pass_efficiency_edge, rush_efficiency_edge, red_zone_matchup
+# - defense_matchup_factor, defense_matchup_rank, defense_yards_allowed_vs_pos
+# ... and 13 more team-level efficiency metrics
+
+print(f"Original columns: {len(player_stats.columns)}")
+print(f"Enriched columns: {len(enriched_df.columns)}")
+print(f"New metrics added: {len(enriched_df.columns) - len(player_stats.columns)}")
+
+# Or enrich a single player's features
+player_features = {
+    'player_id': '00-1234',
+    'position': 'WR',
+    'team': 'KC',
+    'opponent_team': 'BUF',
+    'week': 13,
+    # ... other features
+}
+
+enriched = engine.enrich_player_features(
+    player_features=player_features,
+    team='KC',
+    opponent='BUF',
+    week=13,
+    recency_weeks=4  # Use last 4 weeks for team metrics
+)
+
+# Access new metrics
+print(f"Team Success Rate: {enriched['team_success_rate']:.1%}")
+print(f"Defense Matchup Factor: {enriched['defense_matchup_factor']:.3f}")
+print(f"Pass Efficiency Edge: {enriched['pass_efficiency_edge']:+.2f}")
+```
+
+### ✨ NEW: Use Enhanced Features in Picks Pipeline (Nov 28, 2025)
+
+```python
+from backend.orchestration.picks_pipeline import PicksPipeline
+
+# Pipeline automatically enriches features with team metrics
+pipeline = PicksPipeline(
+    season=2025,
+    models_dir="outputs/models",
+    inputs_dir="inputs",
+    bankroll=1000.0,
+    min_edge=3.0
+)
+
+# Generate picks - features automatically enriched with 23 team metrics
+picks_report = pipeline.generate_picks(week=13)
+
+print(f"Generated {len(picks_report.single_picks)} value picks")
+print(f"Total expected value: ${picks_report.total_edge_dollars:.2f}")
+
+# Each pick now has team metrics incorporated:
+# - Passing props: 8 team metrics (success rate, completion %, YPA, etc.)
+# - Rushing props: 7 team metrics (YPC, rush efficiency, etc.)
+# - Receiving props: 8 team metrics (completion %, explosive plays, etc.)
+# - TD props: 5 team metrics (red zone %, matchup factors)
 ```
 
 ---
