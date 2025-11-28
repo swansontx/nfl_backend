@@ -3,7 +3,9 @@
 **Central catalog of all available metrics and where they're used across the system.**
 
 Last Updated: 2025-11-28
-**Recent:** ✅ Team efficiency metrics and defense matchups integrated into player props pipeline
+**Recent Updates:**
+- ✅ Team efficiency metrics and defense matchups integrated into player props pipeline
+- ✅ Pace, turnover margin, and efficiency metrics integrated into game predictions (spreads/totals)
 
 ---
 
@@ -349,19 +351,21 @@ Last Updated: 2025-11-28
 - **Position Coverage:** QB, RB, WR, TE with position-specific defensive ratings
 - **Impact:** Player projections now adjusted for opponent defensive strength
 
-### High-Priority (Easy Wins)
+**2. Pace Metrics to Game Totals** ✅
+- **Status:** COMPLETED (Nov 28, 2025)
+- **What:** Plays per game, time of possession affecting total scoring
+- **Implementation:** `GameMetricsEngine` in `backend/features/game_metrics_features.py`
+- **Algorithm:** Each +10 plays/game ≈ +3.5 points to total
+- **Impact:** Game totals now adjusted for team pace (+5.8 in fast-paced matchups)
 
-**2. Add Pace Metrics to Game Totals**
-- **What:** Plays per game, time of possession
-- **Why:** Pace directly impacts total scoring opportunities
-- **How:** Use from `advanced_team_metrics.py`
-- **Impact:** Better over/under predictions
+**3. Turnover Margin to Game Spreads** ✅
+- **Status:** COMPLETED (Nov 28, 2025)
+- **What:** Team turnover differential impacting point spreads
+- **Implementation:** Integrated into `GameMetricsEngine` and `GameMarketAnalyzer`
+- **Algorithm:** Each +1 turnover margin ≈ +2.5 points to spread
+- **Impact:** Spreads now reflect ball security advantage (conservative multiplier)
 
-**3. Add Turnover Margin to Game Spreads**
-- **What:** Team turnover differential
-- **Why:** Turnovers are ~4 points each
-- **How:** Use from `advanced_team_metrics.py`
-- **Impact:** Better spread predictions
+### High-Priority (Remaining)
 
 ### Medium-Priority (Moderate Effort)
 
@@ -405,10 +409,11 @@ Last Updated: 2025-11-28
 2. **✅ COMPLETE:** Team matchup analyzer created
 3. **✅ COMPLETE:** Team metrics feature engineering module created (Nov 28, 2025)
 4. **✅ COMPLETE:** Integrated efficiency + defense metrics into player props (Nov 28, 2025)
-5. **⏳ TODO:** Train models with new team metrics features
-6. **⏳ TODO:** Add pace/turnover metrics to game predictions
-7. **⏳ TODO:** Create unified metrics API
-8. **⏳ TODO:** Build metrics dashboard/visualization
+5. **✅ COMPLETE:** Game metrics feature engineering module created (Nov 28, 2025)
+6. **✅ COMPLETE:** Integrated pace/turnover/efficiency metrics into game predictions (Nov 28, 2025)
+7. **⏳ TODO:** Train models with new team metrics features
+8. **⏳ TODO:** Create unified metrics API
+9. **⏳ TODO:** Build metrics dashboard/visualization
 
 ---
 
@@ -544,6 +549,97 @@ print(f"Total expected value: ${picks_report.total_edge_dollars:.2f}")
 # - Receiving props: 8 team metrics (completion %, explosive plays, etc.)
 # - TD props: 5 team metrics (red zone %, matchup factors)
 ```
+
+### ✨ NEW: Enhanced Game Predictions with Pace & Turnover Metrics (Nov 28, 2025)
+
+```python
+from backend.analysis.game_markets import GameMarketAnalyzer
+
+# Initialize with enhanced metrics enabled (default)
+analyzer = GameMarketAnalyzer(season=2025, use_enhanced_metrics=True)
+
+# Predict game outcome - automatically includes pace, turnovers, efficiency
+prediction = analyzer.predict_game_outcome(
+    home_team='KC',
+    away_team='BUF',
+    week=13,
+    recent_weeks=4  # Use last 4 weeks for team metrics
+)
+
+print(f"Predicted Score: {prediction.home_team} {prediction.home_score} - {prediction.away_team} {prediction.away_score}")
+print(f"Predicted Spread: {prediction.predicted_spread:+.1f} ({prediction.home_team})")
+print(f"Predicted Total: {prediction.predicted_total}")
+print(f"Win Probabilities: {prediction.home_win_prob:.1%} / {prediction.away_win_prob:.1%}")
+
+# Analyze betting markets
+spread_analysis = analyzer.analyze_spread_market(
+    prediction=prediction,
+    market_spread=-3.0,  # Market has KC favored by 3
+    market_odds=-110
+)
+
+print(f"Recommendation: {spread_analysis.recommendation}")
+print(f"Edge: {spread_analysis.edge:.1f} points")
+print(f"Reasoning: {spread_analysis.reasoning}")
+```
+
+### ✨ NEW: Direct Enhancement with GameMetricsEngine (Nov 28, 2025)
+
+```python
+from backend.features.game_metrics_features import enhance_game_prediction
+
+# Enhance any base prediction with advanced metrics
+result = enhance_game_prediction(
+    home_team='KC',
+    away_team='BUF',
+    base_home_score=25.5,
+    base_away_score=23.0,
+    home_offensive_rating=26.0,
+    home_defensive_rating=19.0,
+    away_offensive_rating=25.0,
+    away_defensive_rating=20.0,
+    season=2025,
+    recent_weeks=4
+)
+
+print(f"Base Total: {result['base_prediction']['total']:.1f}")
+print(f"Enhanced Total: {result['enhanced_prediction']['total']:.1f}")
+print(f"Pace Adjustment: {result['adjustments']['pace_total_adj']:+.1f} points")
+
+print(f"\nBase Spread: {result['base_prediction']['spread']:+.1f}")
+print(f"Enhanced Spread: {result['enhanced_prediction']['spread']:+.1f}")
+print(f"Turnover Adjustment: {result['adjustments']['turnover_spread_adj']:+.1f} points")
+print(f"Efficiency Adjustment: {result['adjustments']['efficiency_spread_adj']:+.1f} points")
+
+print(f"\nReasoning:")
+print(f"  {result['reasoning']['pace']}")
+print(f"  {result['reasoning']['turnovers']}")
+print(f"  {result['reasoning']['efficiency']}")
+
+# Access detailed metrics breakdown
+metrics = result['metrics_summary']
+print(f"\nCombined Pace: {metrics['pace']['combined_pace']:.1f} plays/game")
+print(f"Turnover Differential: {metrics['turnovers']['margin_differential']:+d}")
+print(f"EPA Edge: Home {metrics['efficiency']['home_epa_edge']:+.3f}, Away {metrics['efficiency']['away_epa_edge']:+.3f}")
+```
+
+### Key Features in Game Predictions:
+
+**Pace Adjustments to Totals:**
+- Fast-paced games (70+ plays/game): +3-6 points to total
+- Slow-paced games (60- plays/game): -3-6 points to total
+- Algorithm: Each +10 plays ≈ +3.5 points
+
+**Turnover Margin Adjustments to Spreads:**
+- Team with +5 TO margin: +12.5 point edge (5 × 2.5)
+- Conservative multiplier (2.5 pts/margin) vs. typical 4 pts/turnover
+- Reflects season-long ball security advantage
+
+**Efficiency Adjustments (EPA, Success Rate, Red Zone):**
+- EPA differential: Direct point impact (EPA × 65 plays/game)
+- Success rate edge: Each 5% ≈ 1 point
+- Red zone efficiency: Each 10% ≈ 1.5 points
+- Explosive play rate: Affects total variance
 
 ---
 

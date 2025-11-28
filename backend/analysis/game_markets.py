@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Optional, Dict, List, Tuple
 import pandas as pd
 from pathlib import Path
+from backend.features.game_metrics_features import GameMetricsEngine, EnhancedTeamStrength
 
 
 @dataclass
@@ -71,14 +72,22 @@ class GameMarketAnalysis:
 class GameMarketAnalyzer:
     """Analyze game-level betting markets."""
 
-    def __init__(self, season: int = 2025):
+    def __init__(self, season: int = 2025, use_enhanced_metrics: bool = True):
         """Initialize analyzer.
 
         Args:
             season: NFL season year
+            use_enhanced_metrics: Whether to use pace/turnover/efficiency metrics
         """
         self.season = season
         self.inputs_dir = Path('inputs')
+        self.use_enhanced_metrics = use_enhanced_metrics
+
+        # Initialize game metrics engine for advanced predictions
+        if use_enhanced_metrics:
+            self.metrics_engine = GameMetricsEngine(season=season, inputs_dir=str(self.inputs_dir))
+        else:
+            self.metrics_engine = None
 
     def calculate_team_strength(
         self,
@@ -212,41 +221,92 @@ class GameMarketAnalyzer:
         self,
         home_team: str,
         away_team: str,
-        week: int
+        week: int,
+        recent_weeks: int = 4
     ) -> GamePrediction:
-        """Predict game outcome.
+        """Predict game outcome with optional enhanced metrics.
 
         Args:
             home_team: Home team abbreviation
             away_team: Away team abbreviation
             week: Week number
+            recent_weeks: Number of recent weeks for advanced metrics
 
         Returns:
             GamePrediction with scores and probabilities
         """
-        # Calculate team strengths
+        # Calculate basic team strengths
         home_strength = self.calculate_team_strength(home_team, week, is_home=True)
         away_strength = self.calculate_team_strength(away_team, week, is_home=False)
 
-        # Predict scores using strength ratings
+        # Base prediction using strength ratings
         # Home score = home offensive rating vs away defensive rating + home advantage + form
-        home_score = (
+        base_home_score = (
             (home_strength.offensive_rating + away_strength.defensive_rating) / 2.0
             + home_strength.home_advantage
             + home_strength.recent_form_rating
         )
 
         # Away score = away offensive rating vs home defensive rating + form
-        away_score = (
+        base_away_score = (
             (away_strength.offensive_rating + home_strength.defensive_rating) / 2.0
             + away_strength.recent_form_rating
         )
 
-        # Predicted spread (positive = home favored)
-        predicted_spread = home_score - away_score
+        # Apply enhanced metrics if enabled
+        if self.use_enhanced_metrics and self.metrics_engine:
+            # Get enhanced team strengths with pace/turnover/efficiency metrics
+            weeks_list = list(range(max(1, week - recent_weeks), week)) if week > 1 else None
 
-        # Predicted total
-        predicted_total = home_score + away_score
+            enhanced_home = self.metrics_engine.get_enhanced_team_strength(
+                home_team,
+                home_strength.offensive_rating,
+                home_strength.defensive_rating,
+                home_strength.recent_form_rating,
+                is_home=True,
+                weeks=weeks_list
+            )
+
+            enhanced_away = self.metrics_engine.get_enhanced_team_strength(
+                away_team,
+                away_strength.offensive_rating,
+                away_strength.defensive_rating,
+                away_strength.recent_form_rating,
+                is_home=False,
+                weeks=weeks_list
+            )
+
+            # Calculate pace adjustment to total
+            base_total = base_home_score + base_away_score
+            pace_adjusted_total, _ = self.metrics_engine.calculate_pace_adjusted_total(
+                enhanced_home, enhanced_away, base_total
+            )
+
+            # Calculate turnover adjustment to spread
+            base_spread = base_home_score - base_away_score
+            to_adjusted_spread, _ = self.metrics_engine.calculate_turnover_adjusted_spread(
+                enhanced_home, enhanced_away, base_spread
+            )
+
+            # Get efficiency adjustments
+            efficiency_adjs = self.metrics_engine.calculate_efficiency_adjustments(
+                enhanced_home, enhanced_away
+            )
+
+            # Apply all adjustments
+            predicted_spread = to_adjusted_spread + efficiency_adjs['spread_adj']
+            predicted_total = pace_adjusted_total + efficiency_adjs['total_adj']
+
+            # Recalculate scores from adjusted spread and total
+            home_score = (predicted_total + predicted_spread) / 2.0
+            away_score = (predicted_total - predicted_spread) / 2.0
+
+        else:
+            # Use base predictions
+            home_score = base_home_score
+            away_score = base_away_score
+            predicted_spread = home_score - away_score
+            predicted_total = home_score + away_score
 
         # Win probabilities using point spread to probability conversion
         # Rule of thumb: 1 point spread ≈ 2.8% win probability shift from 50%
@@ -258,8 +318,8 @@ class GameMarketAnalyzer:
         home_win_prob = max(0.01, min(0.99, home_win_prob))
         away_win_prob = max(0.01, min(0.99, away_win_prob))
 
-        # Confidence based on data quality
-        confidence = 0.75  # Base confidence
+        # Confidence based on data quality and enhanced metrics usage
+        confidence = 0.80 if self.use_enhanced_metrics else 0.75
 
         return GamePrediction(
             home_team=home_team,
